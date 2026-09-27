@@ -1,0 +1,16 @@
+# Keep the published bundle to the app itself.
+# Vercel rebuilds from source; these never need to upload.
+
+node_modules
+.vercel
+.tanstack
+screenshots
+artifacts
+attachments
+assets
+.grok
+*.log
+PLAN.md
+FUN-PLAN.md
+AGENTS.md
+AGENTS.project.md
