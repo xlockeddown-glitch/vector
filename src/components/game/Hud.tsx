@@ -6,7 +6,7 @@ import { rarityGem } from "@/game/data/rarity";
 import type { Rarity } from "@/game/types";
 import { HOME_PAD, WIN_WAVES } from "@/game/constants";
 import { Pause, Play, Volume2, VolumeX, ChartNoAxesColumn } from "lucide-react";
-import { CraftPortrait, CardMark } from "./CardView";
+import { CraftPortrait } from "./CardView";
 import { GunTree } from "./GunTree";
 
 export function HudBar({
@@ -35,28 +35,30 @@ export function HudBar({
         <p className="hud-value">
           {hud.endless ? fmtCount(hud.wavesCleared) : `${fmtCount(hud.wavesCleared)}/${WIN_WAVES}`}
         </p>
+        {playing && (
+          <ClimbMeter
+            xp={hud.xp}
+            xpNext={hud.xpNext}
+            pending={hud.pendingLevels > 0}
+            bay={hud.climbRanks.bay}
+            pack={hud.climbRanks.pack}
+            crew={hud.climbRanks.crew}
+            say={hud.bonusSay}
+          />
+        )}
       </div>
-      {playing && (
+      {playing && hud.signalCards.some((c) => !!c) && (
         <div className="signal-dock" aria-label="Signals">
-          {[0, 1].map((i) => {
-            const c = hud.signalCards[i];
-            return (
-              <div
-                key={c?.id ?? `signal-empty-${i}`}
-                className={cn("signal-slot", !c && "is-empty")}
-                data-signal-slot={c ? "1" : "0"}
-                title={c ? `${c.name}. ${c.blurb}` : "Empty signal slot"}
-              >
-                <span className="signal-slot-art">
-                  {c ? <CardMark card={c} /> : <span className="signal-slot-void" />}
-                </span>
-                <span className="signal-slot-copy">
-                  <span className="signal-slot-name">{c ? c.name : "Signal"}</span>
-                  <span className="signal-slot-job">{c ? c.blurb : "Empty"}</span>
-                </span>
-              </div>
-            );
-          })}
+          {hud.signalCards.filter(Boolean).map((c) => (
+            <div
+              key={c!.id}
+              className="signal-slot"
+              data-signal-slot="1"
+              title={`${c!.name}. ${c!.blurb}`}
+            >
+              <span className="signal-slot-job">{c!.blurb}</span>
+            </div>
+          ))}
         </div>
       )}
       <div className="hud-actions">
@@ -153,11 +155,22 @@ export function HudOverlays({
             <p className="text-[10px] tracking-[0.18em] text-accent">
               {hud.announce.startsWith("Wave")
                 ? "Next wave"
-                : /held|flying/i.test(hud.announce)
-                  ? "Arena"
-                  : "Lane"}
+                : hud.announce.startsWith("+")
+                  ? "Credit"
+                  : /froze|popped|cut |lined |jumped|swept|got /.test(hud.announce)
+                    ? "That wave"
+                    : /held|flying/i.test(hud.announce)
+                      ? "Arena"
+                      : "Lane"}
             </p>
-            <p className="mt-0.5 font-display text-2xl font-bold tracking-wide text-paper">{hud.announce}</p>
+            <p
+              className={cn(
+                "mt-0.5 max-w-[18rem] font-display font-bold tracking-wide text-paper",
+                hud.announce.length > 28 ? "text-lg" : "text-2xl",
+              )}
+            >
+              {hud.announce}
+            </p>
           </div>
         </div>
       )}
@@ -206,6 +219,7 @@ function ClimbMeter({
   bay,
   pack,
   crew,
+  say,
 }: {
   xp: number;
   xpNext: number;
@@ -213,19 +227,21 @@ function ClimbMeter({
   bay: number;
   pack: number;
   crew: number;
+  say: string | null;
 }) {
   const pct = xpNext > 0 ? Math.max(0, Math.min(1, xp / xpNext)) : 0;
   return (
-    <div className={cn("min-w-[7.25rem]", pending && "climb-ready")}>
-      <p className="text-[10px] font-medium tracking-[0.22em] text-frost">Bonus</p>
-      <div className="climb-bar-live mt-1">
+    <div className={cn("hud-bonus min-w-0", pending && "climb-ready")}>
+      <p className="text-[9px] font-medium tracking-[0.16em] text-frost">Bonus</p>
+      <div className="climb-bar-live mt-0.5">
         <span style={{ width: `${Math.round(pct * 100)}%` }} />
       </div>
-      <div className="rank-pipe mt-1" aria-hidden>
+      <div className="rank-pipe mt-0.5" aria-hidden>
         <i className={cn("rank-tick", bay > 0 && "on")} />
         <i className={cn("rank-tick", pack > 0 && "on")} />
         <i className={cn("rank-tick", crew > 0 && "on")} />
       </div>
+      {say ? <p className="bonus-say">{say}</p> : null}
     </div>
   );
 }
@@ -430,6 +446,9 @@ export function CraftBanner({
   onAction: (a: Action) => void;
 }) {
   if (hud.phase !== "placement" && hud.phase !== "combat" && hud.phase !== "shop") return null;
+  const towers = hud.roster.filter((r) => r.card.kind === "tower");
+  const gunsDown = towers.length > 0 && towers.every((r) => !!r.placedPad);
+  if (gunsDown && (hud.phase === "placement" || hud.phase === "combat")) return null;
   const crafts = hud.crafts ?? [];
   return (
     <div className="play-craft craft-dock relative z-10 shrink-0 border-b border-line bg-ink/95">

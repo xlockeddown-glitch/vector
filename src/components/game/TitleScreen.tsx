@@ -92,13 +92,7 @@ export function TitleScreen({
         alt=""
         className="title-photo pointer-events-none absolute inset-0 h-full w-full object-cover"
       />
-      <div className="title-neon" aria-hidden>
-        <div className="title-pips">
-          {Array.from({ length: 24 }).map((_, i) => (
-            <i key={i} style={{ animationDelay: `${(i % 8) * 180}ms` }} />
-          ))}
-        </div>
-      </div>
+      <div className="title-neon" aria-hidden />
       <div className="rocket-sky" aria-hidden>
         <div className="rocket-craft">
           <div className="relative">
@@ -179,8 +173,9 @@ export function TitleScreen({
             Briefing
           </button>
         </div>
-        <p className="title-start-hint">Draft once. Hold 12. Then keep flying, or return.</p>
+        <p className="title-start-hint">Draft. Plant. Hold 12.</p>
         <p className="title-version">v{GAME_VERSION}</p>
+        {(best.runs > 0 || hasRun) && (
         <div className="title-banks rise-in" style={{ animationDelay: "190ms" }}>
           <button type="button" onClick={onHangar} aria-label="Vault" className="keep-bank">
             <p className="keep-bank-kicker">Vault</p>
@@ -223,6 +218,7 @@ export function TitleScreen({
           )}
         </div>
         </div>
+        )}
         <div className="bore-craft rise-in" style={{ animationDelay: "200ms" }}>
           <div className="relative">
             <BoreAuger className="rocket-pose bore-toned relative z-10" />

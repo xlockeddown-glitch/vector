@@ -13,7 +13,7 @@ export const OPENING_ROUNDS: OpeningRound[] = [
   {
     kind: "set",
     title: "Pick two guns",
-    sub: "They already work together. That is your plan.",
+    sub: "Three pairs. Take one.",
   },
   {
     kind: "tower",
@@ -43,21 +43,21 @@ export const OPENING_ROUNDS: OpeningRound[] = [
 ];
 
 const ENVS: CardDef[] = [
-  { id: "blizzard", name: "Drift", kind: "environment", rarity: "rare", art: "env-blizzard", set: "cold", cost: 0, blurb: "Slows every enemy on the path.", env: { slowMul: 0.58 } },
-  { id: "gas", name: "Nebula", kind: "environment", rarity: "rare", art: "env-gas", set: "iron", cost: 0, blurb: "Poisons every enemy.", env: { poisonDps: 8 } },
-  { id: "hail", name: "Debris", kind: "environment", rarity: "uncommon", art: "env-hail", set: "cold", cost: 0, blurb: "Chips every enemy.", env: { chipDps: 6 } },
-  { id: "static", name: "Static", kind: "environment", rarity: "uncommon", art: "env-static", set: "spark", cost: 0, blurb: "Shots jump a little on the path.", env: { shred: 0.08 } },
-  { id: "ion", name: "Ion rain", kind: "environment", rarity: "rare", art: "env-ion", set: "heat", cost: 0, blurb: "Burns every enemy a little.", env: { dmgAmp: 0.08 } },
-  { id: "slick", name: "Slick", kind: "environment", rarity: "uncommon", art: "env-slick", set: "cold", cost: 0, blurb: "Enemies crawl more.", env: { slowMul: 0.7 } },
-  { id: "solar", name: "Solar", kind: "environment", rarity: "rare", art: "env-solar", set: "heat", cost: 0, blurb: "Guns bite a little more.", env: { dmgAmp: 0.1 } },
+  { id: "blizzard", name: "Drift", kind: "environment", rarity: "rare", art: "env-blizzard", set: "cold", cost: 0, blurb: "The road is slow.", env: { slowMul: 0.58 } },
+  { id: "gas", name: "Nebula", kind: "environment", rarity: "rare", art: "env-gas", set: "iron", cost: 0, blurb: "Poison.", env: { poisonDps: 8 } },
+  { id: "hail", name: "Debris", kind: "environment", rarity: "uncommon", art: "env-hail", set: "cold", cost: 0, blurb: "Chips everyone.", env: { chipDps: 6 } },
+  { id: "static", name: "Static", kind: "environment", rarity: "uncommon", art: "env-static", set: "spark", cost: 0, blurb: "Shots jump.", env: { shred: 0.08 } },
+  { id: "ion", name: "Ion rain", kind: "environment", rarity: "rare", art: "env-ion", set: "heat", cost: 0, blurb: "A little burn.", env: { dmgAmp: 0.08 } },
+  { id: "slick", name: "Slick", kind: "environment", rarity: "uncommon", art: "env-slick", set: "cold", cost: 0, blurb: "They crawl.", env: { slowMul: 0.7 } },
+  { id: "solar", name: "Solar", kind: "environment", rarity: "rare", art: "env-solar", set: "heat", cost: 0, blurb: "Guns hit harder.", env: { dmgAmp: 0.1 } },
 ];
 
 const MAPS: CardDef[] = [
-  { id: "map-mare", name: "Mare", kind: "map", rarity: "rare", art: "map-mare", set: "cold", cost: 0, blurb: "A lunar sea. Enemies slog.", map: { theme: "water", slowMul: 0.92 } },
-  { id: "map-regolith", name: "Dust", kind: "map", rarity: "rare", art: "map-regolith", set: "heat", cost: 0, blurb: "Grey basin. Enemies pay.", map: { theme: "earth", goldMul: 1.12 } },
-  { id: "map-void", name: "Void", kind: "map", rarity: "rare", art: "map-void", set: "spark", cost: 0, blurb: "Deep black. Fast enemies. Guns reach.", map: { theme: "space", rangeMul: 1.08 } },
-  { id: "map-helios", name: "Helios", kind: "map", rarity: "epic", art: "map-helios", set: "heat", cost: 0, blurb: "Hot shelf. The road burns.", map: { theme: "earth", burn: 4 } },
-  { id: "map-lagrange", name: "Lagrange", kind: "map", rarity: "epic", art: "map-lagrange", set: "iron", cost: 0, blurb: "A hook in the dark. Extra moon.", map: { theme: "space", pads: 1 } },
+  { id: "map-mare", name: "Mare", kind: "map", rarity: "rare", art: "map-mare", set: "cold", cost: 0, blurb: "Slow road.", map: { theme: "water", slowMul: 0.92 } },
+  { id: "map-regolith", name: "Dust", kind: "map", rarity: "rare", art: "map-regolith", set: "heat", cost: 0, blurb: "Kills pay a bit more.", map: { theme: "earth", goldMul: 1.12 } },
+  { id: "map-void", name: "Void", kind: "map", rarity: "rare", art: "map-void", set: "spark", cost: 0, blurb: "Fast enemies. Longer guns.", map: { theme: "space", rangeMul: 1.08 } },
+  { id: "map-helios", name: "Helios", kind: "map", rarity: "epic", art: "map-helios", set: "heat", cost: 0, blurb: "The road burns.", map: { theme: "earth", burn: 4 } },
+  { id: "map-lagrange", name: "Lagrange", kind: "map", rarity: "epic", art: "map-lagrange", set: "iron", cost: 0, blurb: "One extra moon.", map: { theme: "space", pads: 1 } },
 ];
 
 const HOME: CardDef = {
@@ -68,7 +68,7 @@ const HOME: CardDef = {
   art: "home",
   set: null,
   cost: 0,
-  blurb: "Home is the planet. It always shoots.",
+  blurb: "Always shoots.",
   stats: { damage: 18, rate: 1.1, range: 240, projectile: "arrow", cover: "circle" },
 };
 
@@ -84,20 +84,20 @@ function craft(
 }
 
 const COMPANIONS: CardDef[] = [
-  craft("comp-auger", "Auger", "legendary", "iron", "Cuts a hole in the path. Enemies in it walk slower.", { role: "borer", dps: 28, radius: 96, tauntRate: 1, intercept: 0.2, cutDps: 16, cutSlow: 0.62 }),
-  craft("comp-boost", "Boost", "epic", "heat", "Guns she flies by shoot faster. She eats grenades.", { role: "rocket", dps: 23, radius: 84, tauntRate: 1, intercept: 1, buffRate: 0.35, burnDps: 4 }),
-  craft("comp-shrike", "Shrike", "epic", "heat", "Strips armor off enemies. Dives fast. Eats grenades.", { role: "jet", dps: 21, radius: 90, tauntRate: 1.1, intercept: 0.9, shred: 0.16 }),
-  craft("comp-torch", "Torch", "rare", "heat", "Sets enemies on fire. Fire hops to the next one.", { role: "hunter", dps: 18, radius: 86, tauntRate: 1, burnDps: 10 }),
-  craft("comp-kelvin", "Kelvin", "rare", "cold", "Ices enemies. They walk slower.", { role: "ship", dps: 16, radius: 88, tauntRate: 1, slowMul: 0.62 }),
-  craft("comp-joule", "Joule", "rare", "spark", "Hits enemies so they skip back.", { role: "racer", dps: 17, radius: 82, tauntRate: 1.15, knock: 18 }),
-  craft("comp-rook", "Hauler", "rare", "iron", "Nearby guns shoot farther. Eats grenades.", { role: "ship", dps: 15, radius: 80, tauntRate: 0.9, coreGuard: 0.1, intercept: 0.7 }),
-  craft("comp-zeek", "Zeek", "rare", "spark", "Drags enemies backwards down the path.", { role: "ufo", dps: 14, radius: 78, tauntRate: 1, knock: 36 }),
-  craft("comp-torr", "Torr", "rare", "heat", "Kills drop extra Credit.", { role: "hunter", dps: 16, radius: 84, tauntRate: 1, goldMul: 1.18 }),
-  craft("comp-halo", "Gyre", "uncommon", "spark", "Guns she flies over shoot faster.", { role: "orb", dps: 10, radius: 70, tauntRate: 0.6, buffRate: 0.55 }),
-  craft("comp-poppy", "Poppy", "uncommon", null, "Heals friends. Nearby guns shoot a bit faster.", { role: "spinner", dps: 12, radius: 76, tauntRate: 0.8, heal: 14, buffRate: 0.2 }),
-  craft("comp-puck", "Bumper", "uncommon", "iron", "Knocks a clump back toward the gate.", { role: "puck", dps: 13, radius: 72, tauntRate: 1, knock: 28 }),
-  craft("comp-chis", "Chis", "uncommon", "spark", "Heals hurt ships and walks them home.", { role: "medic", dps: 9, radius: 92, tauntRate: 0.7, heal: 18 }),
-  craft("comp-sink", "Sink", "legendary", "iron", "Bends grenades around and throws them at enemies.", { role: "lens", dps: 10, radius: 110, tauntRate: 0.4, intercept: 48 }),
+  craft("comp-auger", "Auger", "legendary", "iron", "A hole in the road. They slog in it.", { role: "borer", dps: 28, radius: 96, tauntRate: 1, intercept: 0.2, cutDps: 16, cutSlow: 0.62 }),
+  craft("comp-boost", "Boost", "epic", "heat", "Guns under her shoot faster.", { role: "rocket", dps: 23, radius: 84, tauntRate: 1, intercept: 1, buffRate: 0.35, burnDps: 4 }),
+  craft("comp-shrike", "Shrike", "epic", "heat", "Peels armor. Eats grenades.", { role: "jet", dps: 21, radius: 90, tauntRate: 1.1, intercept: 0.9, shred: 0.16 }),
+  craft("comp-torch", "Torch", "rare", "heat", "Fire. It hops.", { role: "hunter", dps: 18, radius: 86, tauntRate: 1, burnDps: 10 }),
+  craft("comp-kelvin", "Kelvin", "rare", "cold", "Freezes.", { role: "ship", dps: 16, radius: 88, tauntRate: 1, slowMul: 0.62 }),
+  craft("comp-joule", "Joule", "rare", "spark", "Knocks them back.", { role: "racer", dps: 17, radius: 82, tauntRate: 1.15, knock: 18 }),
+  craft("comp-rook", "Hauler", "rare", "iron", "Guns near her reach farther.", { role: "ship", dps: 15, radius: 80, tauntRate: 0.9, coreGuard: 0.1, intercept: 0.7 }),
+  craft("comp-zeek", "Zeek", "rare", "spark", "Drags them back.", { role: "ufo", dps: 14, radius: 78, tauntRate: 1, knock: 36 }),
+  craft("comp-torr", "Torr", "rare", "heat", "Torr's kills pay.", { role: "hunter", dps: 16, radius: 84, tauntRate: 1, goldMul: 1.18 }),
+  craft("comp-halo", "Gyre", "uncommon", "spark", "A ring. Guns in it shoot faster.", { role: "orb", dps: 10, radius: 70, tauntRate: 0.6, buffRate: 0.55 }),
+  craft("comp-poppy", "Poppy", "uncommon", null, "Heals. Guns near her hurry.", { role: "spinner", dps: 12, radius: 76, tauntRate: 0.8, heal: 14, buffRate: 0.2 }),
+  craft("comp-puck", "Bumper", "uncommon", "iron", "Shoves the clump home.", { role: "puck", dps: 13, radius: 72, tauntRate: 1, knock: 28 }),
+  craft("comp-chis", "Chis", "uncommon", "spark", "Heals them and walks them home.", { role: "medic", dps: 9, radius: 92, tauntRate: 0.7, heal: 18 }),
+  craft("comp-sink", "Sink", "legendary", "iron", "Throws their grenades back.", { role: "lens", dps: 10, radius: 110, tauntRate: 0.4, intercept: 48 }),
 ];
 
 export const CARDS: CardDef[] = [...ENVS, ...MAPS, HOME, ...TOWERS, ...COMPANIONS, ...SKILLS, ...SET_CARDS, ...SIGNAL_CARDS];

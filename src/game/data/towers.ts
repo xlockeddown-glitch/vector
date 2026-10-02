@@ -33,16 +33,16 @@ type Job = {
 };
 
 const JOBS: Job[] = [
-  { role: "spear", hull: "cone", cover: "cone", projectile: "arrow", damage: 24, rate: 1.15, range: 250, coverArc: 1.22, blurb: "Goes through one enemy and hits the next." },
-  { role: "crater", hull: "invert", cover: "ring", projectile: "ember", damage: 22, rate: 0.64, range: 255, splash: 82, coverInner: 0.38, blurb: "Explodes around it. Plant next to the path, not on it." },
-  { role: "frost", hull: "crystal", cover: "circle", projectile: "frost", damage: 14, rate: 1.05, range: 228, slowMul: 0.48, slowT: 2.2, healPulse: { pct: 0.12, period: 8 }, blurb: "Freezes enemies. They walk much slower." },
-  { role: "rail", hull: "tube", cover: "lane", projectile: "arrow", damage: 12, rate: 2.1, range: 230, dockPatch: { pct: 0.16, rest: 7 }, blurb: "Shoots a straight line. Hurt ships can heal on it." },
-  { role: "umbra", hull: "dish", cover: "circle", projectile: "none", damage: 0, rate: 0, range: 200, auraDps: 18, bend: 26, lure: 42, blurb: "Does not shoot. Drags enemies in and hurts them." },
-  { role: "cascade", hull: "coil", cover: "diamond", projectile: "spark", damage: 22, rate: 0.95, range: 230, chain: 3, blurb: "A shot jumps to another nearby enemy." },
-  { role: "sweep", hull: "mill", cover: "cone", projectile: "hex", damage: 15, rate: 0.85, range: 310, coverArc: 1.45, blurb: "Hits every enemy it can reach, all at once." },
-  { role: "brand", hull: "stamp", cover: "circle", projectile: "arrow", damage: 28, rate: 1.2, range: 270, markGold: 0.5, blurb: "Kills drop extra Credit." },
-  { role: "mine", hull: "drill", cover: "diamond", projectile: "none", damage: 10, rate: 0.45, range: 160, mines: true, blurb: "Drops mines on the road. Enemies walk through them." },
-  { role: "orbit", hull: "twin", cover: "circle", projectile: "spark", damage: 16, rate: 1.85, range: 236, chain: 1, blurb: "Fires two shots at once." },
+  { role: "spear", hull: "cone", cover: "cone", projectile: "arrow", damage: 24, rate: 1.15, range: 250, coverArc: 1.22, blurb: "Goes through the next one." },
+  { role: "crater", hull: "invert", cover: "ring", projectile: "ember", damage: 22, rate: 0.64, range: 255, splash: 82, coverInner: 0.38, blurb: "Explodes. Not on the road." },
+  { role: "frost", hull: "crystal", cover: "circle", projectile: "frost", damage: 14, rate: 1.05, range: 228, slowMul: 0.48, slowT: 2.2, healPulse: { pct: 0.12, period: 8 }, blurb: "Freezes." },
+  { role: "rail", hull: "tube", cover: "lane", projectile: "arrow", damage: 12, rate: 2.1, range: 230, dockPatch: { pct: 0.16, rest: 7 }, blurb: "A straight line. Hurt ships can sit." },
+  { role: "umbra", hull: "dish", cover: "circle", projectile: "none", damage: 0, rate: 0, range: 200, auraDps: 18, bend: 26, lure: 42, blurb: "Doesn't shoot. It pulls." },
+  { role: "cascade", hull: "coil", cover: "diamond", projectile: "spark", damage: 22, rate: 0.95, range: 230, chain: 3, blurb: "Jumps." },
+  { role: "sweep", hull: "mill", cover: "cone", projectile: "hex", damage: 15, rate: 0.85, range: 310, coverArc: 1.45, blurb: "Everything in the cone." },
+  { role: "brand", hull: "stamp", cover: "circle", projectile: "arrow", damage: 28, rate: 1.2, range: 270, markGold: 0.5, blurb: "Marked kills pay." },
+  { role: "mine", hull: "drill", cover: "diamond", projectile: "none", damage: 10, rate: 0.45, range: 160, mines: true, blurb: "They walk into it." },
+  { role: "orbit", hull: "twin", cover: "circle", projectile: "spark", damage: 16, rate: 1.85, range: 236, chain: 1, blurb: "Two shots." },
 ];
 
 const NAMES: Record<string, string> = {

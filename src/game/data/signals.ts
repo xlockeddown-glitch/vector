@@ -12,10 +12,10 @@ export type GunSet = {
 
 /** First pick: two guns that already work together. */
 export const GUN_SETS: GunSet[] = [
-  { id: "set-pierce", name: "Pierce", blurb: "Goes through a line. Ice slows the rest.", guns: ["longbow", "rime"], rarity: "rare" },
-  { id: "set-pull", name: "Pull", blurb: "Drags enemies into a pile, then blasts the pile.", guns: ["grove", "nightglass"], rarity: "rare" },
-  { id: "set-jump", name: "Jump", blurb: "Lightning hops the pack. Mines sit on the road.", guns: ["arc", "gun-pit"], rarity: "rare" },
-  { id: "set-splash", name: "Splash", blurb: "Bombs the path. Kills drop extra Credit.", guns: ["ember", "commissioner"], rarity: "rare" },
+  { id: "set-pierce", name: "Pierce", blurb: "A line, then ice.", guns: ["longbow", "rime"], rarity: "rare" },
+  { id: "set-pull", name: "Pull", blurb: "Pile them. Then bomb it.", guns: ["grove", "nightglass"], rarity: "rare" },
+  { id: "set-jump", name: "Jump", blurb: "Hops. Mines on the road.", guns: ["arc", "gun-pit"], rarity: "rare" },
+  { id: "set-splash", name: "Splash", blurb: "Bombs. Those kills pay.", guns: ["ember", "commissioner"], rarity: "rare" },
 ];
 
 export type SignalDef = {
@@ -26,20 +26,20 @@ export type SignalDef = {
 };
 
 export const SIGNALS: SignalDef[] = [
-  { id: "sig-twin", name: "Twin spark", blurb: "Shots jump to one extra enemy.", rarity: "epic" },
-  { id: "sig-lance", name: "Deep lance", blurb: "Shots go through one extra enemy.", rarity: "rare" },
-  { id: "sig-freeze", name: "Long freeze", blurb: "Freeze lasts longer.", rarity: "rare" },
-  { id: "sig-crater", name: "Fat crater", blurb: "Explosions cover more ground.", rarity: "uncommon" },
-  { id: "sig-mine", name: "Extra mine", blurb: "Each drop leaves two mines.", rarity: "epic" },
-  { id: "sig-well", name: "Hard well", blurb: "Enemies get dragged in harder.", rarity: "rare" },
-  { id: "sig-slam", name: "Fat slam", blurb: "Slamming a ship into a gun hits harder.", rarity: "epic" },
-  { id: "sig-dock", name: "Double dock", blurb: "Hurt ships heal more when they rest on a gun.", rarity: "uncommon" },
-  { id: "sig-fast", name: "Fast craft", blurb: "Your ships fly faster.", rarity: "uncommon" },
-  { id: "sig-ore", name: "Ore vein", blurb: "Kills drop extra Credit.", rarity: "rare" },
-  { id: "sig-ghost", name: "Ghost hull", blurb: "The first enemy that gets past does not count.", rarity: "epic" },
-  { id: "sig-rim", name: "Slow rim", blurb: "Enemies crawl on the last stretch to home.", rarity: "rare" },
-  { id: "sig-shade", name: "Wide shade", blurb: "All guns shoot farther.", rarity: "uncommon" },
-  { id: "sig-hot", name: "Hot lane", blurb: "Guns shoot faster. Enemies also walk faster.", rarity: "legendary" },
+  { id: "sig-twin", name: "Twin spark", blurb: "One extra jump.", rarity: "epic" },
+  { id: "sig-lance", name: "Deep lance", blurb: "One extra pierce.", rarity: "rare" },
+  { id: "sig-freeze", name: "Long freeze", blurb: "Freeze lasts.", rarity: "rare" },
+  { id: "sig-crater", name: "Fat crater", blurb: "Bigger boom.", rarity: "uncommon" },
+  { id: "sig-mine", name: "Extra mine", blurb: "Two mines.", rarity: "epic" },
+  { id: "sig-well", name: "Hard well", blurb: "Harder pull.", rarity: "rare" },
+  { id: "sig-slam", name: "Fat slam", blurb: "Slams hit harder.", rarity: "epic" },
+  { id: "sig-dock", name: "Double dock", blurb: "Ships heal more on a gun.", rarity: "uncommon" },
+  { id: "sig-fast", name: "Fast craft", blurb: "Ships fly faster.", rarity: "uncommon" },
+  { id: "sig-ore", name: "Ore vein", blurb: "Every kill pays more.", rarity: "rare" },
+  { id: "sig-ghost", name: "Ghost hull", blurb: "The first leak is free.", rarity: "epic" },
+  { id: "sig-rim", name: "Slow rim", blurb: "They crawl near Home.", rarity: "rare" },
+  { id: "sig-shade", name: "Wide shade", blurb: "Guns reach farther.", rarity: "uncommon" },
+  { id: "sig-hot", name: "Hot lane", blurb: "Faster guns. Faster enemies.", rarity: "legendary" },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

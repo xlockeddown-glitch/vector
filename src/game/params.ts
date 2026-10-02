@@ -88,8 +88,8 @@ export const PARAMS = {
   /** Grenades wait until this far along the path. */
   nadeLate: 0.58,
   /** Empty moon radius. Occupied moons use moonRHot. */
-  moonR: 18,
-  moonRHot: 26,
+  moonR: 24,
+  moonRHot: 32,
   /** Home planet radius. */
   homeR: 66,
   /** Brief freeze when a gun or craft levels. */

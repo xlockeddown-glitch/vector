@@ -36,10 +36,10 @@ export const KIND_JOB: Record<CardKind, string> = {
 };
 
 export const SET_PLAIN: Record<SetId, string> = {
-  heat: "Lights the road. Torch makes fire hop.",
-  cold: "Freezes enemies. Kelvin ices the path.",
-  spark: "Shots jump. Joule makes jumps bounce.",
-  iron: "Guns share range. Hauler shares it with Home.",
+  heat: "The road burns. Torch makes it hop.",
+  cold: "Freeze. Kelvin leaves ice.",
+  spark: "Shots jump.",
+  iron: "Shared range. Hauler gives it to Home.",
 };
 
 export const SET_DETAIL: Record<SetId, string> = {

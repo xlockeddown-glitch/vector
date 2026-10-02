@@ -14,11 +14,16 @@ export function RosterDock({
   if (hud.phase !== "placement" && hud.phase !== "combat") return null;
   const items = hud.roster.filter((r) => r.card.kind === "tower");
   const unplaced = items.filter((r) => !r.placedPad).length;
+  const gunsDown = items.length > 0 && unplaced === 0;
   const selected = items.find((r) => r.uid === hud.selectedCard);
   const placing = hud.phase === "placement" && selected && !selected.placedPad;
+  const crafts = hud.crafts ?? [];
 
-  const status =
-    hud.phase === "placement"
+  const status = gunsDown
+    ? crafts.length
+      ? `Ships ${crafts.filter((c) => c.flying).length}/${crafts.length}`
+      : "Ships"
+    : hud.phase === "placement"
       ? placing
         ? `Tap a glowing moon for ${selected?.card.name ?? "that gun"}.`
         : `Guns ${hud.placedCount}/${hud.maxTowers} · ${unplaced} left`
@@ -41,6 +46,33 @@ export function RosterDock({
         ) : null}
       </div>
 
+      {gunsDown ? (
+        <div className="mt-1 flex gap-1 overflow-x-auto px-3 pb-1">
+          {crafts.length === 0 && <p className="py-1 text-[12px] text-muted">No ships yet.</p>}
+          {crafts.map((c) => {
+            const isSelected = hud.selectedCard === c.uid;
+            const ready = (c.specialOffer ?? []).length > 0 || (c.partOffer ?? []).length > 0;
+            const hp = Math.max(0, Math.min(1, c.hp / Math.max(1, c.hpMax)));
+            return (
+              <button
+                key={c.uid}
+                type="button"
+                title={ready ? `${c.name} · Level-up` : c.name}
+                onClick={() => onAction({ type: "selectCard", uid: isSelected && !ready ? null : c.uid })}
+                className={cn("craft-chip", isSelected && "craft-chip-on", ready && "craft-chip-ready")}
+              >
+                <CraftPortrait id={c.art} className="h-7 w-7" />
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block truncate text-[11px] font-medium text-paper">{c.name}</span>
+                  <span className="craft-hp mt-0.5 block" aria-hidden>
+                    <i style={{ width: `${Math.round(hp * 100)}%` }} />
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
       <div className="mt-1 flex gap-1 overflow-x-auto px-3 pb-1">
         {items.length === 0 && (
           <p className="py-1 text-[12px] text-muted">Guns sit here.</p>
@@ -72,6 +104,7 @@ export function RosterDock({
           );
         })}
       </div>
+      )}
     </div>
   );
 }

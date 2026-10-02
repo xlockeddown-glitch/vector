@@ -204,6 +204,8 @@ export function CardView({
   dealAnim = true,
   flipped = false,
   onFlip,
+  faceFlip = false,
+  className,
 }: {
   card: CardDef;
   onPick?: () => void;
@@ -221,6 +223,8 @@ export function CardView({
   dealAnim?: boolean;
   flipped?: boolean;
   onFlip?: () => void;
+  faceFlip?: boolean;
+  className?: string;
 }) {
   const readout = cardReadout(card);
   const slim = tiny || compact;
@@ -250,6 +254,7 @@ export function CardView({
     <div
       className={cn(
         "hs-wrap",
+        className,
         dealAnim && "hs-deal",
         tiny && "is-tiny",
         compact && "is-compact",
@@ -265,7 +270,7 @@ export function CardView({
       style={{ animationDelay: `${delay}ms` }}
     >
       {!slim && <span className="hs-stock" aria-hidden />}
-      <button type="button" onClick={onPick} disabled={banned} title={readout.tip} className="hs-face">
+      <button type="button" onClick={faceFlip ? onFlip : onPick} disabled={banned} title={readout.tip} className="hs-face">
         {flipped && !slim ? (
           <CardStatBack card={card} kindWord={kindWord} job={job} title={readout.title} />
         ) : (
@@ -291,7 +296,7 @@ export function CardView({
           </>
         )}
       </button>
-      {onFlip && !slim && (
+      {onFlip && !slim && !faceFlip && (
         <button
           type="button"
           className="hs-flip-tab"

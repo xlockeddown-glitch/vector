@@ -517,7 +517,7 @@ export const GUN_TREES: Record<string, GunTreeDef> = {
         id: "pay",
         name: "Ore",
         nodes: [
-          n("helix-mark", "Ore sting", "Hopped enemies drop extra Credit.", (s) => {
+          n("helix-mark", "Ore sting", "Hopped kills pay.", (s) => {
             s.markGold = (s.markGold ?? 0) + 0.3;
           }),
           n("helix-far", "Far helix", "Sparks reach farther.", (s) => {

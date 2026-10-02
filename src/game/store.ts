@@ -165,6 +165,7 @@ export type HudState = {
   xpNext: number;
   roundXp: number;
   pendingLevels: number;
+  bonusSay: string | null;
   climbRanks: { bay: number; pack: number; crew: number };
   fusePartnerUid: string | null;
   fuseNext: number;
@@ -392,6 +393,7 @@ function fromWorld(w: World): HudState {
     xpNext: xpToNext(w.runLevel),
     roundXp: w.roundXp ?? 0,
     pendingLevels: w.pendingLevels,
+    bonusSay: (w.bonusSayT ?? 0) > 0 ? (w.bonusSay ?? null) : null,
     climbRanks: w.climb ?? emptyClimb(),
     fusePartnerUid: null,
     fuseNext: 0,

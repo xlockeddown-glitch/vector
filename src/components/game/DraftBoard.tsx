@@ -42,13 +42,25 @@ export function DraftBoard({
   const cardSig = cards.map((c) => c.id).join("|");
   const [locking, setLocking] = useState<string | null>(null);
   const [flipped, setFlipped] = useState<string | null>(null);
+  const [focus, setFocus] = useState(0);
+  const [narrow, setNarrow] = useState(false);
   const lockTimer = useRef(0);
+  const swipe = useRef<number | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 720px)");
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
     if (lockTimer.current) window.clearTimeout(lockTimer.current);
     setLocking(null);
     setFlipped(null);
-  }, [packKey, cardSig]);
+    setFocus(cards.length > 2 ? 1 : 0);
+  }, [packKey, cardSig, cards.length]);
 
   useEffect(() => {
     return () => {
@@ -77,7 +89,6 @@ export function DraftBoard({
         <p className="arena-kicker">{opening ? `${step + 1} / ${OPENING_PICKS}` : "Pick 1"}</p>
         <h2 className="arena-title">{title}</h2>
         <p className="arena-sub">{sub || "Three cards. Take one."}</p>
-        <p className="arena-flip-hint">Flip to compare. Do not add the bars. Each gun wins a different job.</p>
         {opening && (
           <div className="arena-pips" aria-hidden>
             {Array.from({ length: OPENING_PICKS }, (_, i) => (
@@ -86,23 +97,58 @@ export function DraftBoard({
           </div>
         )}
       </header>
-      <div className="arena-rail draft-rail" data-n={cards.length}>
-        {cards.map((c, i) => (
-          <CardView
-            key={c.id}
-            card={c}
-            onPick={() => take(c.id)}
-            delay={i * 70}
-            banned={packMode === "cut" && cutId === c.id}
-            tag={packMode === "cut" && cutId === c.id ? "cut" : undefined}
-            picked={locking === c.id}
-            dimmed={!!locking && locking !== c.id}
-            dealAnim
-            flipped={flipped === c.id}
-            onFlip={() => setFlipped((id) => (id === c.id ? null : c.id))}
-          />
-        ))}
+      <div
+        className="arena-rail draft-rail"
+        data-n={cards.length}
+        data-fan={narrow ? "1" : "0"}
+        onPointerDown={(e) => {
+          swipe.current = e.clientX;
+        }}
+        onPointerUp={(e) => {
+          if (!narrow || swipe.current == null) return;
+          const dx = e.clientX - swipe.current;
+          swipe.current = null;
+          if (dx > 40) setFocus((i) => Math.max(0, i - 1));
+          else if (dx < -40) setFocus((i) => Math.min(cards.length - 1, i + 1));
+        }}
+      >
+        {cards.map((c, i) => {
+          const on = i === focus;
+          return (
+            <CardView
+              key={c.id}
+              card={c}
+              className={cn(
+                narrow && on && "is-focus",
+                narrow && i === focus - 1 && "is-prev",
+                narrow && i === focus + 1 && "is-next",
+                narrow && Math.abs(i - focus) > 1 && "is-far",
+              )}
+              onPick={() => {
+                if (narrow && !on) {
+                  setFocus(i);
+                  return;
+                }
+                take(c.id);
+              }}
+              delay={i * 70}
+              banned={packMode === "cut" && cutId === c.id}
+              tag={packMode === "cut" && cutId === c.id ? "cut" : undefined}
+              picked={locking === c.id}
+              dimmed={!!locking && locking !== c.id}
+              dealAnim
+              flipped={flipped === c.id}
+              faceFlip={narrow && on}
+              onFlip={() => setFlipped((id) => (id === c.id ? null : c.id))}
+            />
+          );
+        })}
       </div>
+      {narrow && cards[focus] && (
+        <button type="button" className="arena-take" onClick={() => take(cards[focus]!.id)}>
+          Take {cards[focus]!.name}
+        </button>
+      )}
     </div>
   );
 }

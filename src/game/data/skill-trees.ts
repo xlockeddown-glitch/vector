@@ -100,7 +100,7 @@ export const SKILL_TREES: SkillTree[] = [
         name: "Claim",
         job: "Hops drop Credit",
         nodes: [
-          { id: "arc-b1", name: "Beacon sting", blurb: "Hopped enemies drop extra Credit." },
+          { id: "arc-b1", name: "Beacon sting", blurb: "Hopped kills pay." },
           { id: "arc-b2", name: "Drift hop", blurb: "Hopped enemies crawl." },
           { id: "arc-b3", name: "Ore burst", blurb: "The clump drops a Credit burst.", cap: true },
         ],

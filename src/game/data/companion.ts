@@ -326,20 +326,20 @@ export function companionBars(card: CardDef): CompanionBars | null {
 
 /** One-line pick hint. Kid-plain. Says the job. */
 export const CRAFT_HOOK: Record<string, string> = {
-  "comp-auger": "Cuts a hole in the path. Enemies in it walk slower.",
-  "comp-boost": "Guns she flies by shoot faster. She eats grenades.",
-  "comp-shrike": "Strips armor off enemies. Dives fast. Eats grenades.",
-  "comp-poppy": "Heals friends. Nearby guns shoot a bit faster.",
-  "comp-zeek": "Drags enemies backwards down the path.",
-  "comp-kelvin": "Ices enemies. They walk slower.",
-  "comp-joule": "Hits enemies so they skip back.",
-  "comp-halo": "Guns she flies over shoot faster.",
-  "comp-torr": "Kills drop extra Credit.",
-  "comp-rook": "Nearby guns shoot farther. Eats grenades.",
-  "comp-puck": "Knocks a clump back toward the gate.",
-  "comp-chis": "Heals hurt ships and walks them home.",
-  "comp-torch": "Sets enemies on fire. Fire hops to the next one.",
-  "comp-sink": "Bends grenades around and throws them at enemies.",
+  "comp-auger": "A hole in the road. They slog in it.",
+  "comp-boost": "Guns under her shoot faster.",
+  "comp-shrike": "Peels armor. Eats grenades.",
+  "comp-poppy": "Heals. Guns near her hurry.",
+  "comp-zeek": "Drags them back.",
+  "comp-kelvin": "Freezes.",
+  "comp-joule": "Knocks them back.",
+  "comp-halo": "A ring. Guns in it shoot faster.",
+  "comp-torr": "Torr's kills pay.",
+  "comp-rook": "Guns near her reach farther.",
+  "comp-puck": "Shoves the clump home.",
+  "comp-chis": "Heals them and walks them home.",
+  "comp-torch": "Fire. It hops.",
+  "comp-sink": "Throws their grenades back.",
 };
 
 export function craftHook(id: string | undefined): string {

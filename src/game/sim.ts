@@ -243,6 +243,8 @@ export type World = {
   message: string | null;
   announce: string | null;
   announceT: number;
+  bonusSay: string | null;
+  bonusSayT: number;
   defenderAim: number;
   won: boolean;
   recorded: boolean;
@@ -419,6 +421,8 @@ export function createWorld(): World {
     message: null,
     announce: null,
     announceT: 0,
+    bonusSay: null,
+    bonusSayT: 0,
     defenderAim: 0,
     won: false,
     recorded: false,
@@ -478,6 +482,7 @@ export function createWorld(): World {
     skin: typeof window === "undefined" ? "stock" : loadMeta().equipped ?? "stock",
     orbitRank: typeof window === "undefined" ? 0 : orbitRank(loadMeta().orbitXp ?? 0),
     gunKills: {},
+    waveNotes: {},
     runKills: 0,
     runLeaks: 0,
     shotsFired: 0,
@@ -1226,6 +1231,7 @@ function killEnemy(w, e, from = null) {
     const id = closest.card.templateId ?? closest.card.id;
     w.gunKills[id] = (w.gunKills[id] ?? 0) + 1;
     closest.kills = (closest.kills ?? 0) + 1;
+    noteWave(w, closest.card.stats?.role, "kills");
     closest.streak = (closest.streak ?? 0) + 1;
     const every = slamEvery(closest);
     if (closest.streak % every === 0) {
@@ -1448,8 +1454,10 @@ export function worldSets(w) {
 
 function applyHitFx(w, e, stats) {
   if (stats.slowT) {
+    const fresh = !(e.slowT > 0);
     e.slowT = Math.max(e.slowT, stats.slowT);
     e.slowMul = stats.slowMul ?? 1;
+    if (fresh && stats.role === "frost") noteWave(w, "frost", "froze");
   }
   if (stats.shred) e.shredT = Math.max(e.shredT, 2.4);
   if ((stats.markGold ?? 0) > 0) e.marked = true;
@@ -1529,13 +1537,16 @@ function fireAt(w, fromX, fromY, targetIndex, dmg, stats) {
   applyHitFx(w, e, stats);
   if (stats.splash && stats.splash > 0) {
     const r2 = stats.splash * stats.splash;
+    let hit = 0;
     for (const o of w.enemies) {
       if (!o.alive) continue;
       if (dist2(e.x, e.y, o.x, o.y) <= r2) {
+        hit += 1;
         applyHitFx(w, o, stats);
         applyDamage(w, o, dmg);
       }
     }
+    if (hit >= 2) noteWave(w, stats.role || "crater", "splash");
   } else applyDamage(w, e, dmg);
   if ((stats.chain ?? 0) > 0) {
     let next = -1;
@@ -1588,6 +1599,7 @@ function chainHit(w, x, y, start, dmg, hops, stats) {
     addFx(w, { kind: "beam", x: cx, y: cy, x2: e.x, y2: e.y, life: 0.14, color: "#7c6cf0", size: 2 });
     motes(w, e.x, e.y, 1, "#9b6cff", 36, 0.2);
     applyDamage(w, e, d);
+    if (h > 0 && stats?.role) noteWave(w, stats.role, "chain");
     if (stats) applyHitFx(w, e, stats);
     if (e.alive) e.flash = 0.16;
     hit.add(idx);
@@ -2110,12 +2122,71 @@ export function leaveMerchant(w) {
   }
 }
 
+function noteWave(w, role, key) {
+  if (!role) return;
+  if (!w.waveNotes) w.waveNotes = {};
+  const row = w.waveNotes[role] ?? { kills: 0, froze: 0, splash: 0, chain: 0 };
+  row[key] += 1;
+  w.waveNotes[role] = row;
+}
+
+const WAVE_NAME = {
+  spear: "Lance",
+  crater: "Crater",
+  frost: "Halo",
+  rail: "Rail",
+  umbra: "Well",
+  cascade: "Ion",
+  sweep: "Corona",
+  brand: "Beacon",
+  mine: "Mine",
+  orbit: "Helix",
+};
+
+function waveBit(role, row) {
+  const name = WAVE_NAME[role] ?? role;
+  if (role === "frost" && row.froze > 0) return { n: row.froze, text: `${name} froze ${row.froze}` };
+  if (role === "crater" && row.splash > 0) {
+    return { n: row.splash + row.kills, text: row.splash > 1 ? `${name} popped ${row.splash} piles` : `${name} popped the pile` };
+  }
+  if (role === "cascade" && row.chain > 0) return { n: row.chain, text: `${name} jumped ${row.chain}` };
+  if (role === "spear" && row.kills > 0) return { n: row.kills, text: `${name} cut ${row.kills}` };
+  if (role === "rail" && row.kills > 0) return { n: row.kills, text: `${name} lined ${row.kills}` };
+  if (role === "sweep" && row.kills > 0) return { n: row.kills, text: `${name} swept ${row.kills}` };
+  if (row.kills > 0) return { n: row.kills, text: `${name} got ${row.kills}` };
+  return null;
+}
+
+function waveLine(w) {
+  const bits = [];
+  for (const [role, row] of Object.entries(w.waveNotes ?? {})) {
+    const bit = waveBit(role, row);
+    if (bit) bits.push(bit);
+  }
+  bits.sort((a, b) => b.n - a.n);
+  return bits
+    .slice(0, 2)
+    .map((b) => b.text)
+    .join(". ");
+}
+
+function sayWave(w) {
+  const recap = waveLine(w);
+  const credit = w.announce?.startsWith("+") ? w.announce : null;
+  const line = [recap, credit].filter(Boolean).join(". ");
+  if (!line) return;
+  w.announce = line;
+  w.announceT = 2.4;
+  w.holdT = Math.max(w.holdT ?? 0, 2.2);
+}
+
 function queueWave(w) {
   w.spawnQ = [];
   w.waveT = 0;
   w.leaks = 0;
   w.kills = 0;
   w.goldWave = 0;
+  w.waveNotes = {};
   w.waveActive = true;
   const t = waveAt(w.wave);
   const n = w.wave % PATHS.length;
@@ -2152,6 +2223,8 @@ function grantXp(w, t, quiet = false) {
     const pay = r * BONUS_CREDIT;
     w.points += pay;
     w.pendingLevels = 0;
+    w.bonusSay = `+${pay} Credit`;
+    w.bonusSayT = 4;
     if (!quiet) {
       w.announce = `+${pay} Credit`;
       w.announceT = 1.6;
@@ -2214,7 +2287,8 @@ function finishWave(w) {
     w.wave += 1;
     w.holdT = 1.35;
     grantXp(w, n);
-    if (!w.announce?.startsWith("LEVEL")) {
+    sayWave(w);
+    if (!w.announce) {
       w.announce = `Wave ${w.wave + 1}`;
       w.announceT = 1.1;
     }
@@ -2242,8 +2316,7 @@ function finishWave(w) {
   w.pendingStamp = false;
   w.pendingMerchant = false;
   tickCharms(w);
-  w.announce = null;
-  w.announceT = 0;
+  sayWave(w);
   if (w.tutorialPendingGate) {
     w.tutorialDoneReady = true;
     w.tutorialPendingGate = false;
@@ -2275,6 +2348,14 @@ export function stepWorld(w, dt) {
     w.announceT -= dt;
     if (w.announceT <= 0) {
       w.announce = null;
+      w.uiDirty = true;
+    }
+  }
+  if ((w.bonusSayT ?? 0) > 0) {
+    w.bonusSayT -= dt;
+    if (w.bonusSayT <= 0) {
+      w.bonusSay = null;
+      w.bonusSayT = 0;
       w.uiDirty = true;
     }
   }

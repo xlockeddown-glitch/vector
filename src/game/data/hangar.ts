@@ -22,7 +22,7 @@ export const HANGAR: HangarItem[] = [
   {
     id: "gold",
     name: "Starter credit",
-    blurb: "Each run banks extra Credit.",
+    blurb: "Each run banks more.",
     cost: PARAMS.keepCost.gold,
     max: 5,
     per: "+15 Credit / rank",

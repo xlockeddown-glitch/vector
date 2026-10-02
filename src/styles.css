@@ -950,11 +950,9 @@ img.card-paint,
   .signal-slot {
     min-width: 0;
     max-width: none;
-    flex: 1 1 0;
+    flex: 0 1 auto;
   }
-  .signal-slot-job { display: none; }
-  .signal-slot-name { font-size: 0.78rem; }
-  .signal-slot-art { width: 1.7rem; height: 1.7rem; }
+  .signal-slot-job { display: inline; font-size: 12px; }
 }
 .play-craft {
   position: absolute;
@@ -2611,72 +2609,45 @@ img.card-paint,
   color: var(--color-legend);
 }
 .tree-node-cost.is-poor { color: var(--color-hot); }
+.bonus-say {
+  margin: 0.12rem 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-legend);
+  white-space: nowrap;
+}
 .signal-dock {
   display: flex;
-  flex: 0 0 auto;
-  align-items: stretch;
-  gap: 0.4rem;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow: hidden;
 }
 .signal-slot {
-  display: flex;
-  min-height: 2.75rem;
-  min-width: 8.6rem;
-  max-width: 13rem;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.18rem 0.5rem 0.18rem 0.22rem;
-  border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--color-frost) 42%, transparent);
-  background: color-mix(in oklab, var(--color-ink) 55%, transparent);
-}
-.signal-slot.is-empty {
-  border-style: dashed;
-  opacity: 0.55;
-}
-.signal-slot-art {
-  position: relative;
-  display: block;
-  width: 2.15rem;
-  height: 2.15rem;
-  flex: 0 0 auto;
-  overflow: hidden;
-  border-radius: 50%;
-  border: 1px solid color-mix(in oklab, var(--color-frost) 55%, transparent);
-  background: #05060b;
-}
-.signal-slot-void {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background:
-    radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--color-frost) 22%, transparent), transparent 62%);
-}
-.signal-slot-copy {
-  display: flex;
+  display: inline-flex;
+  min-height: 0;
   min-width: 0;
-  flex-direction: column;
-  gap: 0.08rem;
+  max-width: none;
+  flex: 0 1 auto;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
-.signal-slot-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: 0.92rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-paper);
-  line-height: 1.05;
+.signal-slot + .signal-slot::before {
+  content: "·";
+  margin-right: 0.45rem;
+  color: var(--color-steel);
 }
 .signal-slot-job {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.2;
-  color: var(--color-steel);
+  color: var(--color-paper);
 }
 .card-mark {
   position: relative;
@@ -3407,11 +3378,70 @@ img.card-paint,
   box-shadow: 0 0 6px color-mix(in oklab, var(--color-ember) 50%, transparent);
 }
 .arena-flip-hint {
-  margin: 0.2rem 0 0;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  color: var(--color-steel);
+  display: none;
+}
+.arena-take {
+  position: relative;
+  z-index: 6;
+  margin: 0.15rem auto 0.35rem;
+  min-width: 11rem;
+  height: 2.75rem;
+  padding: 0 1.1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: var(--color-ember);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+@media (max-width: 720px) {
+  .arena-stage .arena-rail.draft-rail[data-fan="1"] {
+    height: min(52vh, 28rem);
+    min-height: 17rem;
+    overflow: visible;
+  }
+  .arena-stage .arena-rail.draft-rail[data-fan="1"] > .hs-wrap {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    flex: none;
+    width: min(68vw, calc(48vh * 5 / 7));
+    max-width: 17.5rem;
+    min-width: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .arena-stage .arena-rail.draft-rail[data-fan="1"] > .hs-wrap.is-prev {
+    transform: translate(calc(-50% - 48%), -40%) rotate(-7deg) scale(0.74);
+    opacity: 0.9;
+    pointer-events: auto;
+    z-index: 2;
+  }
+  .arena-stage .arena-rail.draft-rail[data-fan="1"] > .hs-wrap.is-next {
+    transform: translate(calc(-50% + 48%), -40%) rotate(7deg) scale(0.74);
+    opacity: 0.9;
+    pointer-events: auto;
+    z-index: 2;
+  }
+  .arena-stage .arena-rail.draft-rail[data-fan="1"] > .hs-wrap.is-focus {
+    width: min(72vw, calc(50vh * 5 / 7));
+    max-width: 18.5rem;
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 4;
+  }
+  .arena-stage .arena-rail.draft-rail[data-fan="1"] .hs-flip-tab {
+    display: none;
+  }
+  .arena-stage .arena-rail.draft-rail[data-fan="1"] > .hs-wrap.is-focus .hs-face,
+  .arena-stage .arena-rail.draft-rail[data-fan="1"] > .hs-wrap.is-focus .hs-stock {
+    transform: none;
+  }
 }
 @media (hover: hover) and (pointer: fine) {
   .hs-wrap:hover .hs-face {

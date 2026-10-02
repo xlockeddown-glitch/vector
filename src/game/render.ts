@@ -1,10 +1,11 @@
 import type { Assets } from "./assets";
 import { ENEMIES, HOME_PAD, PALETTE, SKY_PAD, WORLD, PARAMS } from "./constants";
 import { combatStats } from "./data/cards";
+import { cardPortraitSrc } from "./data/card-art";
 import { glowColor, glowRadius } from "./data/glow";
 import { OPERATORS, SETS } from "./data/sets";
-import { BASE, PATHS, GATES, padById, nearestPathMeta, PATH_WIDTH_DRAW, PATH_CORNER, CRAFT_DOCK, PAD_HUG, padReachMul } from "./data/map";
-import { companionSpecialOf, type CompanionState } from "./data/companion";
+import { BASE, PATHS, GATES, padById, nearestPathMeta, PATH_WIDTH_DRAW, PATH_CORNER, PAD_HUG, padReachMul } from "./data/map";
+import { type CompanionState } from "./data/companion";
 import { scrapPaint } from "./data/enemies";
 import { cutForHull } from "./data/cuts";
 import { themeAt } from "./data/themes";
@@ -426,6 +427,16 @@ function drawPads(ctx: CanvasRenderingContext2D, w: World, plot: string) {
           ? PALETTE.ember
           : hexA(zone, 0.38);
     drawPebbleMoon(ctx, pad.x, pad.y, r, limb, !!pad.far, selected || job || canPlace, plot, pad.look, w.visT);
+    if (w.phase === "placement" || canPlace) {
+      const beat = 0.5 + Math.sin(w.visT * 3.4 + pad.x * 0.02) * 0.5;
+      ctx.save();
+      ctx.strokeStyle = hexA(job ? PALETTE.frost : PALETTE.ember, 0.28 + beat * 0.55);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pad.x, pad.y, r + 5 + beat * 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
     if (rigged) {
       ctx.save();
       ctx.fillStyle = PALETTE.frost;
@@ -620,10 +631,10 @@ function drawSteelPad(
   const cy = 9;
   const r = PARAMS.moonRHot;
   paintMoonBody(ctx, 0, cy, r, hot ? "#eef3f7" : hexA(c, 0.78), true, far && look !== "rift" && look !== "pair" ? "ring" : look ?? (far ? "ring" : "plain"), t);
-  ctx.strokeStyle = hot ? "#eef3f7" : hexA(c, 0.78);
-  ctx.lineWidth = hot ? 2 : 1.4;
-  ctx.shadowColor = hot ? "#eef3f7" : c;
-  ctx.shadowBlur = hot ? 12 : 4;
+  ctx.strokeStyle = hot ? "#eef3f7" : hexA(c, 0.45);
+  ctx.lineWidth = hot ? 2 : 1.1;
+  ctx.shadowColor = hot ? "#eef3f7" : "transparent";
+  ctx.shadowBlur = hot ? 8 : 0;
   ctx.beginPath();
   ctx.arc(0, cy, r, 0, Math.PI * 2);
   ctx.stroke();
@@ -638,45 +649,6 @@ function drawSteelPad(
     ctx.fill();
     ctx.shadowBlur = 0;
   }
-}
-
-function drawCraftDock(ctx: CanvasRenderingContext2D, w: World) {
-  if (w.phase !== "placement" && w.phase !== "combat") return;
-  const crafts = (w.companions ?? []).filter((c) => c.placedPad === "sky");
-  if (!crafts.length) return;
-  const x = CRAFT_DOCK.x;
-  const y = CRAFT_DOCK.y;
-  const rows = crafts.slice(0, 3);
-  const h = 24 + rows.length * 28;
-  ctx.save();
-  roundRect(ctx, x - 80, y - h / 2, 160, h, 8);
-  ctx.fillStyle = "rgba(5,6,11,0.8)";
-  ctx.fill();
-  ctx.strokeStyle = hexA("#4aa8e8", 0.55);
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.fillStyle = "#4aa8e8";
-  ctx.font = "600 9px 'D-DIN Condensed', sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("CRAFTS", x - 72, y - h / 2 + 14);
-  rows.forEach((c, i) => {
-    const yy = y - h / 2 + 30 + i * 28;
-    const spec = companionSpecialOf(c.card.companion?.role ?? "hunter");
-    ctx.fillStyle = "#eef3f7";
-    ctx.font = "700 12px 'D-DIN Condensed', sans-serif";
-    ctx.fillText(c.card.name, x - 72, yy);
-    ctx.fillStyle = "#8b93a0";
-    ctx.font = "500 10px 'D-DIN', sans-serif";
-    ctx.fillText(c.home ? "bay" : c.crit ? "crit" : spec.name, x + 16, yy);
-    const frac = Math.max(0, Math.min(1, c.hpMax > 0 ? c.hp / c.hpMax : 0));
-    roundRect(ctx, x - 72, yy + 5, 90, 4, 2);
-    ctx.fillStyle = "#12151c";
-    ctx.fill();
-    roundRect(ctx, x - 72, yy + 5, 90 * frac, 4, 2);
-    ctx.fillStyle = frac < 0.35 ? PALETTE.ember : "#4aa8e8";
-    ctx.fill();
-  });
-  ctx.restore();
 }
 
 function drawMast(ctx: CanvasRenderingContext2D) {
@@ -951,7 +923,7 @@ function drawTowerShape(
       ctx.restore();
     }
   }
-  paintJerseyHull(ctx, card.stats?.hull ?? card.art, c, item.level);
+  paintGunFace(ctx, card, c);
   if (item.extraShot && card.stats?.hull !== "twin") {
     ctx.fillStyle = c;
     roundRect(ctx, -13, -50, 7, 14, 2);
@@ -2825,41 +2797,14 @@ function drawCompanion(ctx: CanvasRenderingContext2D, c: CompanionState, visT: n
   ctx.fillStyle = c.home ? PALETTE.sage : hp / hpMax < 0.35 ? PALETTE.ember : PALETTE.legend;
   ctx.fillRect(bx, by, bw * (hp / hpMax), bh);
   ctx.restore();
-  if (c.bubble && c.bubbleT > 0) {
+  if (c.bubble && c.bubbleT > 0 && c.bubble.length <= 16) {
     ctx.save();
-    ctx.globalAlpha = Math.max(0.15, Math.min(1, c.bubbleT / 0.35, 1));
-    ctx.font = "700 12px 'D-DIN', sans-serif";
-    const text = c.bubble;
-    const tw = Math.min(220, ctx.measureText(text).width + 16);
-    const bxx = c.x + 16;
-    const byy = y - 34;
-    ctx.fillStyle = "rgba(10,14,22,0.92)";
-    ctx.strokeStyle =
-      role === "orb" || role === "medic"
-        ? PALETTE.sage
-        : role === "puck"
-          ? PALETTE.steel
-          : role === "rocket"
-            ? PALETTE.legend
-            : role === "borer"
-              ? "#9b6cff"
-              : role === "ufo"
-                ? "#ffc72c"
-                : role === "racer"
-                  ? "#e31937"
-                  : role === "spinner"
-                    ? "#ff5c2a"
-                  : PALETTE.ember;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.roundRect?.(bxx, byy, tw, 22, 4);
-    if (!ctx.roundRect) ctx.rect(bxx, byy, tw, 22);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = PALETTE.paper;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, bxx + 8, byy + 11, tw - 12);
+    ctx.globalAlpha = Math.max(0.2, Math.min(1, c.bubbleT / 0.35));
+    ctx.font = "700 12px 'D-DIN Condensed', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = "#e8c15a";
+    ctx.fillText(c.bubble, c.x, y - 34);
     ctx.restore();
   }
 }
@@ -2947,6 +2892,56 @@ function strokeCover(
     ctx.lineTo(bx - px, by - py);
     ctx.closePath();
   }
+}
+
+const gunPics = new Map<string, HTMLImageElement>();
+
+function gunPic(card: RosterItem["card"]): HTMLImageElement | null {
+  if (typeof Image === "undefined") return null;
+  const rolled = card as RosterItem["card"] & { templateId?: string };
+  const src = [rolled.templateId, card.id, card.art, card.stats?.role, card.name.toLowerCase()]
+    .map((key) => cardPortraitSrc(key))
+    .find((s): s is string => !!s);
+  if (!src) return null;
+  let img = gunPics.get(src);
+  if (!img) {
+    img = new Image();
+    img.decoding = "async";
+    img.src = src;
+    gunPics.set(src, img);
+  }
+  return img.complete && img.naturalWidth > 0 ? img : null;
+}
+
+function paintGunFace(ctx: CanvasRenderingContext2D, card: RosterItem["card"], color: string) {
+  const pic = gunPic(card);
+  ctx.save();
+  if (pic) {
+    ctx.beginPath();
+    ctx.arc(0, 2, 16, 0, Math.PI * 2);
+    ctx.clip();
+    const side = Math.min(pic.naturalWidth, pic.naturalHeight);
+    const sx = (pic.naturalWidth - side) / 2;
+    const sy = (pic.naturalHeight - side) / 2;
+    ctx.drawImage(pic, sx, sy, side, side, -16, -14, 32, 32);
+    ctx.restore();
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, 2, 16, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    paintJerseyHull(ctx, card.stats?.hull ?? card.art, color, 1);
+  }
+  ctx.restore();
+  ctx.save();
+  ctx.font = "700 9px 'D-DIN Condensed', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = PALETTE.paper;
+  ctx.fillText(card.name.toUpperCase(), 0, 22);
+  ctx.restore();
 }
 
 function paintJerseyHull(ctx: CanvasRenderingContext2D, art: string, color: string, level = 1) {
@@ -3379,6 +3374,52 @@ export function viewTransform(canvas: HTMLCanvasElement) {
   return { scale, ox, oy, dpr, cssW, cssH };
 }
 
+function pileEnemies(enemies: Enemy[]) {
+  const skip = new Set<Enemy>();
+  const badge = new Map<Enemy, number>();
+  const buckets = new Map<string, Enemy[]>();
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    if (e.type === "colossus" || e.type === "titan") continue;
+    const key = `${Math.round(e.x / 42)}:${Math.round(e.y / 42)}`;
+    const group = buckets.get(key);
+    if (group) group.push(e);
+    else buckets.set(key, [e]);
+  }
+  for (const group of buckets.values()) {
+    if (group.length < 3) continue;
+    group.sort((a, b) => b.y - a.y || b.x - a.x);
+    const lead = group[0];
+    if (!lead) continue;
+    badge.set(lead, group.length);
+    for (let i = 1; i < group.length; i++) {
+      const rest = group[i];
+      if (rest) skip.add(rest);
+    }
+  }
+  return { skip, badge };
+}
+
+const SHOT_COLOR: Record<string, string> = {
+  spear: "#d7e4ef",
+  crater: "#ff5c2a",
+  frost: "#3cd6cc",
+  rail: "#7ec8ff",
+  cascade: "#c4b8ff",
+  sweep: "#9b6cff",
+  brand: "#e8c15a",
+  orbit: "#ffd27a",
+};
+
+function shotColor(style: string, kind: string) {
+  if (SHOT_COLOR[style]) return SHOT_COLOR[style];
+  if (kind === "ember") return PALETTE.ember;
+  if (kind === "frost") return PALETTE.frost;
+  if (kind === "hex") return PALETTE.accent;
+  if (kind === "spark") return "#c4b8ff";
+  return PALETTE.paper;
+}
+
 export function screenToWorld(canvas: HTMLCanvasElement, cx: number, cy: number) {
   const rect = canvas.getBoundingClientRect();
   const { scale, ox, oy } = viewTransform(canvas);
@@ -3469,8 +3510,9 @@ export function drawWorld(
 
   const drawables: { y: number; draw: () => void }[] = [];
 
+  const { skip: piled, badge } = pileEnemies(w.enemies);
   for (const e of w.enemies) {
-    if (!e.alive) continue;
+    if (!e.alive || piled.has(e)) continue;
     drawables.push({
       y: e.y,
       draw: () => {
@@ -3480,6 +3522,20 @@ export function drawWorld(
           ctx.fillRect(e.x - 3, e.y - e.radius - 10, 6, 6);
         }
         hpBar(ctx, e);
+        const n = badge.get(e);
+        if (n && n > 1) {
+          ctx.save();
+          ctx.font = "700 12px 'D-DIN Condensed', sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#05060b";
+          ctx.beginPath();
+          ctx.arc(e.x + e.radius * 0.7, e.y - e.radius * 0.7, 9, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = PALETTE.paper;
+          ctx.fillText(String(n), e.x + e.radius * 0.7, e.y - e.radius * 0.7 + 0.5);
+          ctx.restore();
+        }
       },
     });
   }
@@ -3535,20 +3591,10 @@ export function drawWorld(
   drawables.sort((a, b) => a.y - b.y);
   for (const d of drawables) d.draw();
   drawFuseArrows(ctx, w);
-  drawCraftDock(ctx, w);
 
   for (const p of w.projectiles) {
     if (!p.alive) continue;
-    const col =
-      p.style === "brand"
-        ? "#e8c15a"
-        : p.kind === "ember"
-          ? PALETTE.ember
-          : p.kind === "frost"
-            ? PALETTE.frost
-            : p.kind === "hex"
-              ? PALETTE.accent
-              : PALETTE.paper;
+    const col = shotColor(p.style, p.kind);
     ctx.save();
     ctx.strokeStyle = hexA(col, 0.55);
     ctx.lineWidth = p.kind === "ember" ? 2.6 : 2;

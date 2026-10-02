@@ -37,7 +37,7 @@ export const CHARMS: CharmDef[] = [
   {
     id: "ledger",
     name: "Double Ledger",
-    blurb: "Kills pay extra Credit for 3 rounds.",
+    blurb: "Kills pay more for 3 rounds.",
     rounds: 3,
     cost: { emerald: 2 },
     pointMul: 2,

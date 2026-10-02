@@ -30,7 +30,7 @@ export const SKILLS: CardDef[] = [
     name: "Harder dig",
     craftId: "comp-auger",
     set: "iron",
-    blurb: "Auger skill. The trench chips harder.",
+    blurb: "Deeper trench.",
     kit: { cutDps: 12, dpsMul: 1.12 },
   }),
   skill({
@@ -38,7 +38,7 @@ export const SKILLS: CardDef[] = [
     name: "Wide trench",
     craftId: "comp-auger",
     set: "iron",
-    blurb: "Auger skill. The cut is wider. Enemies slog more.",
+    blurb: "Wider. They slog.",
     kit: { radiusMul: 1.4, cutSlow: 0.48 },
   }),
   skill({
@@ -46,7 +46,7 @@ export const SKILLS: CardDef[] = [
     name: "Fast drop",
     craftId: "comp-auger",
     set: "iron",
-    blurb: "Auger skill. Plunge drops sooner.",
+    blurb: "Sooner.",
     kit: { specialPeriodMul: 0.7 },
   }),
   skill({
@@ -54,7 +54,7 @@ export const SKILLS: CardDef[] = [
     name: "Hot engine",
     craftId: "comp-boost",
     set: "heat",
-    blurb: "Boost skill. Burn run hits harder.",
+    blurb: "Hotter burn.",
     kit: { dpsMul: 1.22, burnDps: 8 },
   }),
   skill({
@@ -62,7 +62,7 @@ export const SKILLS: CardDef[] = [
     name: "Wide boost",
     craftId: "comp-boost",
     set: "heat",
-    blurb: "Boost skill. Guns she flies over shoot faster.",
+    blurb: "Guns under her shoot faster.",
     kit: { buffMul: 1.45 },
   }),
   skill({
@@ -70,7 +70,7 @@ export const SKILLS: CardDef[] = [
     name: "Long catch",
     craftId: "comp-boost",
     set: "heat",
-    blurb: "Boost skill. She eats grenades from farther away.",
+    blurb: "Grabs from farther.",
     kit: { interceptMul: 1.4 },
   }),
   skill({
@@ -78,7 +78,7 @@ export const SKILLS: CardDef[] = [
     name: "Quick dive",
     craftId: "comp-shrike",
     set: "heat",
-    blurb: "Shrike skill. Dive hits sooner and harder.",
+    blurb: "Sooner, and harder.",
     kit: { dpsMul: 1.2, specialPeriodMul: 0.75 },
   }),
   skill({
@@ -86,7 +86,7 @@ export const SKILLS: CardDef[] = [
     name: "Break shields",
     craftId: "comp-shrike",
     set: "heat",
-    blurb: "Shrike skill. Dive peels more armor.",
+    blurb: "Peels armor.",
     kit: { shred: 0.22 },
   }),
   skill({
@@ -94,7 +94,7 @@ export const SKILLS: CardDef[] = [
     name: "Stop bombs",
     craftId: "comp-shrike",
     set: "heat",
-    blurb: "Shrike skill. She snatches grenades from farther away.",
+    blurb: "She takes the grenade.",
     kit: { interceptMul: 1.45 },
   }),
   skill({
@@ -102,7 +102,7 @@ export const SKILLS: CardDef[] = [
     name: "Harder yank",
     craftId: "comp-zeek",
     set: "spark",
-    blurb: "Zeek skill. The tractor beam pulls enemies farther back.",
+    blurb: "Farther back.",
     kit: { knockMul: 1.5 },
   }),
   skill({
@@ -110,7 +110,7 @@ export const SKILLS: CardDef[] = [
     name: "Sticky beam",
     craftId: "comp-zeek",
     set: "spark",
-    blurb: "Zeek skill. The beam slows enemies more.",
+    blurb: "They stay slow.",
     kit: { slowMul: 0.58 },
   }),
   skill({
@@ -118,7 +118,7 @@ export const SKILLS: CardDef[] = [
     name: "Trash pay",
     craftId: "comp-zeek",
     set: "spark",
-    blurb: "Zeek skill. Kills near the UFO pay extra.",
+    blurb: "Kills by Zeek pay.",
     kit: { goldMul: 1.22 },
   }),
   skill({
@@ -126,7 +126,7 @@ export const SKILLS: CardDef[] = [
     name: "Longer sprint",
     craftId: "comp-joule",
     set: "spark",
-    blurb: "Joule skill. Sprint comes sooner and covers more path.",
+    blurb: "Sooner, and longer.",
     kit: { radiusMul: 1.32, specialPeriodMul: 0.75 },
   }),
   skill({
@@ -134,7 +134,7 @@ export const SKILLS: CardDef[] = [
     name: "Shock line",
     craftId: "comp-joule",
     set: "spark",
-    blurb: "Joule skill. The dash bites harder.",
+    blurb: "Harder dash.",
     kit: { dpsMul: 1.25 },
   }),
   skill({
@@ -142,7 +142,7 @@ export const SKILLS: CardDef[] = [
     name: "Quick hands",
     craftId: "comp-joule",
     set: "spark",
-    blurb: "Joule skill. She eats grenades from farther away.",
+    blurb: "She catches them.",
     kit: { interceptMul: 1.4 },
   }),
   skill({
@@ -150,7 +150,7 @@ export const SKILLS: CardDef[] = [
     name: "Colder air",
     craftId: "comp-kelvin",
     set: "cold",
-    blurb: "Kelvin skill. Frost breath slows enemies more.",
+    blurb: "Slower.",
     kit: { slowMul: 0.52 },
   }),
   skill({
@@ -158,7 +158,7 @@ export const SKILLS: CardDef[] = [
     name: "Ice path",
     craftId: "comp-kelvin",
     set: "cold",
-    blurb: "Kelvin skill. The cold cloud is wider.",
+    blurb: "Wider cold.",
     kit: { radiusMul: 1.4 },
   }),
   skill({
@@ -166,7 +166,7 @@ export const SKILLS: CardDef[] = [
     name: "Bear rush",
     craftId: "comp-kelvin",
     set: "cold",
-    blurb: "Kelvin skill. Zap hits sooner and harder.",
+    blurb: "Sooner.",
     kit: { dpsMul: 1.28, specialPeriodMul: 0.75 },
   }),
   skill({
@@ -174,7 +174,7 @@ export const SKILLS: CardDef[] = [
     name: "Brighter ring",
     craftId: "comp-halo",
     set: "spark",
-    blurb: "Gyre skill. Guns it flies over shoot even faster.",
+    blurb: "Guns under Gyre, faster.",
     kit: { buffMul: 1.45 },
   }),
   skill({
@@ -182,7 +182,7 @@ export const SKILLS: CardDef[] = [
     name: "Longer visit",
     craftId: "comp-halo",
     set: "spark",
-    blurb: "Gyre skill. It buffs a wider cluster of guns.",
+    blurb: "More guns.",
     kit: { radiusMul: 1.35 },
   }),
   skill({
@@ -190,7 +190,7 @@ export const SKILLS: CardDef[] = [
     name: "Faster spin",
     craftId: "comp-halo",
     set: "spark",
-    blurb: "Gyre skill. Overclock comes sooner.",
+    blurb: "Sooner.",
     kit: { specialPeriodMul: 0.68 },
   }),
   skill({
@@ -198,7 +198,7 @@ export const SKILLS: CardDef[] = [
     name: "Greedy bite",
     craftId: "comp-torr",
     set: "heat",
-    blurb: "Torr skill. Kills near the shark pay extra.",
+    blurb: "Kills by Torr pay.",
     kit: { goldMul: 1.3 },
   }),
   skill({
@@ -206,7 +206,7 @@ export const SKILLS: CardDef[] = [
     name: "Wide hunt",
     craftId: "comp-torr",
     set: "heat",
-    blurb: "Torr skill. The hunt covers more path.",
+    blurb: "Farther.",
     kit: { radiusMul: 1.38 },
   }),
   skill({
@@ -214,7 +214,7 @@ export const SKILLS: CardDef[] = [
     name: "Coin shock",
     craftId: "comp-torr",
     set: "heat",
-    blurb: "Torr skill. Zap hits harder.",
+    blurb: "Harder zap.",
     kit: { dpsMul: 1.28 },
   }),
   skill({
@@ -222,7 +222,7 @@ export const SKILLS: CardDef[] = [
     name: "Heavier guard",
     craftId: "comp-rook",
     set: "iron",
-    blurb: "Hauler skill. Tougher hull. Harder bite near home.",
+    blurb: "Tougher. Meaner by Home.",
     kit: { coreGuard: 0.12, hpMul: 1.28 },
   }),
   skill({
@@ -230,7 +230,7 @@ export const SKILLS: CardDef[] = [
     name: "Bigger scoop",
     craftId: "comp-rook",
     set: "iron",
-    blurb: "Hauler skill. Eats grenades from farther away.",
+    blurb: "Grabs from farther.",
     kit: { interceptMul: 1.42 },
   }),
   skill({
@@ -238,7 +238,7 @@ export const SKILLS: CardDef[] = [
     name: "Merge bite",
     craftId: "comp-rook",
     set: "iron",
-    blurb: "Hauler skill. Hits harder on the last approach.",
+    blurb: "Harder near Home.",
     kit: { dpsMul: 1.25 },
   }),
   skill({
@@ -246,7 +246,7 @@ export const SKILLS: CardDef[] = [
     name: "Harder bump",
     craftId: "comp-puck",
     set: "iron",
-    blurb: "Bumper skill. The bump knocks enemies farther back.",
+    blurb: "Farther back.",
     kit: { knockMul: 1.5 },
   }),
   skill({
@@ -254,7 +254,7 @@ export const SKILLS: CardDef[] = [
     name: "Wider slam",
     craftId: "comp-puck",
     set: "iron",
-    blurb: "Bumper skill. Bump hits a bigger clump.",
+    blurb: "Bigger clump.",
     kit: { radiusMul: 1.35 },
   }),
   skill({
@@ -262,7 +262,7 @@ export const SKILLS: CardDef[] = [
     name: "Fast spin",
     craftId: "comp-puck",
     set: "iron",
-    blurb: "Bumper skill. Bump comes sooner.",
+    blurb: "Sooner.",
     kit: { specialPeriodMul: 0.7 },
   }),
   skill({
@@ -270,7 +270,7 @@ export const SKILLS: CardDef[] = [
     name: "Stronger patch",
     craftId: "comp-chis",
     set: "spark",
-    blurb: "Chis skill. Heals more each Patch.",
+    blurb: "More heal.",
     kit: { healMul: 1.5 },
   }),
   skill({
@@ -278,7 +278,7 @@ export const SKILLS: CardDef[] = [
     name: "Faster stitch",
     craftId: "comp-chis",
     set: "spark",
-    blurb: "Chis skill. Patch comes sooner.",
+    blurb: "Sooner.",
     kit: { specialPeriodMul: 0.7 },
   }),
   skill({
@@ -286,7 +286,7 @@ export const SKILLS: CardDef[] = [
     name: "Tough wings",
     craftId: "comp-chis",
     set: "spark",
-    blurb: "Chis skill. Tougher hull. Reaches farther to heal.",
+    blurb: "Tougher. Reaches farther.",
     kit: { hpMul: 1.3, radiusMul: 1.2 },
   }),
   skill({
@@ -294,7 +294,7 @@ export const SKILLS: CardDef[] = [
     name: "Hotter stripes",
     craftId: "comp-torch",
     set: "heat",
-    blurb: "Torch skill. Enemies burns more.",
+    blurb: "They burn more.",
     kit: { burnDps: 12 },
   }),
   skill({
@@ -302,7 +302,7 @@ export const SKILLS: CardDef[] = [
     name: "Wider roar",
     craftId: "comp-torch",
     set: "heat",
-    blurb: "Torch skill. Fire covers more path.",
+    blurb: "More of the road.",
     kit: { radiusMul: 1.35 },
   }),
   skill({
@@ -310,7 +310,7 @@ export const SKILLS: CardDef[] = [
     name: "Fast pounce",
     craftId: "comp-torch",
     set: "heat",
-    blurb: "Torch skill. Zap hits sooner and harder.",
+    blurb: "Sooner.",
     kit: { dpsMul: 1.18, specialPeriodMul: 0.72 },
   }),
   skill({
@@ -318,7 +318,7 @@ export const SKILLS: CardDef[] = [
     name: "Stronger heal",
     craftId: "comp-poppy",
     set: null,
-    blurb: "Poppy skill. Bloom heals more.",
+    blurb: "More heal.",
     kit: { healMul: 1.35 },
   }),
   skill({
@@ -326,7 +326,7 @@ export const SKILLS: CardDef[] = [
     name: "Petal blast",
     craftId: "comp-poppy",
     set: null,
-    blurb: "Poppy skill. Petals hit a bigger clump and burn.",
+    blurb: "Bigger, and it burns.",
     kit: { radiusMul: 1.32, burnDps: 6 },
   }),
   skill({
@@ -334,7 +334,7 @@ export const SKILLS: CardDef[] = [
     name: "Faster guns",
     craftId: "comp-poppy",
     set: null,
-    blurb: "Poppy skill. Nearby guns shoot a bit faster.",
+    blurb: "Guns near Poppy.",
     kit: { buffMul: 1.22, specialPeriodMul: 0.85 },
   }),
 ];

@@ -52,6 +52,7 @@ const PAGES: Page[] = [
     title: "Spend Credit on the gun",
     lines: [
       "Tap a planted gun to open its tree.",
+      "Level-up chips pick a special. A small glow sits under the gun. It still shoots.",
       "Credit is paid on that gun. Not in a shop.",
       "Walk two lines. Grow what it already does.",
     ],
