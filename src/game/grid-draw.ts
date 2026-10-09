@@ -95,23 +95,20 @@ function ramp(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number,
   return g;
 }
 
-function plot(ctx: CanvasRenderingContext2D, cx: number, cy: number, top: string, mid: string, edge: string) {
-  const hw = HW - 3;
-  const hh = HH - 2;
-  const pts = [
-    { x: cx, y: cy - hh },
-    { x: cx + hw, y: cy },
-    { x: cx, y: cy + hh },
-    { x: cx - hw, y: cy },
-  ];
-  poly(ctx, pts, ramp(ctx, cx - hw, cy - hh, cx + hw, cy + hh, [[0, top], [0.45, mid], [1, edge]]));
+function slab(ctx: CanvasRenderingContext2D, cx: number, cy: number, tone: "pad" | "hot" | "exit" | "road") {
+  const hw = HW + 1.5;
+  const hh = HH + 1;
+  const fill = tone === "exit" ? "#3a2a68" : tone === "hot" ? "#1c4a52" : tone === "road" ? "#121820" : "#243044";
+  const rim = tone === "hot" ? FROST_H : tone === "exit" ? "#d4c4ff" : tone === "road" ? "#147a78" : "rgba(238,243,247,0.12)";
   ctx.beginPath();
-  ctx.moveTo(cx, cy - hh + 5);
-  ctx.lineTo(cx + hw - 8, cy);
-  ctx.lineTo(cx, cy + hh - 5);
-  ctx.lineTo(cx - hw + 8, cy);
+  ctx.moveTo(cx, cy - hh);
+  ctx.lineTo(cx + hw, cy);
+  ctx.lineTo(cx, cy + hh);
+  ctx.lineTo(cx - hw, cy);
   ctx.closePath();
-  ctx.strokeStyle = "rgba(255,255,255,0.14)";
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.strokeStyle = rim;
   ctx.lineWidth = 1;
   ctx.stroke();
 }
@@ -189,6 +186,10 @@ function glowDot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number,
 }
 
 function building(ctx: CanvasRenderingContext2D, id: TowerId, cx: number, cy: number, flash: boolean) {
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.beginPath();
+  ctx.ellipse(cx + 2, cy + 4, 22, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
   if (blitPack(ctx, id, cx, cy)) {
     if (flash) glowDot(ctx, cx, cy - 52, 4, id === "crater" ? EMBER_H : id === "beacon" ? GOLD_H : FROST_H);
     return;
@@ -270,14 +271,9 @@ function paintGround(ctx: CanvasRenderingContext2D, run: GridRun) {
     const p = proj(cell.x, cell.y);
     const key = `${cell.x},${cell.y}`;
     const exit = cell.x === run.grid.exit.x && cell.y === run.grid.exit.y;
-    if (onPath.has(key) && !exit) continue;
-    if (exit) {
-      if (!blitPack(ctx, "exit", p.x, p.y)) plot(ctx, p.x, p.y, "#3a2a68", "#1a1430", INK);
-    } else {
-      const hot = run.selected && run.press?.x === cell.x && run.press.y === cell.y;
-      const painted = blitPack(ctx, hot ? "pad-hot" : "pad", p.x, p.y);
-      if (!painted) plot(ctx, p.x, p.y, hot ? "#35506a" : "#2a384c", hot ? "#1c2c40" : "#121820", INK);
-    }
+    const road = onPath.has(key) && !exit;
+    const hot = !road && run.selected && run.press?.x === cell.x && run.press.y === cell.y;
+    slab(ctx, p.x, p.y, exit ? "exit" : road ? "road" : hot ? "hot" : "pad");
   }
   const skin = run.grid.skin;
   const edge = skin === "dirt" ? "#c47a3a" : skin === "road" ? "#d7e4ef" : FROST_H;
@@ -292,7 +288,7 @@ function paintGround(ctx: CanvasRenderingContext2D, run: GridRun) {
     else ctx.lineTo(p.x, p.y);
   });
   ctx.strokeStyle = bed;
-  ctx.lineWidth = 16;
+  ctx.lineWidth = 8;
   ctx.shadowColor = edge;
   ctx.shadowBlur = 8;
   ctx.stroke();
