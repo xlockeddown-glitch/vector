@@ -12,7 +12,7 @@ Every generated path has a straight of at least 4 cells (Rail) and at least one 
 
 Skins are alloy, road, or dirt. Same grid. Skin does not change movement.
 
-Companions are `comp-auger`, `comp-boost`, `comp-shrike`.
+Companions are `comp-auger`, `comp-boost`, `comp-shrike`. They stand on the exit. Play on the title opens level 1. Moon lane is still the other button.
 
 ## Not in this mode
 

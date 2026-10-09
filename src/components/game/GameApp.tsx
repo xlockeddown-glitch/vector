@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type PointerEvent } from "react";
+import { useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import { DraftBoard } from "./DraftBoard";
 import { EndScreen } from "./EndScreen";
 import { EngraveScreen } from "./EngraveScreen";
@@ -11,6 +11,7 @@ import { MerchantScreen } from "./MerchantScreen";
 import { RosterDock } from "./RosterDock";
 import { ShopScreen } from "./ShopScreen";
 import { TitleScreen } from "./TitleScreen";
+import { GridStage } from "./GridStage";
 import { createRuntime, RUNTIME_GEN, type HudSink, type Runtime } from "@/game/runtime";
 import { useGame } from "@/game/store";
 import { orbitRank } from "@/game/data/orbit";
@@ -39,6 +40,10 @@ export function GameApp() {
   const best = useGame((s) => s.best);
   const hasRun = useGame((s) => s.hasRun);
   const profiles = useGame((s) => s.profiles);
+  const [gridOn, setGridOn] = useState(false);
+  const boundId = profiles?.slots?.[profiles.active ?? 0]?.boundId;
+  const gridCompanion =
+    boundId === "comp-boost" || boundId === "comp-shrike" || boundId === "comp-auger" ? boundId : "comp-auger";
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -99,7 +104,7 @@ export function GameApp() {
         onPointerMove={onHover}
       />
 
-      {phase === "title" && (
+      {phase === "title" && !gridOn && (
         <TitleScreen
           ready={ready}
           best={best}
@@ -111,8 +116,10 @@ export function GameApp() {
           onHangar={() => act({ type: "hangar" })}
           onSlot={(id) => act({ type: "slot", id })}
           onBind={(id) => act({ type: "bind", id })}
+          onGrid={() => setGridOn(true)}
         />
       )}
+      {gridOn && <GridStage companion={gridCompanion} onExit={() => setGridOn(false)} />}
 
       {help && <HelpSheet onClose={() => act({ type: "closeHelp" })} />}
 

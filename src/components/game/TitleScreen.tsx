@@ -54,6 +54,7 @@ export function TitleScreen({
   onHangar,
   onSlot,
   onBind,
+  onGrid,
   best,
   ready,
   hasRun,
@@ -65,6 +66,7 @@ export function TitleScreen({
   onHangar: () => void;
   onSlot: (id: number) => void;
   onBind: (id: string) => void;
+  onGrid?: () => void;
   best: MetaSave;
   ready: boolean;
   hasRun: boolean;
@@ -160,10 +162,10 @@ export function TitleScreen({
           )}
           <button
             type="button"
-            onClick={() => startMode("story")}
+            onClick={() => (onGrid ? onGrid() : startMode("story"))}
             className="ui-btn ui-btn-primary card-bevel min-w-36"
           >
-            Arena
+            {onGrid ? "Play" : "Arena"}
           </button>
           <button
             type="button"
@@ -172,8 +174,13 @@ export function TitleScreen({
           >
             Briefing
           </button>
+          {onGrid && (
+            <button type="button" onClick={() => startMode("story")} className="ui-btn ui-btn-ghost">
+              Moon lane
+            </button>
+          )}
         </div>
-        <p className="title-start-hint">Draft. Plant. Hold 12.</p>
+        <p className="title-start-hint">{onGrid ? "Plant a button. Hold the ship." : "Draft. Plant. Hold 12."}</p>
         <p className="title-version">v{GAME_VERSION}</p>
         {(best.runs > 0 || hasRun) && (
         <div className="title-banks rise-in" style={{ animationDelay: "190ms" }}>
