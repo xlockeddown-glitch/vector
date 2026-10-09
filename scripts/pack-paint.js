@@ -92,41 +92,124 @@ function plate(ctx, foot, kind) {
   ctx.stroke();
 }
 
+function cone(ctx, x, y, rx, ry, tall, light, mid, dark) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - tall);
+  ctx.lineTo(x - rx, y);
+  ctx.quadraticCurveTo(x, y + ry, x, y);
+  ctx.closePath();
+  ctx.fillStyle = dark;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x, y - tall);
+  ctx.lineTo(x + rx, y);
+  ctx.quadraticCurveTo(x, y + ry, x, y);
+  ctx.closePath();
+  ctx.fillStyle = ramp(ctx, x, y - tall, x + rx, y, [[0, light], [1, mid]]);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI);
+  ctx.fillStyle = dark;
+  ctx.fill();
+}
+
+function disc(ctx, x, y, rx, ry, top, edge) {
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = ramp(ctx, x - rx, y - ry, x + rx, y + ry, [[0, top], [1, edge]]);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.28)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function dome(ctx, x, y, rx, ry, light, mid, dark) {
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, Math.PI, 0);
+  ctx.quadraticCurveTo(x + rx * 0.2, y - ry * 1.7, x, y - ry * 1.55);
+  ctx.quadraticCurveTo(x - rx * 0.2, y - ry * 1.7, x - rx, y);
+  ctx.fillStyle = ramp(ctx, x - rx, y - ry * 1.6, x + rx, y, [[0, light], [0.5, mid], [1, dark]]);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI);
+  ctx.fillStyle = dark;
+  ctx.fill();
+}
+
+function capsule(ctx, x, y, len, rad, light, dark) {
+  ctx.beginPath();
+  ctx.ellipse(x, y, rad, rad * 0.55, 0, 0, Math.PI * 2);
+  ctx.ellipse(x + len, y - len * 0.18, rad, rad * 0.55, 0, 0, Math.PI * 2);
+  ctx.fillStyle = dark;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x, y - rad * 0.45);
+  ctx.lineTo(x + len, y - len * 0.18 - rad * 0.45);
+  ctx.lineTo(x + len, y - len * 0.18 + rad * 0.45);
+  ctx.lineTo(x, y + rad * 0.45);
+  ctx.closePath();
+  ctx.fillStyle = ramp(ctx, x, y - rad, x, y + rad, [[0, light], [1, dark]]);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + len, y - len * 0.18, rad * 0.72, rad * 0.4, 0, 0, Math.PI * 2);
+  ctx.fillStyle = light;
+  ctx.fill();
+}
+
 function tower(ctx, foot, kind) {
   const x = foot.x;
   const y = foot.y;
-  contact(ctx, x, y, kind === "crater" || kind === "rail" ? 52 : 40);
+  contact(ctx, x, y, kind === "rail" || kind === "crater" ? 58 : 36);
   if (kind === "lance") {
-    prism(ctx, x, y, 36, 16, 18, ["#d7e4ef", "#6a7c90", "#243044"], ["#8b98ab", "#141c2a"], ["#243044", "#070b12"]);
-    prism(ctx, x, y - 18, 18, 10, 78, ["#bffff8", "#147a78", "#0c3030"], ["#1a9a96", "#0c3030"], ["#0c3030", "#070b12"]);
-    prism(ctx, x, y - 96, 8, 5, 28, ["#ffffff", "#7ef6ee", "#147a78"], ["#7ef6ee", "#0c3030"], ["#0c3030", "#070b12"]);
-    lamp(ctx, x, y - 132, 16, "#7ef6ee");
+    disc(ctx, x, y, 34, 14, "#d7e4ef", "#141c2a");
+    cone(ctx, x, y - 4, 22, 10, 92, "#d9fffb", "#147a78", "#062220");
+    cone(ctx, x, y - 96, 8, 4, 48, "#ffffff", "#7ef6ee", "#0c3030");
+    lamp(ctx, x, y - 148, 14, "#7ef6ee");
   } else if (kind === "halo") {
-    prism(ctx, x, y, 40, 18, 48, ["#d7e4ef", "#3d4b60", "#141c2a"], ["#5a7088", "#141c2a"], ["#1a2433", "#070b12"]);
+    disc(ctx, x, y, 28, 12, "#8b98ab", "#070b12");
+    cone(ctx, x, y - 2, 10, 6, 36, "#9aa8ba", "#243044", "#070b12");
+    ctx.save();
     ctx.strokeStyle = "#7ef6ee";
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 10;
     ctx.shadowColor = "#7ef6ee";
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 16;
     ctx.beginPath();
-    ctx.ellipse(x, y - 78, 36, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y - 78, 48, 18, 0, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.shadowBlur = 0;
-    lamp(ctx, x, y - 78, 10, "#7ef6ee");
-  } else if (kind === "crater") {
-    prism(ctx, x, y, 56, 24, 36, ["#ffb089", "#c43a16", "#4a180e"], ["#e07040", "#4a180e"], ["#4a180e", "#070b12"]);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#eef3f7";
     ctx.beginPath();
-    ctx.ellipse(x, y - 40, 22, 10, 0, 0, Math.PI * 2);
-    ctx.fillStyle = ramp(ctx, x - 22, y - 50, x + 22, y - 30, [[0, "#fff2c4"], [0.4, "#ffb089"], [1, "#c43a16"]]);
+    ctx.ellipse(x, y - 78, 48, 18, 0, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+    ctx.restore();
+    lamp(ctx, x, y - 78, 8, "#7ef6ee");
+  } else if (kind === "crater") {
+    disc(ctx, x, y + 4, 62, 24, "#6a4030", "#140804");
+    dome(ctx, x, y, 52, 22, "#ffd0b0", "#e07040", "#4a180e");
+    ctx.beginPath();
+    ctx.ellipse(x, y - 28, 18, 8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#1a0804";
     ctx.fill();
-    lamp(ctx, x, y - 42, 12, "#ffb089");
+    lamp(ctx, x, y - 30, 14, "#ffb089");
   } else if (kind === "rail") {
-    prism(ctx, x, y, 58, 22, 28, ["#eef3f7", "#8b98ab", "#243044"], ["#b7c4d4", "#243044"], ["#1a2433", "#070b12"]);
-    prism(ctx, x + 28, y - 18, 26, 7, 8, ["#ffffff", "#d7e4ef", "#8b98ab"], ["#d7e4ef", "#3d4b60"], ["#3d4b60", "#070b12"]);
-    lamp(ctx, x + 56, y - 26, 7, "#eef3f7");
+    disc(ctx, x, y + 2, 64, 22, "#8b98ab", "#070b12");
+    capsule(ctx, x - 10, y - 16, 78, 11, "#eef3f7", "#3d4b60");
+    capsule(ctx, x - 10, y - 2, 78, 11, "#d7e4ef", "#141c2a");
+    lamp(ctx, x + 70, y - 30, 6, "#eef3f7");
   } else {
-    prism(ctx, x, y, 30, 14, 16, ["#ffe08a", "#a8842e", "#3a3014"], ["#c4a15a", "#3a3014"], ["#3a3014", "#070b12"]);
-    prism(ctx, x, y - 16, 7, 4, 70, ["#ffe08a", "#a8842e", "#3a3014"], ["#a8842e", "#3a3014"], ["#3a3014", "#070b12"]);
-    lamp(ctx, x, y - 100, 22, "#ffe08a");
+    disc(ctx, x, y, 26, 11, "#c4a15a", "#1a1408");
+    ctx.strokeStyle = "#a8842e";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 4);
+    ctx.lineTo(x, y - 78);
+    ctx.stroke();
+    lamp(ctx, x, y - 96, 26, "#ffe08a");
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y - 96, 16, 16, 0, Math.PI * 1.1, Math.PI * 1.7);
+    ctx.stroke();
   }
 }
 
