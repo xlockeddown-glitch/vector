@@ -220,8 +220,9 @@ export function GridStage({
               className="ui-btn ui-btn-primary mt-4 w-full"
               onClick={() => {
                 const current = runRef.current;
+                const kept = current.towers.map((tower) => ({ ...tower }));
                 if (current.won) climb.current.level += 1;
-                runRef.current = startLevel(climb.current.level, companion, climb.current.skills);
+                runRef.current = startLevel(climb.current.level, companion, climb.current.skills, kept);
                 setTick((n) => n + 1);
               }}
             >

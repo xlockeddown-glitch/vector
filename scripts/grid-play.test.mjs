@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { canPlace } from "../src/game/grid.ts";
 import { cellFromPoint } from "../src/game/grid-draw.ts";
-import { beginRound, startRun, stepRun, tryPlace } from "../src/game/grid-sim.ts";
+import { beginRound, startLevel, startRun, stepRun, tryPlace } from "../src/game/grid-sim.ts";
 import { TOWERS } from "../src/game/matchup.ts";
 
 test("a tap on the board still picks a pad", () => {
@@ -35,6 +35,29 @@ test("a tower sits on a button and the path refuses it", () => {
     }
   }
   assert.equal(placed, true);
+});
+
+test("towers stay between levels when the new path does not cover them", () => {
+  const first = startLevel(1, "comp-auger");
+  first.selected = "lance";
+  let spot = null;
+  for (let y = 0; y < first.grid.h && !spot; y++) {
+    for (let x = 0; x < first.grid.w; x++) {
+      if (!canPlace(first.grid, x, y)) continue;
+      assert.equal(tryPlace(first, x, y), true);
+      spot = { x, y };
+      break;
+    }
+  }
+  const next = startLevel(2, "comp-auger", [], first.towers);
+  assert.equal(next.credit, 110);
+  const kept = next.towers.find((tower) => tower.x === spot.x && tower.y === spot.y);
+  if (canPlace(next.grid, spot.x, spot.y)) {
+    assert.ok(kept);
+    assert.equal(kept.id, "lance");
+  } else {
+    assert.equal(kept, undefined);
+  }
 });
 
 test("a round waits until you start, then money and towers are fresh", () => {

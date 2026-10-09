@@ -158,9 +158,14 @@ export function startRun(
   };
 }
 
-export function startLevel(level: number, companion: CompanionId, skills: SkillId[] = []) {
+export function startLevel(
+  level: number,
+  companion: CompanionId,
+  skills: SkillId[] = [],
+  keep: GridTower[] = [],
+) {
   const def = levelAt(level);
-  return startRun(def.seed, companion, {
+  const run = startRun(def.seed, companion, {
     waves: def.waves,
     credit: def.credit,
     skin: def.skin,
@@ -169,6 +174,14 @@ export function startLevel(level: number, companion: CompanionId, skills: SkillI
     skills,
     level: def.level,
   });
+  const seen = new Set<string>();
+  run.towers = keep.flatMap((tower) => {
+    const key = `${tower.x},${tower.y}`;
+    if (seen.has(key) || !canPlace(run.grid, tower.x, tower.y)) return [];
+    seen.add(key);
+    return [{ x: tower.x, y: tower.y, id: tower.id, rank: tower.rank, cd: 0.35 }];
+  });
+  return run;
 }
 
 function hasSkill(run: GridRun, id: SkillId) {
