@@ -1,14 +1,11 @@
 import { GRID_H, GRID_W, type Point } from "./grid";
-import { pointAlong, type GridEnemy, type GridRun, type GridTower } from "./grid-sim";
+import { pointAlong, type GridEnemy, type GridRun } from "./grid-sim";
 import { TOWERS as GUNS, type TowerId } from "./matchup";
-import { bloom, blit } from "./pixel/blit";
-import { BUILDINGS, HULLS, TROOPS } from "./pixel/buildings";
-import type { Sprite } from "./pixel/ink";
 
-const HW = 14;
-const HH = 7;
-const PAD_X = 8;
-const PAD_TOP = 40;
+const HW = 42;
+const HH = 21;
+const PAD_X = 28;
+const PAD_TOP = 108;
 
 const INK = "#070b12";
 const METAL = "#3d4b60";
@@ -18,12 +15,10 @@ const FROST = "#147a78";
 const FROST_H = "#7ef6ee";
 const EMBER = "#c43a16";
 const EMBER_H = "#ffb089";
-const GOLD = "#a8842e";
 const GOLD_H = "#ffe08a";
 const PAPER = "#eef3f7";
 const PURPLE = "#6a48c4";
 const PURPLE_H = "#d4c4ff";
-const SAGE = "#1f8f52";
 
 function proj(x: number, y: number) {
   return {
@@ -36,8 +31,8 @@ function mapSize() {
   const far = proj(GRID_W - 1, 0);
   const deep = proj(GRID_W - 1, GRID_H - 1);
   return {
-    w: Math.ceil(far.x + HW + 10),
-    h: Math.ceil(deep.y + HH + 18),
+    w: Math.ceil(far.x + HW + 36),
+    h: Math.ceil(deep.y + HH + 28),
   };
 }
 
@@ -47,21 +42,17 @@ let camKey = "";
 
 function layout(cssW: number, cssH: number) {
   const map = mapSize();
-  const scale = cssW < 700 ? 4 : 3;
-  void cssH;
-  return { scale, map };
+  return { scale: 1, map, cssW, cssH };
 }
 
-function placeCam(cssW: number, cssH: number, scale: number, map: { w: number; h: number }, key: string) {
+function placeCam(cssW: number, cssH: number, map: { w: number; h: number }, key: string) {
   if (camKey !== key) {
     camKey = key;
-    camX = (cssW - map.w * scale) / 2;
-    camY = (cssH - map.h * scale) / 2;
+    camX = (cssW - map.w) / 2;
+    camY = (cssH - map.h) / 2;
   }
-  const mw = map.w * scale;
-  const mh = map.h * scale;
-  camX = mw <= cssW ? (cssW - mw) / 2 : Math.max(cssW - mw, Math.min(0, camX));
-  camY = mh <= cssH ? (cssH - mh) / 2 : Math.max(cssH - mh, Math.min(0, camY));
+  camX = map.w <= cssW ? (cssW - map.w) / 2 : Math.max(cssW - map.w, Math.min(0, camX));
+  camY = map.h <= cssH ? (cssH - map.h) / 2 : Math.max(cssH - map.h, Math.min(0, camY));
 }
 
 export function panBy(dx: number, dy: number) {
@@ -75,9 +66,9 @@ export function resetCamera() {
 
 export function cellFromPoint(cssW: number, cssH: number, px: number, py: number): Point | null {
   const view = layout(cssW, cssH);
-  placeCam(cssW, cssH, view.scale, view.map, camKey || "board");
-  const lx = (px - camX) / view.scale;
-  const ly = (py - camY) / view.scale;
+  placeCam(cssW, cssH, view.map, camKey || "board");
+  const lx = px - camX;
+  const ly = py - camY;
   const rx = lx - ((GRID_H - 1) * HW + PAD_X);
   const ry = ly - PAD_TOP;
   const gx = (rx / HW + ry / HH) / 2;
@@ -88,167 +79,289 @@ export function cellFromPoint(cssW: number, cssH: number, px: number, py: number
   return { x, y };
 }
 
-function fillPoly(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], color: string) {
-  const minY = Math.ceil(Math.min(...pts.map((p) => p.y)));
-  const maxY = Math.floor(Math.max(...pts.map((p) => p.y)));
-  ctx.fillStyle = color;
-  for (let y = minY; y <= maxY; y++) {
-    const xs: number[] = [];
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i]!;
-      const b = pts[(i + 1) % pts.length]!;
-      if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
-        const t = (y - a.y) / (b.y - a.y);
-        xs.push(a.x + (b.x - a.x) * t);
-      }
-    }
-    xs.sort((a, b) => a - b);
-    if (xs.length < 2) continue;
-    const x0 = Math.round(xs[0]!);
-    const x1 = Math.round(xs[xs.length - 1]!);
-    if (x1 > x0) ctx.fillRect(x0, y, x1 - x0, 1);
-  }
+function poly(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], style: string | CanvasGradient) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0]!.x, pts[0]!.y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]!.x, pts[i]!.y);
+  ctx.closePath();
+  ctx.fillStyle = style;
+  ctx.fill();
 }
 
-function hall(
+function ramp(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, stops: [number, string][]) {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  for (const [t, c] of stops) g.addColorStop(t, c);
+  return g;
+}
+
+function plot(ctx: CanvasRenderingContext2D, cx: number, cy: number, top: string, mid: string, edge: string) {
+  const hw = HW - 3;
+  const hh = HH - 2;
+  const pts = [
+    { x: cx, y: cy - hh },
+    { x: cx + hw, y: cy },
+    { x: cx, y: cy + hh },
+    { x: cx - hw, y: cy },
+  ];
+  poly(ctx, pts, ramp(ctx, cx - hw, cy - hh, cx + hw, cy + hh, [[0, top], [0.45, mid], [1, edge]]));
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - hh + 5);
+  ctx.lineTo(cx + hw - 8, cy);
+  ctx.lineTo(cx, cy + hh - 5);
+  ctx.lineTo(cx - hw + 8, cy);
+  ctx.closePath();
+  ctx.strokeStyle = "rgba(255,255,255,0.14)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function shadow(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number) {
+  ctx.fillStyle = "rgba(0,0,0,0.38)";
+  ctx.beginPath();
+  ctx.ellipse(cx + 4, cy + 8, rx, rx * 0.38, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function prism(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   hw: number,
   hh: number,
   tall: number,
-  top: string,
-  left: string,
-  right: string,
+  roof: [string, string],
+  left: [string, string],
+  right: [string, string],
 ) {
-  const roof = [
-    { x: cx, y: cy - hh - tall },
-    { x: cx + hw, y: cy - tall },
-    { x: cx, y: cy + hh - tall },
-    { x: cx - hw, y: cy - tall },
-  ];
-  fillPoly(ctx, [
-    { x: cx - hw, y: cy },
-    { x: cx, y: cy + hh },
-    { x: cx, y: cy + hh - tall },
-    { x: cx - hw, y: cy - tall },
-  ], left);
-  fillPoly(ctx, [
-    { x: cx + hw, y: cy },
-    { x: cx, y: cy + hh },
-    { x: cx, y: cy + hh - tall },
-    { x: cx + hw, y: cy - tall },
-  ], right);
-  fillPoly(ctx, roof, top);
-  ctx.fillStyle = INK;
-  ctx.fillRect(cx, cy + hh - tall, 1, tall);
+  poly(
+    ctx,
+    [
+      { x: cx - hw, y: cy },
+      { x: cx, y: cy + hh },
+      { x: cx, y: cy + hh - tall },
+      { x: cx - hw, y: cy - tall },
+    ],
+    ramp(ctx, cx - hw, cy - tall, cx, cy + hh, [[0, left[0]], [1, left[1]]]),
+  );
+  poly(
+    ctx,
+    [
+      { x: cx + hw, y: cy },
+      { x: cx, y: cy + hh },
+      { x: cx, y: cy + hh - tall },
+      { x: cx + hw, y: cy - tall },
+    ],
+    ramp(ctx, cx, cy - tall, cx + hw, cy + hh, [[0, right[0]], [1, right[1]]]),
+  );
+  poly(
+    ctx,
+    [
+      { x: cx, y: cy - hh - tall },
+      { x: cx + hw, y: cy - tall },
+      { x: cx, y: cy + hh - tall },
+      { x: cx - hw, y: cy - tall },
+    ],
+    ramp(ctx, cx, cy - hh - tall, cx, cy + hh - tall, [[0, roof[0]], [1, roof[1]]]),
+  );
+  ctx.strokeStyle = "rgba(255,255,255,0.28)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - hh - tall);
+  ctx.lineTo(cx - hw, cy - tall);
+  ctx.stroke();
 }
 
-function stamp(ctx: CanvasRenderingContext2D, sprite: Sprite, cx: number, cy: number) {
-  const x = Math.round(cx - sprite[0]!.length / 2);
-  const y = Math.round(cy - sprite.length + 6);
-  bloom(ctx, sprite, x, y);
-  blit(ctx, sprite, x, y);
+function glowDot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string) {
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = PAPER;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function building(ctx: CanvasRenderingContext2D, id: TowerId, cx: number, cy: number, flash: boolean) {
-  const art = BUILDINGS[id];
-  stamp(ctx, flash ? art.flash : art.idle, cx, cy);
+  shadow(ctx, cx, cy, 18);
+  if (id === "lance") {
+    prism(ctx, cx, cy, 16, 8, 10, [LIGHT, METAL], [METAL, METAL_D], ["#243044", INK]);
+    prism(ctx, cx, cy - 10, 8, 5, 36, [FROST_H, FROST], [FROST, "#0c3030"], ["#0c3030", INK]);
+    glowDot(ctx, cx, cy - 52, flash ? 5 : 3.5, FROST_H);
+  } else if (id === "halo") {
+    prism(ctx, cx, cy, 16, 9, 22, ["#1a4a48", "#0c3030"], [FROST, "#0c3030"], [METAL_D, INK]);
+    ctx.save();
+    ctx.strokeStyle = flash ? PAPER : FROST_H;
+    ctx.shadowColor = FROST_H;
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 30, 16, 7, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    glowDot(ctx, cx, cy - 30, 3, FROST_H);
+  } else if (id === "crater") {
+    prism(ctx, cx, cy, 22, 11, 16, ["#8a3418", EMBER], [EMBER, "#4a180e"], ["#4a180e", INK]);
+    ctx.save();
+    const g = ctx.createRadialGradient(cx, cy - 18, 2, cx, cy - 18, 10);
+    g.addColorStop(0, flash ? PAPER : GOLD_H);
+    g.addColorStop(0.45, EMBER_H);
+    g.addColorStop(1, EMBER);
+    ctx.fillStyle = g;
+    ctx.shadowColor = EMBER_H;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 18, 9, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  } else if (id === "rail") {
+    prism(ctx, cx, cy, 24, 10, 12, [LIGHT, "#6a7c90"], ["#9aabbe", METAL_D], [METAL_D, INK]);
+    prism(ctx, cx + 16, cy - 8, 10, 3, 4, [PAPER, LIGHT], [LIGHT, METAL], [METAL_D, INK]);
+    glowDot(ctx, cx + 28, cy - 12, flash ? 3 : 2, PAPER);
+  } else {
+    prism(ctx, cx, cy, 12, 7, 8, ["#c4a15a", "#6a5420"], ["#a8842e", "#3a3014"], [METAL_D, INK]);
+    prism(ctx, cx, cy - 8, 3, 2, 28, [GOLD_H, "#a8842e"], ["#a8842e", "#3a3014"], ["#3a3014", INK]);
+    glowDot(ctx, cx, cy - 42, flash ? 8 : 6, GOLD_H);
+  }
 }
 
-function diamond(ctx: CanvasRenderingContext2D, cx: number, cy: number, fill: string, light: string, dark: string) {
-  for (let y = -HH; y < HH; y++) {
-    const half = HW - Math.abs(y) * (HW / HH);
-    const w = Math.max(2, Math.round(half * 2));
-    const x = Math.round(cx - w / 2);
-    const py = Math.round(cy + y);
-    ctx.fillStyle = y < 0 ? light : fill;
-    ctx.fillRect(x, py, w, 1);
-    ctx.fillStyle = dark;
-    ctx.fillRect(x, py, 1, 1);
-    ctx.fillRect(x + w - 1, py, 1, 1);
-  }
+function hull(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number, body: string, light: string) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.beginPath();
+  ctx.ellipse(2, 8, 14, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const g = ctx.createLinearGradient(-16, -10, 16, 8);
+  g.addColorStop(0, light);
+  g.addColorStop(0.4, body);
+  g.addColorStop(1, INK);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(18, 0);
+  ctx.quadraticCurveTo(4, -12, -16, -4);
+  ctx.quadraticCurveTo(-8, 2, -16, 5);
+  ctx.quadraticCurveTo(2, 8, 18, 0);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.beginPath();
+  ctx.ellipse(-2, -3, 4, 2, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function paintGround(ctx: CanvasRenderingContext2D, run: GridRun) {
   const onPath = new Set(run.grid.path.map((p) => `${p.x},${p.y}`));
-  const skin = run.grid.skin;
   const cells: Point[] = [];
   for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) cells.push({ x, y });
   cells.sort((a, b) => a.x + a.y - (b.x + b.y));
-  const march = Math.floor(run.time * 8);
   for (const cell of cells) {
     const p = proj(cell.x, cell.y);
     const key = `${cell.x},${cell.y}`;
     const exit = cell.x === run.grid.exit.x && cell.y === run.grid.exit.y;
-    if (onPath.has(key) && !exit) {
-      const fill = skin === "dirt" ? "#3a2418" : skin === "road" ? "#232a38" : "#0c2426";
-      const light = skin === "dirt" ? "#c47a3a" : skin === "road" ? "#8b98ab" : FROST;
-      diamond(ctx, p.x, p.y, fill, light, INK);
-      const hot = skin === "dirt" ? GOLD_H : skin === "road" ? PAPER : FROST_H;
-      ctx.fillStyle = hot;
-      ctx.fillRect(p.x - 4, p.y - 1, 8, 2);
-      const index = run.grid.path.findIndex((q) => q.x === cell.x && q.y === cell.y);
-      if (index >= 0 && (index + march) % 4 === 0) {
-        ctx.fillStyle = PAPER;
-        ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
-      }
-    } else if (exit) {
-      diamond(ctx, p.x, p.y, "#1a1430", PURPLE, INK);
-    } else {
+    if (onPath.has(key) && !exit) continue;
+    if (exit) plot(ctx, p.x, p.y, "#3a2a68", "#1a1430", INK);
+    else {
       const hot = run.selected && run.press?.x === cell.x && run.press.y === cell.y;
-      diamond(ctx, p.x, p.y, hot ? "#243044" : "#121820", hot ? FROST_H : METAL, INK);
+      plot(ctx, p.x, p.y, hot ? "#35506a" : "#2a384c", hot ? "#1c2c40" : "#121820", INK);
     }
   }
-}
-
-function putShip(ctx: CanvasRenderingContext2D, run: GridRun) {
-  const p = proj(run.grid.exit.x, run.grid.exit.y);
-  const bob = Math.floor(run.time * 3) % 2;
-  stamp(ctx, HULLS[run.companion], p.x + (run.flinch > 0 ? 1 : 0), p.y + bob);
-  const filled = Math.round((run.companionHp / run.companionMax) * 8);
-  for (let i = 0; i < 8; i++) {
-    ctx.fillStyle = i < filled ? FROST_H : METAL_D;
-    ctx.fillRect(p.x - 6 + i * 2, p.y + 4, 1, 1);
-  }
+  const skin = run.grid.skin;
+  const edge = skin === "dirt" ? "#c47a3a" : skin === "road" ? "#d7e4ef" : FROST_H;
+  const bed = skin === "dirt" ? "#6a3a22" : skin === "road" ? "#5c6b80" : FROST;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  run.grid.path.forEach((cell, i) => {
+    const p = proj(cell.x, cell.y);
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  });
+  ctx.strokeStyle = bed;
+  ctx.lineWidth = 16;
+  ctx.shadowColor = edge;
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  const march = (run.time * 28) % 1;
+  const last = run.grid.path.length - 1;
+  const at = march * Math.max(1, last);
+  const i = Math.min(last - 1, Math.floor(at));
+  const t = at - i;
+  const a = proj(run.grid.path[i]!.x, run.grid.path[i]!.y);
+  const b = proj(run.grid.path[i + 1]!.x, run.grid.path[i + 1]!.y);
+  glowDot(ctx, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, 3, edge);
+  ctx.restore();
 }
 
 function putEnemy(ctx: CanvasRenderingContext2D, run: GridRun, enemy: GridEnemy) {
   const at = pointAlong(run.grid.path, enemy.along);
-  const hop = Math.floor(run.time * 6 + enemy.uid) % 2;
   const p = proj(at.x, at.y);
+  const bob = Math.sin(run.time * 6 + enemy.uid) * 2;
   if (!enemy.alive) {
-    ctx.fillStyle = PAPER;
-    ctx.fillRect(p.x - 3, p.y, 7, 1);
-    ctx.fillRect(p.x, p.y - 3, 1, 7);
+    glowDot(ctx, p.x, p.y, 4, EMBER_H);
     return;
   }
-  stamp(ctx, TROOPS[enemy.tag], p.x, p.y + hop);
-  if (enemy.flash > 0) {
-    ctx.fillStyle = PAPER;
-    ctx.fillRect(p.x - 1, p.y - 4, 3, 2);
-  }
+  const body = enemy.tag === "swift" ? FROST : enemy.tag === "plate" ? LIGHT : enemy.tag === "swarm" ? EMBER : METAL;
+  const light = enemy.tag === "swift" ? FROST_H : enemy.tag === "swarm" ? EMBER_H : PAPER;
+  hull(ctx, p.x, p.y + bob, enemy.tag === "plate" ? 1.15 : enemy.tag === "swarm" ? 0.7 : 0.9, body, light);
+  if (enemy.flash > 0) glowDot(ctx, p.x, p.y - 6, 3, PAPER);
+}
+
+function putShip(ctx: CanvasRenderingContext2D, run: GridRun) {
+  const p = proj(run.grid.exit.x, run.grid.exit.y);
+  const bob = Math.sin(run.time * 2.4) * 2;
+  const body = run.companion === "comp-boost" ? EMBER : run.companion === "comp-shrike" ? "#1f8f52" : PURPLE;
+  const light = run.companion === "comp-boost" ? EMBER_H : run.companion === "comp-shrike" ? "#8dffb8" : PURPLE_H;
+  hull(ctx, p.x, p.y - 8 + bob, 1.45, body, light);
+  glowDot(ctx, p.x + 16, p.y - 6 + bob, run.abilityT > 0 ? 4 : 2.5, light);
+  const filled = run.companionHp / run.companionMax;
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.fillRect(p.x - 16, p.y + 14, 32, 4);
+  ctx.fillStyle = FROST_H;
+  ctx.fillRect(p.x - 16, p.y + 14, 32 * filled, 4);
 }
 
 function putShot(ctx: CanvasRenderingContext2D, shot: GridRun["shots"][number]) {
   const t = 1 - Math.max(0, Math.min(1, shot.life / 0.18));
   const a = proj(shot.x, shot.y);
   const b = proj(shot.tx, shot.ty);
-  const x = Math.round(a.x + (b.x - a.x) * t);
-  const y = Math.round(a.y - 18 + (b.y - 6 - (a.y - 18)) * t);
-  ctx.fillStyle = shot.color;
-  ctx.fillRect(x - 1, y, 3, 1);
-  ctx.fillRect(x, y - 1, 1, 3);
-  ctx.fillStyle = PAPER;
-  ctx.fillRect(x, y, 1, 1);
-  if (t > 0.72) {
-    ctx.fillStyle = shot.color;
-    ctx.fillRect(Math.round(b.x - 3), Math.round(b.y - 6), 7, 1);
-    ctx.fillRect(Math.round(b.x), Math.round(b.y - 9), 1, 7);
-  }
+  const x = a.x + (b.x - a.x) * t;
+  const y = a.y - 36 + (b.y - 8 - (a.y - 36)) * t;
+  ctx.save();
+  ctx.strokeStyle = shot.color;
+  ctx.shadowColor = shot.color;
+  ctx.shadowBlur = 8;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y - 36);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.restore();
+  glowDot(ctx, x, y, 2.4, shot.color);
 }
 
-let board: HTMLCanvasElement | null = null;
+function stars(ctx: CanvasRenderingContext2D, cssW: number, cssH: number, seed: number) {
+  let s = (seed || 1) >>> 0;
+  for (let i = 0; i < 36; i++) {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    const x = s % Math.max(1, Math.floor(cssW));
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    const y = s % Math.max(1, Math.floor(cssH));
+    ctx.fillStyle = i % 5 === 0 ? "rgba(126,246,238,0.35)" : "rgba(238,243,247,0.28)";
+    ctx.fillRect(x, y, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
+  }
+}
 
 export function drawGrid(
   ctx: CanvasRenderingContext2D,
@@ -259,35 +372,22 @@ export function drawGrid(
   hover: Point | null,
 ) {
   const view = layout(cssW, cssH);
-  placeCam(cssW, cssH, view.scale, view.map, String(run.seed));
-  if (typeof document === "undefined") return;
-  if (!board) board = document.createElement("canvas");
-  board.width = view.map.w;
-  board.height = view.map.h;
-  const pen = board.getContext("2d");
-  if (!pen) return;
-  pen.imageSmoothingEnabled = false;
-  pen.fillStyle = "#05060b";
-  pen.fillRect(0, 0, board.width, board.height);
-  let s = (run.seed || 1) >>> 0;
-  for (let i = 0; i < 28; i++) {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    const x = s % board.width;
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    pen.fillStyle = i % 5 === 0 ? "#143836" : "#1a2433";
-    pen.fillRect(x, s % board.height, 1, 1);
-  }
-  paintGround(pen, run);
+  placeCam(cssW, cssH, view.map, String(run.seed));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.fillStyle = "#05070d";
+  ctx.fillRect(0, 0, cssW, cssH);
+  stars(ctx, cssW, cssH, run.seed);
+  ctx.save();
+  ctx.translate(camX, camY);
+  paintGround(ctx, run);
 
   const actors: { key: number; draw: () => void }[] = [];
   for (const tower of run.towers) {
     const period = 1 / GUNS[tower.id].rate;
     const flash = tower.cd > period - 0.09;
     const p = proj(tower.x, tower.y);
-    actors.push({
-      key: tower.x + tower.y,
-      draw: () => building(pen, tower.id, p.x, p.y, flash),
-    });
+    actors.push({ key: tower.x + tower.y, draw: () => building(ctx, tower.id, p.x, p.y, flash) });
   }
   if (hover && run.selected && !run.towers.some((t) => t.x === hover.x && t.y === hover.y)) {
     const kind = run.grid.cells[hover.y * GRID_W + hover.x];
@@ -296,29 +396,24 @@ export function drawGrid(
       actors.push({
         key: hover.x + hover.y + 0.05,
         draw: () => {
-          pen.save();
-          pen.globalAlpha = 0.55;
-          building(pen, run.selected!, p.x, p.y, false);
-          pen.restore();
+          ctx.save();
+          ctx.globalAlpha = 0.5;
+          building(ctx, run.selected!, p.x, p.y, false);
+          ctx.restore();
         },
       });
     }
   }
   for (const enemy of run.enemies) {
     const at = pointAlong(run.grid.path, enemy.along);
-    actors.push({ key: at.x + at.y + 0.2, draw: () => putEnemy(pen, run, enemy) });
+    actors.push({ key: at.x + at.y + 0.2, draw: () => putEnemy(ctx, run, enemy) });
   }
   actors.push({
     key: run.grid.exit.x + run.grid.exit.y + 0.3,
-    draw: () => putShip(pen, run),
+    draw: () => putShip(ctx, run),
   });
   actors.sort((a, b) => a.key - b.key);
   for (const actor of actors) actor.draw();
-  for (const shot of run.shots) putShot(pen, shot);
-
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = "#05060b";
-  ctx.fillRect(0, 0, cssW, cssH);
-  ctx.drawImage(board, camX, camY, board.width * view.scale, board.height * view.scale);
+  for (const shot of run.shots) putShot(ctx, shot);
+  ctx.restore();
 }
