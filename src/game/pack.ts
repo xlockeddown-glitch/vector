@@ -1,4 +1,4 @@
-type Item = { src: string; w: number; h: number; foot: [number, number] };
+type Item = { src: string; w: number; h: number; foot: [number, number]; draw?: number };
 type Manifest = { scale: number; items: Record<string, Item> };
 
 let manifest: Manifest | null = null;
@@ -25,7 +25,7 @@ export function blitPack(ctx: CanvasRenderingContext2D, id: string, cx: number, 
   if (!manifest || !item) return false;
   const img = images.get(item.src);
   if (!img?.complete || !img.naturalWidth) return false;
-  const s = manifest.scale;
+  const s = item.draw ?? manifest.scale;
   ctx.drawImage(img, cx - item.foot[0] * s, cy - item.foot[1] * s, item.w * s, item.h * s);
   return true;
 }

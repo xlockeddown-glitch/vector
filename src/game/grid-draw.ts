@@ -188,7 +188,7 @@ function glowDot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number,
 function building(ctx: CanvasRenderingContext2D, id: TowerId, cx: number, cy: number, flash: boolean) {
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.beginPath();
-  ctx.ellipse(cx + 2, cy + 4, 22, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + 1, cy + 2, 8, 3, 0, 0, Math.PI * 2);
   ctx.fill();
   if (blitPack(ctx, id, cx, cy)) {
     if (flash) glowDot(ctx, cx, cy - 52, 4, id === "crater" ? EMBER_H : id === "beacon" ? GOLD_H : FROST_H);

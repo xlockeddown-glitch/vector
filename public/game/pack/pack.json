@@ -35,7 +35,8 @@
       "foot": [
         119,
         214
-      ]
+      ],
+      "draw": 0.13
     },
     "halo": {
       "src": "halo.png",
@@ -44,7 +45,8 @@
       "foot": [
         119,
         213
-      ]
+      ],
+      "draw": 0.13
     },
     "crater": {
       "src": "crater.png",
@@ -53,7 +55,8 @@
       "foot": [
         120,
         202
-      ]
+      ],
+      "draw": 0.13
     },
     "rail": {
       "src": "rail.png",
@@ -62,7 +65,8 @@
       "foot": [
         103,
         195
-      ]
+      ],
+      "draw": 0.13
     },
     "beacon": {
       "src": "beacon.png",
@@ -71,7 +75,8 @@
       "foot": [
         119,
         205
-      ]
+      ],
+      "draw": 0.13
     },
     "grunt": {
       "src": "grunt.png",
