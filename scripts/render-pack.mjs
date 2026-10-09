@@ -2,6 +2,11 @@ import { writeFileSync } from "node:fs";
 import { chromium } from "playwright";
 import pack from "../public/game/pack/pack.json" with { type: "json" };
 
+if (!process.argv.includes("--flat")) {
+  console.error("The pack on disk is the painted set. Pass --flat to replace it with the simple shapes.");
+  process.exit(0);
+}
+
 const SIZE = {
   pad: [168, 96],
   "pad-hot": [168, 96],
