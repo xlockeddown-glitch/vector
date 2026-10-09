@@ -3,10 +3,10 @@ import { pointAlong, type GridEnemy, type GridRun, type GridTower } from "./grid
 import { bloom, blit, rotate } from "./pixel/blit";
 import { CELL_PX, type Sprite } from "./pixel/ink";
 import { ENEMIES } from "./pixel/enemies";
-import { SHIPS, SHOTS } from "./pixel/ships";
+import { SHIPS } from "./pixel/ships";
 import { PAD, PAD_HOT } from "./pixel/tiles";
 import { TOWERS } from "./pixel/towers";
-import type { TowerId } from "./matchup";
+import { TOWERS as GUNS } from "./matchup";
 
 const COLS = 16;
 const ROWS = 10;
@@ -89,6 +89,14 @@ function paintLane(ctx: CanvasRenderingContext2D, run: GridRun) {
     ctx.fillStyle = hot;
     ctx.fillRect(x0 + 5, y0 + 5, 2, 2);
   }
+  const march = Math.floor(run.time * 14);
+  for (let i = 0; i < run.grid.path.length; i++) {
+    if ((i + march) % 3 !== 0) continue;
+    const cell = run.grid.path[i]!;
+    if (cell.x === run.grid.exit.x && cell.y === run.grid.exit.y) continue;
+    ctx.fillStyle = hot;
+    ctx.fillRect(cell.x * CELL_PX + 5, cell.y * CELL_PX + 4 + ((i + march) % 2), 2, 1);
+  }
 }
 
 function stars(ctx: CanvasRenderingContext2D, seed: number) {
@@ -111,14 +119,6 @@ function facing(path: Point[], along: number) {
   if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 0 : 2;
   return dy >= 0 ? 1 : 3;
 }
-
-const SHOT_KIND: Record<TowerId, keyof typeof SHOTS> = {
-  lance: "frost",
-  halo: "frost",
-  crater: "ember",
-  rail: "steel",
-  beacon: "gold",
-};
 
 let board: HTMLCanvasElement | null = null;
 
@@ -162,13 +162,13 @@ export function drawGrid(
   }
   paintLane(pen, run);
 
-  for (const tower of run.towers) putTower(pen, tower, run.time);
+  for (const tower of run.towers) putTower(pen, tower);
   if (hover && run.selected && !towers.has(`${hover.x},${hover.y}`)) {
     const kind = run.grid.cells[hover.y * COLS + hover.x];
     if (kind === "button") {
       pen.save();
       pen.globalAlpha = 0.55;
-      putTower(pen, { x: hover.x, y: hover.y, id: run.selected, rank: 1, cd: 0 }, run.time);
+      putTower(pen, { x: hover.x, y: hover.y, id: run.selected, rank: 1, cd: 0 });
       pen.restore();
     }
   }
@@ -176,12 +176,7 @@ export function drawGrid(
   for (const enemy of run.enemies) putEnemy(pen, run, enemy);
   putShip(pen, run);
 
-  for (const shot of run.shots) {
-    const sprite = SHOTS[SHOT_KIND[shotColorId(shot.color)]];
-    const x = shot.tx * CELL_PX;
-    const y = shot.ty * CELL_PX;
-    blit(pen, sprite, x, y);
-  }
+  for (const shot of run.shots) putShot(pen, shot);
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false;
@@ -190,17 +185,30 @@ export function drawGrid(
   ctx.drawImage(off, view.ox, view.oy, off.width * view.scale, off.height * view.scale);
 }
 
-function shotColorId(color: string): TowerId {
-  if (color === "#ff5c2a") return "crater";
-  if (color === "#e8c15a") return "beacon";
-  if (color === "#d7e4ef") return "rail";
-  return "lance";
+function putShot(ctx: CanvasRenderingContext2D, shot: GridRun["shots"][number]) {
+  const t = 1 - Math.max(0, Math.min(1, shot.life / 0.18));
+  const x0 = shot.x * CELL_PX + 6;
+  const y0 = shot.y * CELL_PX + 3;
+  const x1 = shot.tx * CELL_PX + 6;
+  const y1 = shot.ty * CELL_PX + 5;
+  const x = Math.round(x0 + (x1 - x0) * t);
+  const y = Math.round(y0 + (y1 - y0) * t);
+  ctx.fillStyle = shot.color;
+  ctx.fillRect(x - 1, y, 3, 1);
+  ctx.fillRect(x, y - 1, 1, 3);
+  ctx.fillStyle = "#eef3f7";
+  ctx.fillRect(x, y, 1, 1);
+  if (t > 0.72) {
+    ctx.fillStyle = shot.color;
+    ctx.fillRect(x1 - 2, y1, 5, 1);
+    ctx.fillRect(x1, y1 - 2, 1, 5);
+  }
 }
 
-function putTower(ctx: CanvasRenderingContext2D, tower: GridTower, time: number) {
+function putTower(ctx: CanvasRenderingContext2D, tower: GridTower) {
   const art = TOWERS[tower.id];
-  const flash = Math.sin(time * 5 + tower.x * 1.7) > 0.82;
-  const sprite = flash ? art.flash : art.idle;
+  const period = 1 / GUNS[tower.id].rate;
+  const sprite = tower.cd > period - 0.09 ? art.flash : art.idle;
   const x = tower.x * CELL_PX;
   const y = tower.y * CELL_PX;
   bloom(ctx, sprite, x, y);
@@ -213,19 +221,56 @@ function putTower(ctx: CanvasRenderingContext2D, tower: GridTower, time: number)
 
 function putEnemy(ctx: CanvasRenderingContext2D, run: GridRun, enemy: GridEnemy) {
   const p = pointAlong(run.grid.path, enemy.along);
-  const frame = Math.floor(run.time * 8 + enemy.uid) % 2 === 0 ? ENEMIES[enemy.tag].a : ENEMIES[enemy.tag].b;
-  const turned = rotate(frame, facing(run.grid.path, enemy.along));
   const x = Math.round(p.x * CELL_PX);
-  const y = Math.round(p.y * CELL_PX + Math.sin(run.time * 8 + enemy.uid));
-  blit(ctx, turned, x, y);
+  const y = Math.round(p.y * CELL_PX);
+  if (!enemy.alive) {
+    ctx.fillStyle = "#eef3f7";
+    ctx.fillRect(x + 3, y + 5, 5, 1);
+    ctx.fillRect(x + 5, y + 3, 1, 5);
+    ctx.fillStyle = "#ffb089";
+    ctx.fillRect(x + 5, y + 5, 1, 1);
+    return;
+  }
+  const hop = Math.floor(run.time * 6 + enemy.uid) % 2;
+  const frame = hop === 0 ? ENEMIES[enemy.tag].a : ENEMIES[enemy.tag].b;
+  const turned = rotate(frame, facing(run.grid.path, enemy.along));
+  blit(ctx, turned, x, y + hop);
+  if (enemy.flash > 0) {
+    ctx.fillStyle = "#eef3f7";
+    ctx.fillRect(x + 5, y + 4, 2, 2);
+  }
+  if (enemy.slowT > 0) {
+    ctx.fillStyle = "#7ef6ee";
+    ctx.fillRect(x + 2, y + 8, 1, 1);
+    ctx.fillRect(x + 4, y + 9, 1, 1);
+  }
+  if (enemy.marked) {
+    const tick = Math.floor(run.time * 8) % 2;
+    ctx.fillStyle = "#ffe08a";
+    ctx.fillRect(x + 2, y + 1 + tick, 1, 1);
+    ctx.fillRect(x + 9, y + 1 + tick, 1, 1);
+    ctx.fillRect(x + 2, y + 9 - tick, 1, 1);
+    ctx.fillRect(x + 9, y + 9 - tick, 1, 1);
+  }
 }
 
 function putShip(ctx: CanvasRenderingContext2D, run: GridRun) {
   const sprite: Sprite = SHIPS[run.companion];
+  const bob = Math.floor(run.time * 3) % 2;
   const x = run.grid.exit.x * CELL_PX + (run.flinch > 0 ? 1 : 0);
-  const y = run.grid.exit.y * CELL_PX;
+  const y = run.grid.exit.y * CELL_PX + bob;
   bloom(ctx, sprite, x, y);
   blit(ctx, sprite, x, y);
+  const engine = Math.floor(run.time * 12) % 2 === 0 ? "#ffb089" : "#7ef6ee";
+  ctx.fillStyle = engine;
+  ctx.fillRect(x + 10, y + 5, 2, 1);
+  if (run.abilityT > 0) {
+    ctx.fillStyle = run.companion === "comp-shrike" ? "#8dffb8" : run.companion === "comp-boost" ? "#ffb089" : "#d4c4ff";
+    ctx.fillRect(x - 1, y + 2, 1, 1);
+    ctx.fillRect(x - 1, y + 8, 1, 1);
+    ctx.fillRect(x + 4, y - 1, 1, 1);
+    ctx.fillRect(x + 4, y + 11, 1, 1);
+  }
   const filled = Math.round((run.companionHp / run.companionMax) * 8);
   for (let i = 0; i < 8; i++) {
     ctx.fillStyle = i < filled ? "#7ef6ee" : "#141c2a";
