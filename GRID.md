@@ -12,7 +12,7 @@ Every generated path has a straight of at least 4 cells (Rail) and at least one 
 
 Skins are alloy, road, or dirt. Same grid. Skin does not change movement.
 
-Companions are `comp-auger`, `comp-boost`, `comp-shrike`. They stand on the exit. Play on the title opens level 1. Moon lane is still the other button.
+Level 1 is grunts, then swifts. Levels 2 through 8 teach a corner, a pack, armor, dirt, a road, Beacon, then all four. Clearing a level gives one skill. After 8, endless uses `scale.ts`. Play on the title opens the climb. Moon lane is still the other button.
 
 ## Not in this mode
 

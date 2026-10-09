@@ -1,5 +1,7 @@
-import { auditGrid, canPlace, type CompanionId, type Point } from "./grid";
+import { auditGrid, canPlace, type CompanionId, type Point, type Skin } from "./grid";
 import { buildGrid } from "./pathgen";
+import { levelAt } from "./levels";
+import type { SkillId } from "./skills";
 import {
   ENEMIES,
   LEVEL_1,
@@ -11,6 +13,7 @@ import {
   killPay,
   type EnemyTag,
   type TowerId,
+  type WaveGroup,
 } from "./matchup";
 
 const RANGE: Record<TowerId, number> = {
@@ -78,6 +81,10 @@ export type GridRun = {
   lost: boolean;
   nextUid: number;
   press: { x: number; y: number; life: number } | null;
+  level: number;
+  hpMul: number;
+  speedMul: number;
+  skills: SkillId[];
 };
 
 function rankMul(rank: number) {
@@ -95,13 +102,25 @@ export function pointAlong(path: Point[], along: number) {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
-export function startRun(seed: number, companion: CompanionId = "comp-auger"): GridRun {
-  const grid = buildGrid(seed, { companion });
+export function startRun(
+  seed: number,
+  companion: CompanionId = "comp-auger",
+  opts?: {
+    waves?: WaveGroup[];
+    credit?: number;
+    skin?: Skin;
+    hpMul?: number;
+    speedMul?: number;
+    skills?: SkillId[];
+    level?: number;
+  },
+): GridRun {
+  const grid = buildGrid(seed, { companion, skin: opts?.skin });
   const problems = auditGrid(grid);
   if (problems.length) throw new Error(problems.join(","));
   const spawns: GridRun["spawns"] = [];
   let at = 1.1;
-  for (const group of LEVEL_1) {
+  for (const group of opts?.waves ?? LEVEL_1) {
     for (let i = 0; i < group.count; i++) {
       spawns.push({ tag: group.tag, at });
       at += 0.85;
@@ -112,7 +131,7 @@ export function startRun(seed: number, companion: CompanionId = "comp-auger"): G
     seed,
     companion,
     grid,
-    credit: START_CREDIT,
+    credit: opts?.credit ?? START_CREDIT,
     selected: null,
     towers: [],
     enemies: [],
@@ -129,7 +148,28 @@ export function startRun(seed: number, companion: CompanionId = "comp-auger"): G
     lost: false,
     nextUid: 1,
     press: null,
+    level: opts?.level ?? 1,
+    hpMul: opts?.hpMul ?? 1,
+    speedMul: opts?.speedMul ?? 1,
+    skills: opts?.skills ?? [],
   };
+}
+
+export function startLevel(level: number, companion: CompanionId, skills: SkillId[] = []) {
+  const def = levelAt(level);
+  return startRun(def.seed, companion, {
+    waves: def.waves,
+    credit: def.credit,
+    skin: def.skin,
+    hpMul: def.hpMul,
+    speedMul: def.speedMul,
+    skills,
+    level: def.level,
+  });
+}
+
+function hasSkill(run: GridRun, id: SkillId) {
+  return run.skills.includes(id);
 }
 
 function towerAt(run: GridRun, x: number, y: number) {
@@ -165,8 +205,9 @@ export function tryRank(run: GridRun, x: number, y: number) {
 
 export function castAbility(run: GridRun) {
   if (run.abilityCd > 0 || run.won || run.lost) return false;
-  run.abilityT = 3;
-  run.abilityCd = 16;
+  const lasting = hasSkill(run, "ship-hold");
+  run.abilityT = lasting ? 4.5 : 3;
+  run.abilityCd = lasting ? 12 : 16;
   if (run.companion === "comp-shrike") {
     const row = run.grid.exit.y;
     for (const e of run.enemies) {
@@ -192,8 +233,14 @@ function chebyshev(a: Point, b: Point) {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }
 
-function inRange(id: TowerId, from: Point, to: Point) {
-  const range = RANGE[id];
+function rangeOf(run: GridRun, id: TowerId) {
+  if (id === "halo" && hasSkill(run, "halo-ring")) return 3;
+  if (id === "rail" && hasSkill(run, "rail-long")) return 11;
+  return RANGE[id];
+}
+
+function inRange(run: GridRun, id: TowerId, from: Point, to: Point) {
+  const range = rangeOf(run, id);
   if (id === "lance" || id === "rail") {
     const line = from.x === to.x || from.y === to.y;
     return line && manhattan(from, to) <= range && manhattan(from, to) > 0;
@@ -215,8 +262,10 @@ function hurt(run: GridRun, e: GridEnemy, amount: number, mark: boolean) {
 function fire(run: GridRun, tower: GridTower, targets: GridEnemy[]) {
   const from = { x: tower.x, y: tower.y };
   for (const e of targets) {
-    const marked = tower.id === "beacon" || e.marked;
-    const mult = MATCHUP[tower.id][e.tag] * (e.marked && tower.id !== "beacon" ? 1 + MARK_BONUS : 1) * rankMul(tower.rank);
+    const mark = hasSkill(run, "beacon-mark") ? 0.5 : MARK_BONUS;
+    const punch = tower.id === "crater" && hasSkill(run, "crater-punch") ? 1.3 : 1;
+    const mult =
+      MATCHUP[tower.id][e.tag] * (e.marked && tower.id !== "beacon" ? 1 + mark : 1) * rankMul(tower.rank) * punch;
     hurt(run, e, TOWERS[tower.id].damage * mult, tower.id === "beacon");
     if (tower.id === "halo") e.slowT = Math.max(e.slowT, 1.1);
     const at = enemyCell(run, e);
@@ -228,7 +277,6 @@ function fire(run: GridRun, tower: GridTower, targets: GridEnemy[]) {
       life: 0.18,
       color: shotColor(tower.id),
     });
-    void marked;
   }
 }
 
@@ -241,10 +289,10 @@ function shotColor(id: TowerId) {
 
 function targetsFor(run: GridRun, tower: GridTower) {
   const from = { x: tower.x, y: tower.y };
-  const live = run.enemies.filter((e) => e.alive && inRange(tower.id, from, enemyCell(run, e)));
+  const live = run.enemies.filter((e) => e.alive && inRange(run, tower.id, from, enemyCell(run, e)));
   live.sort((a, b) => manhattan(from, enemyCell(run, a)) - manhattan(from, enemyCell(run, b)));
   if (tower.id === "halo") return live;
-  if (tower.id === "lance") return live.slice(0, 2);
+  if (tower.id === "lance") return live.slice(0, hasSkill(run, "lance-pierce") ? 3 : 2);
   const first = live[0];
   if (!first) return [];
   if (tower.id !== "crater") return [first];
@@ -269,12 +317,13 @@ export function stepRun(run: GridRun, dt: number) {
   while (run.spawns[0] && run.spawns[0].at <= run.time) {
     const spawn = run.spawns.shift()!;
     const stats = ENEMIES[spawn.tag];
+    const hp = Math.round(stats.hp * run.hpMul);
     run.enemies.push({
       uid: run.nextUid++,
       tag: spawn.tag,
       along: 0,
-      hp: stats.hp,
-      max: stats.hp,
+      hp,
+      max: hp,
       alive: true,
       flash: 0,
       slowT: 0,
@@ -287,7 +336,7 @@ export function stepRun(run: GridRun, dt: number) {
     if (!e.alive) continue;
     if (e.flash > 0) e.flash -= step;
     if (e.slowT > 0) e.slowT -= step;
-    let speed = ENEMIES[e.tag].speed * 1.15;
+    let speed = ENEMIES[e.tag].speed * 1.15 * run.speedMul;
     if (e.slowT > 0) speed *= 0.55;
     if (auger) speed *= 0.55;
     e.along += speed * step;

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { cellFromPoint, drawGrid } from "@/game/grid-draw";
-import { castAbility, startRun, stepRun, tryPlace, type GridRun } from "@/game/grid-sim";
+import { castAbility, startLevel, stepRun, tryPlace, type GridRun } from "@/game/grid-sim";
+import { levelAt } from "@/game/levels";
+import { SKILLS, type SkillId } from "@/game/skills";
 import { TOWER_IDS, TOWERS, canAfford, type TowerId } from "@/game/matchup";
 import type { CompanionId } from "@/game/grid";
 import { cn } from "@/lib/utils";
@@ -28,11 +30,13 @@ export function GridStage({
   onExit: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const runRef = useRef<GridRun>(startRun(1, companion));
+  const climb = useRef({ level: 1, skills: [] as SkillId[], points: 0, paid: 0 });
+  const runRef = useRef<GridRun>(startLevel(1, companion, []));
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    runRef.current = startRun(1, companion);
+    climb.current = { level: 1, skills: [], points: 0, paid: 0 };
+    runRef.current = startLevel(1, companion, []);
     const canvas = canvasRef.current;
     if (!canvas) return;
     let frame = 0;
@@ -43,6 +47,10 @@ export function GridStage({
       acc += Math.min(0.1, (now - last) / 1000);
       last = now;
       const run = runRef.current;
+      if (run.won && climb.current.paid < run.level) {
+        climb.current.points += 1;
+        climb.current.paid = run.level;
+      }
       while (acc >= 1 / 60) {
         stepRun(run, 1 / 60);
         acc -= 1 / 60;
@@ -81,6 +89,8 @@ export function GridStage({
 
   const run = runRef.current;
   const ready = run.abilityCd <= 0 && !run.won && !run.lost;
+  const def = levelAt(run.level);
+  const owned = new Set(climb.current.skills);
   void tick;
 
   return (
@@ -89,7 +99,10 @@ export function GridStage({
         <button type="button" className="ui-btn ui-btn-ghost min-h-10 px-3" onClick={onExit}>
           Back
         </button>
-        <p className="font-display text-lg tracking-wide">Level 1</p>
+        <div className="min-w-0">
+          <p className="font-display text-lg tracking-wide">{run.level > 8 ? `Endless ${run.level - 8}` : `Level ${run.level}`}</p>
+          <p className="truncate text-[12px] text-muted">{def.blurb}</p>
+        </div>
         <p className="ml-auto tabular text-legend">{run.credit}</p>
         <p className="tabular text-frost">{Math.ceil(run.companionHp)}</p>
       </header>
@@ -137,12 +150,33 @@ export function GridStage({
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-ink/70 p-6">
           <div className="w-full max-w-xs text-center">
             <h2 className="font-display text-4xl uppercase">{run.won ? "Held" : "The ship fell"}</h2>
+            {run.won && climb.current.points > 0 && (
+              <div className="mt-4 flex max-h-52 flex-col gap-1.5 overflow-y-auto">
+                {SKILLS.filter((skill) => !owned.has(skill.id)).map((skill) => (
+                  <button
+                    key={skill.id}
+                    type="button"
+                    className="rounded-lg border border-line px-3 py-2 text-left"
+                    onClick={() => {
+                      if (climb.current.points < 1 || climb.current.skills.includes(skill.id)) return;
+                      climb.current.skills.push(skill.id);
+                      climb.current.points -= 1;
+                      setTick((n) => n + 1);
+                    }}
+                  >
+                    <span className="font-display uppercase tracking-wide">{skill.name}</span>
+                    <span className="mt-0.5 block text-[13px] text-muted">{skill.line}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               type="button"
               className="ui-btn ui-btn-primary mt-4 w-full"
               onClick={() => {
                 const current = runRef.current;
-                runRef.current = startRun(current.won ? current.seed + 1 : current.seed, companion);
+                if (current.won) climb.current.level += 1;
+                runRef.current = startLevel(climb.current.level, companion, climb.current.skills);
                 setTick((n) => n + 1);
               }}
             >
