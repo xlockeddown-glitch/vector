@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
-import { cellFromPoint, drawGrid } from "@/game/grid-draw";
+import { cellFromPoint, drawGrid, panBy, resetCamera } from "@/game/grid-draw";
 import { castAbility, startLevel, stepRun, tryPlace, type GridRun } from "@/game/grid-sim";
 import { levelAt } from "@/game/levels";
 import { SKILLS, type SkillId } from "@/game/skills";
@@ -36,6 +36,7 @@ export function GridStage({
 
   useEffect(() => {
     climb.current = { level: 1, skills: [], points: 0, paid: 0 };
+    resetCamera();
     runRef.current = startLevel(1, companion, []);
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -78,7 +79,26 @@ export function GridStage({
     drawGrid(ctx, runRef.current, rect.width, rect.height, dpr, hover);
   };
 
-  const onPointer = (e: PointerEvent<HTMLCanvasElement>) => {
+  const drag = useRef({ x: 0, y: 0, moved: false });
+
+  const onPointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
+    drag.current = { x: e.clientX, y: e.clientY, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    const dx = e.clientX - drag.current.x;
+    const dy = e.clientY - drag.current.y;
+    if (!drag.current.moved && Math.hypot(dx, dy) < 8) return;
+    drag.current.moved = true;
+    drag.current.x = e.clientX;
+    drag.current.y = e.clientY;
+    panBy(dx, dy);
+  };
+
+  const onPointerUp = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (drag.current.moved) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const localX = e.nativeEvent.offsetX || e.clientX - rect.left;
     const localY = e.nativeEvent.offsetY || e.clientY - rect.top;
@@ -110,7 +130,13 @@ export function GridStage({
         <p className="ml-auto tabular text-legend">{run.credit}</p>
         <p className="tabular text-frost">{Math.ceil(run.companionHp)}</p>
       </header>
-      <canvas ref={canvasRef} className="grid-board min-h-0 w-full flex-1 touch-none" onPointerDown={onPointer} />
+      <canvas
+        ref={canvasRef}
+        className="grid-board min-h-0 w-full flex-1 touch-none"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      />
       <div className="flex flex-col gap-2 px-3 pb-3 pt-2">
         <button
           type="button"
@@ -124,7 +150,7 @@ export function GridStage({
           {SHIP[run.companion]}
           {run.abilityCd > 0 ? ` ${Math.ceil(run.abilityCd)}` : ""}
         </button>
-        <p className="pb-1 text-center text-[12px] text-muted">{run.selected ? "Tap a pad." : "Pick a gun, then a pad."}</p>
+        <p className="pb-1 text-center text-[12px] text-muted">Drag to look. Tap a pad.</p>
         <div className="grid grid-cols-5 gap-1.5">
           {TOWER_IDS.map((id) => {
             const on = run.selected === id;

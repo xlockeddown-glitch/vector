@@ -1,11 +1,14 @@
 import { GRID_H, GRID_W, type Point } from "./grid";
 import { pointAlong, type GridEnemy, type GridRun, type GridTower } from "./grid-sim";
 import { TOWERS as GUNS, type TowerId } from "./matchup";
+import { bloom, blit } from "./pixel/blit";
+import { BUILDINGS, HULLS, TROOPS } from "./pixel/buildings";
+import type { Sprite } from "./pixel/ink";
 
-const HW = 12;
-const HH = 6;
-const PAD_X = 6;
-const PAD_TOP = 52;
+const HW = 14;
+const HH = 7;
+const PAD_X = 8;
+const PAD_TOP = 40;
 
 const INK = "#070b12";
 const METAL = "#3d4b60";
@@ -38,21 +41,43 @@ function mapSize() {
   };
 }
 
+let camX = 0;
+let camY = 0;
+let camKey = "";
+
 function layout(cssW: number, cssH: number) {
   const map = mapSize();
-  const scale = Math.max(1, Math.floor(Math.min(cssW / map.w, cssH / map.h)));
-  return {
-    scale,
-    ox: Math.floor((cssW - map.w * scale) / 2),
-    oy: Math.floor((cssH - map.h * scale) / 2),
-    map,
-  };
+  const scale = cssW < 700 ? 4 : 3;
+  void cssH;
+  return { scale, map };
+}
+
+function placeCam(cssW: number, cssH: number, scale: number, map: { w: number; h: number }, key: string) {
+  if (camKey !== key) {
+    camKey = key;
+    camX = (cssW - map.w * scale) / 2;
+    camY = (cssH - map.h * scale) / 2;
+  }
+  const mw = map.w * scale;
+  const mh = map.h * scale;
+  camX = mw <= cssW ? (cssW - mw) / 2 : Math.max(cssW - mw, Math.min(0, camX));
+  camY = mh <= cssH ? (cssH - mh) / 2 : Math.max(cssH - mh, Math.min(0, camY));
+}
+
+export function panBy(dx: number, dy: number) {
+  camX += dx;
+  camY += dy;
+}
+
+export function resetCamera() {
+  camKey = "";
 }
 
 export function cellFromPoint(cssW: number, cssH: number, px: number, py: number): Point | null {
   const view = layout(cssW, cssH);
-  const lx = (px - view.ox) / view.scale;
-  const ly = (py - view.oy) / view.scale;
+  placeCam(cssW, cssH, view.scale, view.map, camKey || "board");
+  const lx = (px - camX) / view.scale;
+  const ly = (py - camY) / view.scale;
   const rx = lx - ((GRID_H - 1) * HW + PAD_X);
   const ry = ly - PAD_TOP;
   const gx = (rx / HW + ry / HH) / 2;
@@ -119,66 +144,29 @@ function hall(
   ctx.fillRect(cx, cy + hh - tall, 1, tall);
 }
 
+function stamp(ctx: CanvasRenderingContext2D, sprite: Sprite, cx: number, cy: number) {
+  const x = Math.round(cx - sprite[0]!.length / 2);
+  const y = Math.round(cy - sprite.length + 6);
+  bloom(ctx, sprite, x, y);
+  blit(ctx, sprite, x, y);
+}
+
 function building(ctx: CanvasRenderingContext2D, id: TowerId, cx: number, cy: number, flash: boolean) {
-  fillPoly(
-    ctx,
-    [
-      { x: cx, y: cy - 2 },
-      { x: cx + 14, y: cy + 5 },
-      { x: cx, y: cy + 12 },
-      { x: cx - 14, y: cy + 5 },
-    ],
-    "#000000",
-  );
-  if (id === "lance") {
-    hall(ctx, cx, cy, 10, 5, 8, LIGHT, METAL, METAL_D);
-    hall(ctx, cx, cy - 8, 5, 3, 20, FROST_H, FROST, "#0c3030");
-    ctx.fillStyle = flash ? PAPER : FROST_H;
-    ctx.fillRect(cx - 1, cy - 32, 3, flash ? 6 : 4);
-    ctx.fillStyle = PAPER;
-    ctx.fillRect(cx - 4, cy - 2, 2, 2);
-  } else if (id === "halo") {
-    hall(ctx, cx, cy, 11, 5, 14, "#123e3c", "#0c3030", METAL_D);
-    ctx.fillStyle = flash ? PAPER : FROST_H;
-    for (let i = -8; i <= 8; i += 2) ctx.fillRect(cx + i, cy - 18 - (Math.abs(i) > 4 ? 1 : 0), 2, 2);
-    ctx.fillRect(cx - 2, cy - 20, 4, 4);
-    ctx.fillStyle = FROST_H;
-    ctx.fillRect(cx - 6, cy - 4, 2, 2);
-  } else if (id === "crater") {
-    hall(ctx, cx, cy, 12, 6, 11, "#8a3418", EMBER, "#4a180e");
-    ctx.fillStyle = flash ? PAPER : EMBER_H;
-    ctx.fillRect(cx - 4, cy - 14, 8, 5);
-    ctx.fillStyle = INK;
-    ctx.fillRect(cx - 1, cy - 13, 3, 3);
-  } else if (id === "rail") {
-    hall(ctx, cx, cy, 12, 5, 7, LIGHT, "#9aabbe", METAL_D);
-    ctx.fillStyle = METAL_D;
-    ctx.fillRect(cx + 8, cy - 10, 3, 6);
-    ctx.fillStyle = flash ? PAPER : "#d7e4ef";
-    ctx.fillRect(cx + 10, cy - 10, flash ? 8 : 6, 2);
-    ctx.fillRect(cx + 10, cy - 6, flash ? 8 : 6, 2);
-  } else {
-    hall(ctx, cx, cy, 8, 4, 6, GOLD, "#6a5420", METAL_D);
-    hall(ctx, cx, cy - 6, 2, 2, 16, GOLD_H, GOLD, "#3a3014");
-    ctx.fillStyle = flash ? PAPER : GOLD_H;
-    ctx.fillRect(cx - 4, cy - 28, 8, 8);
-    ctx.fillStyle = PAPER;
-    ctx.fillRect(cx - 1, cy - 25, 2, 2);
-  }
+  const art = BUILDINGS[id];
+  stamp(ctx, flash ? art.flash : art.idle, cx, cy);
 }
 
 function diamond(ctx: CanvasRenderingContext2D, cx: number, cy: number, fill: string, light: string, dark: string) {
-  for (let row = 0; row < 12; row++) {
-    const k = row < 6 ? row : 11 - row;
-    const w = (k + 1) * 4;
-    const y = cy - 6 + row;
-    const x = cx - w / 2;
-    ctx.fillStyle = row < 6 ? light : fill;
-    ctx.fillRect(x, y, w, 1);
-    ctx.fillStyle = row < 3 ? PAPER : dark;
-    ctx.fillRect(x, y, 1, 1);
+  for (let y = -HH; y < HH; y++) {
+    const half = HW - Math.abs(y) * (HW / HH);
+    const w = Math.max(2, Math.round(half * 2));
+    const x = Math.round(cx - w / 2);
+    const py = Math.round(cy + y);
+    ctx.fillStyle = y < 0 ? light : fill;
+    ctx.fillRect(x, py, w, 1);
     ctx.fillStyle = dark;
-    ctx.fillRect(x + w - 1, y, 1, 1);
+    ctx.fillRect(x, py, 1, 1);
+    ctx.fillRect(x + w - 1, py, 1, 1);
   }
 }
 
@@ -217,61 +205,29 @@ function paintGround(ctx: CanvasRenderingContext2D, run: GridRun) {
 function putShip(ctx: CanvasRenderingContext2D, run: GridRun) {
   const p = proj(run.grid.exit.x, run.grid.exit.y);
   const bob = Math.floor(run.time * 3) % 2;
-  const x = p.x - 10 + (run.flinch > 0 ? 1 : 0);
-  const y = p.y - 16 + bob;
-  const color = run.companion === "comp-boost" ? EMBER_H : run.companion === "comp-shrike" ? "#8dffb8" : PURPLE_H;
-  const body = run.companion === "comp-boost" ? EMBER : run.companion === "comp-shrike" ? SAGE : PURPLE;
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
-  ctx.fillRect(x + 2, y + 14, 16, 3);
-  hall(ctx, p.x, p.y, 9, 4, 10, color, body, INK);
-  ctx.fillStyle = color;
-  ctx.fillRect(x - 4, y + 6, 5, 4);
-  ctx.fillStyle = Math.floor(run.time * 12) % 2 ? EMBER_H : PAPER;
-  ctx.fillRect(x + 16, y + 7, 3, 2);
-  if (run.abilityT > 0) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x - 2, y, 2, 2);
-    ctx.fillRect(x - 2, y + 14, 2, 2);
-    ctx.fillRect(x + 8, y - 2, 2, 2);
-  }
+  stamp(ctx, HULLS[run.companion], p.x + (run.flinch > 0 ? 1 : 0), p.y + bob);
   const filled = Math.round((run.companionHp / run.companionMax) * 8);
   for (let i = 0; i < 8; i++) {
     ctx.fillStyle = i < filled ? FROST_H : METAL_D;
-    ctx.fillRect(x + 2 + i * 2, y + 15, 1, 1);
+    ctx.fillRect(p.x - 6 + i * 2, p.y + 4, 1, 1);
   }
 }
 
 function putEnemy(ctx: CanvasRenderingContext2D, run: GridRun, enemy: GridEnemy) {
   const at = pointAlong(run.grid.path, enemy.along);
   const hop = Math.floor(run.time * 6 + enemy.uid) % 2;
-  const p = proj(at.x, at.y + hop * 0.04);
+  const p = proj(at.x, at.y);
   if (!enemy.alive) {
     ctx.fillStyle = PAPER;
     ctx.fillRect(p.x - 3, p.y, 7, 1);
     ctx.fillRect(p.x, p.y - 3, 1, 7);
-    ctx.fillStyle = EMBER_H;
-    ctx.fillRect(p.x, p.y, 1, 1);
     return;
   }
-  if (enemy.tag === "swift") hall(ctx, p.x, p.y, 5, 2, 5, FROST_H, FROST, INK);
-  else if (enemy.tag === "plate") hall(ctx, p.x, p.y, 7, 3, 7, PAPER, LIGHT, METAL_D);
-  else if (enemy.tag === "swarm") {
-    ctx.fillStyle = EMBER_H;
-    ctx.fillRect(p.x - 4, p.y - 2, 2, 2);
-    ctx.fillRect(p.x + 2, p.y - 4, 2, 2);
-    ctx.fillRect(p.x, p.y + 1, 2, 2);
-  } else hall(ctx, p.x, p.y, 5, 3, 7, LIGHT, METAL, METAL_D);
+  stamp(ctx, TROOPS[enemy.tag], p.x, p.y + hop);
   if (enemy.flash > 0) {
     ctx.fillStyle = PAPER;
-    ctx.fillRect(p.x - 1, p.y - 6, 3, 3);
+    ctx.fillRect(p.x - 1, p.y - 4, 3, 2);
   }
-  if (enemy.marked) {
-    ctx.fillStyle = GOLD_H;
-    ctx.fillRect(p.x - 4, p.y - 8, 1, 1);
-    ctx.fillRect(p.x + 3, p.y - 8, 1, 1);
-  }
-  ctx.fillStyle = enemy.tag === "swift" ? FROST_H : EMBER_H;
-  ctx.fillRect(p.x - 1, p.y + 2, 2, 1);
 }
 
 function putShot(ctx: CanvasRenderingContext2D, shot: GridRun["shots"][number]) {
@@ -303,6 +259,7 @@ export function drawGrid(
   hover: Point | null,
 ) {
   const view = layout(cssW, cssH);
+  placeCam(cssW, cssH, view.scale, view.map, String(run.seed));
   if (typeof document === "undefined") return;
   if (!board) board = document.createElement("canvas");
   board.width = view.map.w;
@@ -363,5 +320,5 @@ export function drawGrid(
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#05060b";
   ctx.fillRect(0, 0, cssW, cssH);
-  ctx.drawImage(board, view.ox, view.oy, board.width * view.scale, board.height * view.scale);
+  ctx.drawImage(board, camX, camY, board.width * view.scale, board.height * view.scale);
 }
