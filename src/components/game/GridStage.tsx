@@ -80,9 +80,13 @@ export function GridStage({
 
   const onPointer = (e: PointerEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const cell = cellFromPoint(rect.width, rect.height, e.clientX - rect.left, e.clientY - rect.top);
+    const localX = e.nativeEvent.offsetX || e.clientX - rect.left;
+    const localY = e.nativeEvent.offsetY || e.clientY - rect.top;
+    const cell = cellFromPoint(e.currentTarget.clientWidth, e.currentTarget.clientHeight, localX, localY);
     if (!cell) return;
-    tryPlace(runRef.current, cell.x, cell.y);
+    const run = runRef.current;
+    const placed = tryPlace(run, cell.x, cell.y);
+    if (!placed && run.selected) run.press = { x: cell.x, y: cell.y, life: 0.22 };
     paintHover(cell);
     setTick((n) => n + 1);
   };
@@ -120,6 +124,7 @@ export function GridStage({
           {SHIP[run.companion]}
           {run.abilityCd > 0 ? ` ${Math.ceil(run.abilityCd)}` : ""}
         </button>
+        <p className="pb-1 text-center text-[12px] text-muted">{run.selected ? "Tap a pad." : "Pick a gun, then a pad."}</p>
         <div className="grid grid-cols-5 gap-1.5">
           {TOWER_IDS.map((id) => {
             const on = run.selected === id;

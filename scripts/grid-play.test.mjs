@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { canPlace } from "../src/game/grid.ts";
+import { cellFromPoint } from "../src/game/grid-draw.ts";
 import { startRun, stepRun, tryPlace } from "../src/game/grid-sim.ts";
+
+test("a tap in the gap still picks a pad", () => {
+  const hit = cellFromPoint(390, 654, 34, 224);
+  assert.ok(hit);
+  assert.equal(hit.x >= 0 && hit.x < 16, true);
+  assert.equal(hit.y >= 0 && hit.y < 10, true);
+});
 
 test("a tower sits on a button and the path refuses it", () => {
   const run = startRun(4, "comp-auger");

@@ -3,22 +3,34 @@ import type { Point } from "./grid";
 import { pointAlong, type GridEnemy, type GridRun, type GridTower } from "./grid-sim";
 import type { TowerId } from "./matchup";
 
+const COLS = 16;
+const ROWS = 10;
+
 function round(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);
 }
 
 function layout(cssW: number, cssH: number) {
-  const cols = 16;
-  const rows = 10;
-  const gap = 4;
-  const pad = 10;
-  const cell = Math.max(8, Math.floor(Math.min((cssW - pad * 2 - gap) / cols, (cssH - pad * 2 - gap) / rows) - gap));
-  const boardW = cols * cell + (cols - 1) * gap;
-  const boardH = rows * cell + (rows - 1) * gap;
-  const ox = Math.round((cssW - boardW) / 2);
-  const oy = Math.round((cssH - boardH) / 2);
-  return { cell, gap, ox, oy };
+  const gap = 3;
+  const pad = 8;
+  const cell = Math.max(
+    8,
+    Math.floor(
+      Math.min(
+        (cssW - pad * 2 - gap * (COLS - 1)) / COLS,
+        (cssH - pad * 2 - gap * (ROWS - 1)) / ROWS,
+      ),
+    ),
+  );
+  const boardW = COLS * cell + (COLS - 1) * gap;
+  const boardH = ROWS * cell + (ROWS - 1) * gap;
+  return {
+    cell,
+    gap,
+    ox: Math.round((cssW - boardW) / 2),
+    oy: Math.round((cssH - boardH) / 2),
+  };
 }
 
 function cellOrigin(view: ReturnType<typeof layout>, x: number, y: number) {
@@ -28,191 +40,303 @@ function cellOrigin(view: ReturnType<typeof layout>, x: number, y: number) {
   };
 }
 
+/** Nearest pad, including the gap between them. A near miss still counts. */
 export function cellFromPoint(cssW: number, cssH: number, px: number, py: number): Point | null {
   const view = layout(cssW, cssH);
-  const x = Math.floor((px - view.ox) / (view.cell + view.gap));
-  const y = Math.floor((py - view.oy) / (view.cell + view.gap));
-  if (x < 0 || y < 0 || x >= 16 || y >= 10) return null;
-  const localX = px - view.ox - x * (view.cell + view.gap);
-  const localY = py - view.oy - y * (view.cell + view.gap);
-  if (localX > view.cell || localY > view.cell) return null;
+  const pitch = view.cell + view.gap;
+  const x = Math.round((px - view.ox - view.cell / 2) / pitch);
+  const y = Math.round((py - view.oy - view.cell / 2) / pitch);
+  if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return null;
   return { x, y };
 }
 
+function stars(ctx: CanvasRenderingContext2D, w: number, h: number, seed: number) {
+  let s = (seed || 1) >>> 0;
+  for (let i = 0; i < 48; i++) {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    const x = (s % 10000) / 10000 * w;
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    const y = (s % 10000) / 10000 * h;
+    ctx.fillStyle = i % 7 === 0 ? "rgba(60,214,204,0.35)" : "rgba(215,228,239,0.28)";
+    ctx.fillRect(x, y, i % 9 === 0 ? 2 : 1, i % 9 === 0 ? 2 : 1);
+  }
+}
+
 function drawButton(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, hot: boolean, pressed: boolean) {
-  const inset = Math.max(2, s * 0.1);
-  const drop = pressed ? 1 : Math.max(2, s * 0.08);
-  const r = Math.max(4, s * 0.22);
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
-  round(ctx, x + inset, y + inset + drop, s - inset * 2, s - inset * 2, r);
+  const m = Math.max(1, s * 0.06);
+  const r = Math.max(5, s * 0.28);
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  round(ctx, x + m, y + m + 2, s - m * 2, s - m * 2, r);
   ctx.fill();
-  ctx.fillStyle = hot ? "#243044" : PALETTE.raised;
-  round(ctx, x + inset, y + inset, s - inset * 2, s - inset * 2, r);
+  const grad = ctx.createLinearGradient(x, y, x, y + s);
+  grad.addColorStop(0, hot ? "#31445c" : "#243044");
+  grad.addColorStop(1, hot ? "#1a2838" : "#141b28");
+  ctx.fillStyle = grad;
+  round(ctx, x + m, y + m + (pressed ? 1 : 0), s - m * 2, s - m * 2, r);
   ctx.fill();
-  ctx.strokeStyle = hot ? PALETTE.moonstone : "rgba(154,163,178,0.28)";
+  ctx.strokeStyle = hot ? PALETTE.moonstone : "rgba(154,163,178,0.45)";
   ctx.lineWidth = hot ? 2 : 1;
   ctx.stroke();
-  ctx.fillStyle = "rgba(238,243,247,0.08)";
-  round(ctx, x + inset + 2, y + inset + 2, s * 0.42, Math.max(3, s * 0.16), 3);
-  ctx.fill();
-}
-
-function drawPath(ctx: CanvasRenderingContext2D, run: GridRun, gx: number, gy: number, x: number, y: number, s: number) {
-  const skin = run.grid.skin;
-  const r = Math.max(3, s * 0.18);
-  const m = s * 0.06;
-  ctx.fillStyle = skin === "dirt" ? "#1a140f" : skin === "road" ? "#141820" : "#071416";
-  round(ctx, x + m, y + m, s - m * 2, s - m * 2, r);
-  ctx.fill();
-  const path = run.grid.path;
-  const i = path.findIndex((p) => p.x === gx && p.y === gy);
-  const prev = i > 0 ? path[i - 1] : null;
-  const next = i >= 0 && i < path.length - 1 ? path[i + 1] : null;
-  const cx = x + s / 2;
-  const cy = y + s / 2;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = skin === "dirt" ? PALETTE.hot : skin === "road" ? PALETTE.moonstone : PALETTE.frost;
-  ctx.lineWidth = skin === "alloy" ? Math.max(4, s * 0.16) : Math.max(2, s * 0.08);
+  ctx.fillStyle = "#0b1018";
   ctx.beginPath();
-  const arm = (p: Point | null) => {
-    if (!p) return;
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + (p.x - gx) * s * 0.5, cy + (p.y - gy) * s * 0.5);
-  };
-  arm(prev);
-  arm(next);
+  ctx.arc(x + s / 2, y + s / 2 + (pressed ? 1 : 0), s * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(215,228,239,0.18)";
   ctx.stroke();
-  if (skin === "alloy") {
-    ctx.strokeStyle = "#f4fbff";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-  if (skin === "dirt") {
-    ctx.fillStyle = PALETTE.hot;
-    ctx.fillRect(cx - 1, cy - 1, 2, 2);
-  }
 }
 
-function drawMark(ctx: CanvasRenderingContext2D, id: TowerId, cx: number, cy: number, s: number) {
+function drawLane(ctx: CanvasRenderingContext2D, run: GridRun, view: ReturnType<typeof layout>) {
+  const path = run.grid.path;
+  if (path.length < 2) return;
+  const skin = run.grid.skin;
+  const at = (p: Point) => {
+    const o = cellOrigin(view, p.x, p.y);
+    return [o.x + view.cell / 2, o.y + view.cell / 2] as const;
+  };
   ctx.save();
-  ctx.translate(cx, cy);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.lineWidth = Math.max(2, s * 0.07);
+  ctx.beginPath();
+  path.forEach((p, i) => {
+    const [x, y] = at(p);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = skin === "dirt" ? "#3a2618" : skin === "road" ? "#2a3142" : "#12383a";
+  ctx.lineWidth = view.cell * 0.78;
+  ctx.stroke();
+  ctx.strokeStyle = skin === "dirt" ? PALETTE.hot : skin === "road" ? PALETTE.moonstone : PALETTE.frost;
+  ctx.lineWidth = Math.max(3, view.cell * 0.16);
+  ctx.stroke();
+  if (skin === "alloy") {
+    ctx.strokeStyle = "#f7fdff";
+    ctx.lineWidth = Math.max(1.5, view.cell * 0.05);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+const GUN: Record<TowerId, string> = {
+  lance: PALETTE.frost,
+  halo: PALETTE.frost,
+  crater: PALETTE.ember,
+  rail: PALETTE.moonstone,
+  beacon: PALETTE.legend,
+};
+
+function mount(ctx: CanvasRenderingContext2D, color: string) {
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.beginPath();
+  ctx.ellipse(0, 9, 11, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#101722";
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.4;
+  round(ctx, -8, 2, 16, 7, 2);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawMark(ctx: CanvasRenderingContext2D, id: TowerId, cx: number, cy: number, s: number, time: number) {
+  const color = GUN[id];
+  const pulse = 0.55 + 0.45 * Math.sin(time * 6);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(s / 22, s / 22);
+  mount(ctx, color);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
   if (id === "lance") {
-    ctx.fillStyle = PALETTE.frost;
+    ctx.fillStyle = "#1c2a36";
+    round(ctx, -3, -12, 6, 16, 2);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, -s * 0.28);
-    ctx.lineTo(s * 0.1, s * 0.16);
-    ctx.lineTo(-s * 0.1, s * 0.16);
-    ctx.closePath();
+    ctx.moveTo(0, -2);
+    ctx.lineTo(0, -14);
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.4 + pulse * 0.6;
+    ctx.beginPath();
+    ctx.arc(0, -14, 2.2, 0, Math.PI * 2);
     ctx.fill();
   } else if (id === "halo") {
-    ctx.strokeStyle = PALETTE.frost;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.arc(0, 0, s * 0.2, 0, Math.PI * 2);
+    ctx.arc(0, -4, 8, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.globalAlpha = 0.45 + pulse * 0.4;
     ctx.beginPath();
-    ctx.arc(0, 0, s * 0.08, 0, Math.PI * 2);
+    ctx.arc(0, -4, 4.5, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(0, -4, 2, 0, Math.PI * 2);
+    ctx.fill();
   } else if (id === "crater") {
-    ctx.strokeStyle = PALETTE.ember;
-    ctx.beginPath();
-    ctx.arc(0, -s * 0.02, s * 0.18, 0.3, Math.PI - 0.3);
+    ctx.fillStyle = "#2a1a16";
+    round(ctx, -6, -8, 12, 12, 3);
+    ctx.fill();
+    ctx.strokeStyle = color;
     ctx.stroke();
-    ctx.fillStyle = PALETTE.ember;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.35 + pulse * 0.5;
     ctx.beginPath();
-    ctx.arc(0, s * 0.1, s * 0.05, 0, Math.PI * 2);
+    ctx.arc(0, -3, 3.2, 0, Math.PI * 2);
     ctx.fill();
   } else if (id === "rail") {
-    ctx.strokeStyle = PALETTE.moonstone;
-    ctx.lineWidth = Math.max(3, s * 0.09);
+    ctx.strokeStyle = "#9aa3b2";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-s * 0.22, 0);
-    ctx.lineTo(s * 0.22, 0);
+    ctx.moveTo(-11, -2);
+    ctx.lineTo(11, -2);
+    ctx.moveTo(-11, -6);
+    ctx.lineTo(11, -6);
     ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillRect(8, -8, 3, 8);
+    ctx.globalAlpha = pulse;
+    ctx.fillRect(11, -7, 2, 2);
   } else {
-    ctx.fillStyle = PALETTE.legend;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(0, -s * 0.22);
-    ctx.lineTo(s * 0.06, -s * 0.06);
-    ctx.lineTo(s * 0.22, 0);
-    ctx.lineTo(s * 0.06, s * 0.06);
-    ctx.lineTo(0, s * 0.22);
-    ctx.lineTo(-s * 0.06, s * 0.06);
-    ctx.lineTo(-s * 0.22, 0);
-    ctx.lineTo(-s * 0.06, -s * 0.06);
-    ctx.closePath();
+    ctx.moveTo(-6, 2);
+    ctx.lineTo(0, -6);
+    ctx.lineTo(6, 2);
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.4 + pulse * 0.6;
+    ctx.beginPath();
+    ctx.arc(0, -8, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(0, -8, 1.6, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
 }
 
-function drawEnemy(ctx: CanvasRenderingContext2D, e: GridEnemy, cx: number, cy: number, s: number, bob: number) {
+function hull(ctx: CanvasRenderingContext2D, color: string) {
+  ctx.fillStyle = color;
+  ctx.strokeStyle = "rgba(238,243,247,0.7)";
+  ctx.lineWidth = 1;
+}
+
+function drawEnemy(ctx: CanvasRenderingContext2D, e: GridEnemy, cx: number, cy: number, s: number, bob: number, angle: number) {
   ctx.save();
   ctx.translate(cx, cy + bob);
-  ctx.globalAlpha = e.alive ? 1 : 0.4;
-  if (e.flash > 0) ctx.fillStyle = PALETTE.paper;
-  else if (e.tag === "swift") ctx.fillStyle = PALETTE.frost;
-  else if (e.tag === "plate") ctx.fillStyle = "#8b93a3";
-  else if (e.tag === "swarm") ctx.fillStyle = PALETTE.ember;
-  else ctx.fillStyle = "#5a6270";
-  if (e.tag === "swarm") {
-    for (const [dx, dy] of [[-6, 2], [0, -4], [6, 2]] as const) {
-      ctx.beginPath();
-      ctx.arc(dx, dy, s * 0.08, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  } else if (e.tag === "swift") {
+  ctx.rotate(angle);
+  ctx.scale(s / 26, s / 26);
+  ctx.globalAlpha = e.alive ? 1 : 0.35;
+  const flash = e.flash > 0;
+  if (e.tag === "swift") {
+    hull(ctx, flash ? PALETTE.paper : PALETTE.frost);
     ctx.beginPath();
-    ctx.moveTo(s * 0.16, 0);
-    ctx.lineTo(-s * 0.12, -s * 0.12);
-    ctx.lineTo(-s * 0.12, s * 0.12);
+    ctx.moveTo(12, 0);
+    ctx.lineTo(-8, -5);
+    ctx.lineTo(-4, 0);
+    ctx.lineTo(-8, 5);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = PALETTE.ember;
+    ctx.fillRect(-9, -1.2, 3, 2.4);
   } else if (e.tag === "plate") {
-    round(ctx, -s * 0.2, -s * 0.14, s * 0.4, s * 0.28, 3);
+    hull(ctx, flash ? PALETTE.paper : "#8d98a8");
+    round(ctx, -9, -7, 16, 14, 3);
     ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#2a3342";
+    round(ctx, -2, -4, 8, 8, 2);
+    ctx.fill();
+    ctx.strokeStyle = PALETTE.moonstone;
+    ctx.stroke();
+  } else if (e.tag === "swarm") {
+    ctx.fillStyle = flash ? PALETTE.paper : PALETTE.ember;
+    for (const [dx, dy] of [[6, 0], [-5, -5], [-5, 5]] as const) {
+      ctx.beginPath();
+      ctx.ellipse(dx, dy, 3.2, 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else {
-    round(ctx, -s * 0.12, -s * 0.12, s * 0.24, s * 0.24, 3);
+    hull(ctx, flash ? PALETTE.paper : "#6b7382");
+    round(ctx, -8, -5, 14, 10, 4);
     ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#0e141d";
+    ctx.beginPath();
+    ctx.ellipse(3, 0, 3, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = PALETTE.ember;
+    ctx.fillRect(-9, -1.4, 2.5, 2.8);
   }
+  ctx.restore();
   if (e.marked) {
+    ctx.save();
+    ctx.translate(cx, cy + bob);
     ctx.strokeStyle = PALETTE.legend;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(0, 0, s * 0.22, 0, Math.PI * 2);
+    ctx.arc(0, 0, s * 0.34, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
   }
-  ctx.restore();
 }
 
 function drawShip(ctx: CanvasRenderingContext2D, run: GridRun, cx: number, cy: number, s: number) {
   const shake = run.flinch > 0 ? Math.sin(run.time * 48) * 3 : 0;
+  const color = run.companion === "comp-boost" ? PALETTE.ember : run.companion === "comp-shrike" ? PALETTE.sage : PALETTE.epic;
   ctx.save();
   ctx.translate(cx + shake, cy);
-  const color = run.companion === "comp-boost" ? PALETTE.ember : run.companion === "comp-shrike" ? PALETTE.sage : PALETTE.epic;
-  ctx.fillStyle = "#0c1018";
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.beginPath();
-  ctx.arc(0, 0, s * 0.42, 0, Math.PI * 2);
+  ctx.ellipse(0, s * 0.28, s * 0.36, s * 0.12, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.save();
+  ctx.rotate(Math.PI);
+  ctx.scale(s / 34, s / 34);
+  ctx.fillStyle = "#141b28";
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  ctx.fillStyle = color;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.moveTo(0, -s * 0.2);
-  ctx.lineTo(s * 0.16, s * 0.14);
-  ctx.lineTo(-s * 0.16, s * 0.14);
+  ctx.moveTo(14, 0);
+  ctx.lineTo(-6, -8);
+  ctx.lineTo(-10, -3);
+  ctx.lineTo(-10, 3);
+  ctx.lineTo(-6, 8);
   ctx.closePath();
   ctx.fill();
-  const pct = run.companionHp / run.companionMax;
-  ctx.strokeStyle = pct < 0.35 ? PALETTE.ember : PALETTE.moonstone;
-  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.85;
   ctx.beginPath();
-  ctx.arc(0, 0, s * 0.48, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+  ctx.ellipse(2, 0, 3, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = PALETTE.ember;
+  ctx.fillRect(-12, -2, 4, 4);
+  ctx.restore();
+  const pct = run.companionHp / run.companionMax;
+  ctx.strokeStyle = pct < 0.35 ? PALETTE.ember : color;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, s * 0.46, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
   ctx.stroke();
   ctx.restore();
+}
+
+function heading(path: Point[], along: number) {
+  const a = pointAlong(path, along);
+  const b = pointAlong(path, Math.min(path.length - 1, along + 0.35));
+  return Math.atan2(b.y - a.y, b.x - a.x);
 }
 
 export function drawGrid(ctx: CanvasRenderingContext2D, run: GridRun, cssW: number, cssH: number, dpr: number, hover: Point | null) {
@@ -220,33 +344,41 @@ export function drawGrid(ctx: CanvasRenderingContext2D, run: GridRun, cssW: numb
   ctx.clearRect(0, 0, cssW, cssH);
   ctx.fillStyle = PALETTE.ink;
   ctx.fillRect(0, 0, cssW, cssH);
+  stars(ctx, cssW, cssH, run.seed);
   const view = layout(cssW, cssH);
   const towers = new Map(run.towers.map((t) => [`${t.x},${t.y}`, t]));
 
-  for (let y = 0; y < 10; y++) {
-    for (let x = 0; x < 16; x++) {
-      const kind = run.grid.cells[y * 16 + x]!;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const kind = run.grid.cells[y * COLS + x]!;
       const o = cellOrigin(view, x, y);
       const pressed = run.press?.x === x && run.press.y === y;
       if (kind === "button") {
         const hot = hover?.x === x && hover?.y === y && !!run.selected;
         drawButton(ctx, o.x, o.y, view.cell, hot, !!pressed);
-      } else {
-        drawPath(ctx, run, x, y, o.x, o.y, view.cell);
+      }
+      if (pressed && kind !== "button") {
+        ctx.strokeStyle = PALETTE.ember;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(o.x + view.cell / 2, o.y + view.cell / 2, view.cell * 0.28, 0, Math.PI * 2);
+        ctx.stroke();
       }
     }
   }
 
-  const ship = cellOrigin(view, run.grid.exit.x, run.grid.exit.y);
-  drawShip(ctx, run, ship.x + view.cell / 2, ship.y + view.cell / 2, view.cell);
+  drawLane(ctx, run, view);
 
-  for (const tower of run.towers) drawTower(ctx, view, tower);
+  const ship = cellOrigin(view, run.grid.exit.x, run.grid.exit.y);
+  drawShip(ctx, run, ship.x + view.cell / 2, ship.y + view.cell / 2, view.cell * 1.35);
+
+  for (const tower of run.towers) drawTower(ctx, view, tower, run.time);
   if (hover && run.selected && !towers.has(`${hover.x},${hover.y}`)) {
-    const kind = run.grid.cells[hover.y * 16 + hover.x];
+    const kind = run.grid.cells[hover.y * COLS + hover.x];
     if (kind === "button") {
       ctx.save();
-      ctx.globalAlpha = 0.45;
-      drawTower(ctx, view, { x: hover.x, y: hover.y, id: run.selected, rank: 1, cd: 0 });
+      ctx.globalAlpha = 0.55;
+      drawTower(ctx, view, { x: hover.x, y: hover.y, id: run.selected, rank: 1, cd: 0 }, run.time);
       ctx.restore();
     }
   }
@@ -255,31 +387,48 @@ export function drawGrid(ctx: CanvasRenderingContext2D, run: GridRun, cssW: numb
     const p = pointAlong(run.grid.path, e.along);
     const o = cellOrigin(view, 0, 0);
     const step = view.cell + view.gap;
-    const bob = Math.sin(run.time * 8 + e.uid) * 2;
-    drawEnemy(ctx, e, o.x + p.x * step + view.cell / 2, o.y + p.y * step + view.cell / 2, view.cell, bob);
+    const bob = Math.sin(run.time * 8 + e.uid) * 1.5;
+    drawEnemy(
+      ctx,
+      e,
+      o.x + p.x * step + view.cell / 2,
+      o.y + p.y * step + view.cell / 2,
+      view.cell * 1.35,
+      bob,
+      heading(run.grid.path, e.along),
+    );
   }
 
+  ctx.lineCap = "round";
   for (const shot of run.shots) {
     const a = cellOrigin(view, shot.x, shot.y);
     const b = cellOrigin(view, shot.tx, shot.ty);
+    const x0 = a.x + view.cell / 2;
+    const y0 = a.y + view.cell / 2;
+    const x1 = b.x + view.cell / 2;
+    const y1 = b.y + view.cell / 2;
+    ctx.globalAlpha = Math.max(0.25, shot.life / 0.18);
     ctx.strokeStyle = shot.color;
-    ctx.globalAlpha = Math.max(0.2, shot.life / 0.18);
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(a.x + view.cell / 2, a.y + view.cell / 2);
-    ctx.lineTo(b.x + view.cell / 2, b.y + view.cell / 2);
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
     ctx.stroke();
+    ctx.fillStyle = PALETTE.paper;
+    ctx.beginPath();
+    ctx.arc(x1, y1, 2.2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.globalAlpha = 1;
   }
 }
 
-function drawTower(ctx: CanvasRenderingContext2D, view: ReturnType<typeof layout>, tower: GridTower) {
+function drawTower(ctx: CanvasRenderingContext2D, view: ReturnType<typeof layout>, tower: GridTower, time: number) {
   const o = cellOrigin(view, tower.x, tower.y);
-  drawMark(ctx, tower.id, o.x + view.cell / 2, o.y + view.cell / 2, view.cell);
+  drawMark(ctx, tower.id, o.x + view.cell / 2, o.y + view.cell / 2 - view.cell * 0.12, view.cell * 1.85, time + tower.x);
   if (tower.rank > 1) {
     ctx.fillStyle = PALETTE.legend;
     for (let i = 0; i < tower.rank; i++) {
-      ctx.fillRect(o.x + view.cell * 0.28 + i * 6, o.y + view.cell * 0.78, 4, 3);
+      ctx.fillRect(o.x + view.cell * 0.28 + i * 5, o.y + view.cell * 0.78, 3, 3);
     }
   }
 }
