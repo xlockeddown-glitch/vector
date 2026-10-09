@@ -1,13 +1,11 @@
 import type { Assets } from "./assets";
 import { ENEMIES, HOME_PAD, PALETTE, SKY_PAD, WORLD, PARAMS } from "./constants";
 import { combatStats } from "./data/cards";
-import { cardPortraitSrc } from "./data/card-art";
 import { glowColor, glowRadius } from "./data/glow";
 import { OPERATORS, SETS } from "./data/sets";
-import { BASE, PATHS, GATES, padById, nearestPathMeta, PATH_WIDTH_DRAW, PATH_CORNER, PAD_HUG, padReachMul } from "./data/map";
+import { BASE, PATHS, GATES, padById, nearestPathMeta, PATH_CORNER, PAD_HUG, padReachMul } from "./data/map";
 import { type CompanionState } from "./data/companion";
 import { scrapPaint } from "./data/enemies";
-import { cutForHull } from "./data/cuts";
 import { themeAt } from "./data/themes";
 import { skinById } from "./data/skins";
 import type { CoverShape, PadLook, RosterItem, ThemeId } from "./types";
@@ -108,17 +106,17 @@ function drawPath(ctx: CanvasRenderingContext2D, theme: ReturnType<typeof themeA
   ctx.miterLimit = 2;
 
   ctx.save();
-  ctx.translate(0, 5);
+  ctx.translate(0, 6);
   drawAllPaths(ctx, () => {
     ctx.strokeStyle = "rgba(0,0,0,0.55)";
-    ctx.lineWidth = PATH_WIDTH_DRAW + 6;
+    ctx.lineWidth = 86;
     ctx.stroke();
   });
   ctx.restore();
 
   drawAllPaths(ctx, () => {
-    ctx.strokeStyle = PALETTE.ink;
-    ctx.lineWidth = PATH_WIDTH_DRAW + 3;
+    ctx.strokeStyle = "#07090f";
+    ctx.lineWidth = 78;
     ctx.stroke();
   });
 
@@ -133,20 +131,20 @@ function drawPath(ctx: CanvasRenderingContext2D, theme: ReturnType<typeof themeA
             ? "#7ec8ff"
             : tint || "#5eebff";
     ctx.save();
-    ctx.shadowColor = rim;
-    ctx.shadowBlur = 10;
     strokeLane(ctx, path);
-    ctx.strokeStyle = hexA(rim, 0.55);
-    ctx.lineWidth = PATH_WIDTH_DRAW + 5;
+    ctx.strokeStyle = hexA(rim, 0.9);
+    ctx.lineWidth = 52;
+    ctx.shadowColor = rim;
+    ctx.shadowBlur = 18;
     ctx.stroke();
     ctx.shadowBlur = 0;
     strokeLane(ctx, path);
-    ctx.strokeStyle = "#e8f4ff";
-    ctx.lineWidth = PATH_WIDTH_DRAW - 2;
+    ctx.strokeStyle = hexA("#062024", 0.72);
+    ctx.lineWidth = 30;
     ctx.stroke();
     strokeLane(ctx, path);
-    ctx.strokeStyle = "#f5fbff";
-    ctx.lineWidth = Math.max(4, PATH_WIDTH_DRAW - 10);
+    ctx.strokeStyle = "#f4fbff";
+    ctx.lineWidth = 8;
     ctx.stroke();
     ctx.restore();
   });
@@ -182,6 +180,28 @@ function drawPath(ctx: CanvasRenderingContext2D, theme: ReturnType<typeof themeA
     ctx.stroke();
     ctx.fillStyle = g.color;
     ctx.fillText(g.name, s.x, s.y - 18);
+  }
+  ctx.restore();
+}
+
+function drawDocks(ctx: CanvasRenderingContext2D, w: World) {
+  ctx.save();
+  ctx.lineCap = "round";
+  for (const pad of livePads(w)) {
+    const { px, py, dist } = nearestPathMeta(pad.x, pad.y);
+    if (dist < 14 || dist > 96) continue;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(pad.x, pad.y);
+    ctx.strokeStyle = "#07090f";
+    ctx.lineWidth = 18;
+    ctx.stroke();
+    ctx.strokeStyle = hexA(PALETTE.frost, 0.72);
+    ctx.lineWidth = 9;
+    ctx.stroke();
+    ctx.strokeStyle = hexA("#f4fbff", 0.75);
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -424,13 +444,13 @@ function drawPads(ctx: CanvasRenderingContext2D, w: World, plot: string) {
       : job
         ? PALETTE.frost
         : canPlace
-          ? PALETTE.ember
+          ? PALETTE.moonstone
           : hexA(zone, 0.38);
     drawPebbleMoon(ctx, pad.x, pad.y, r, limb, !!pad.far, selected || job || canPlace, plot, pad.look, w.visT);
     if (w.phase === "placement" || canPlace) {
       const beat = 0.5 + Math.sin(w.visT * 3.4 + pad.x * 0.02) * 0.5;
       ctx.save();
-      ctx.strokeStyle = hexA(job ? PALETTE.frost : PALETTE.ember, 0.28 + beat * 0.55);
+      ctx.strokeStyle = hexA(job ? PALETTE.frost : PALETTE.moonstone, 0.35 + beat * 0.45);
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(pad.x, pad.y, r + 5 + beat * 6, 0, Math.PI * 2);
@@ -467,6 +487,8 @@ function drawCore(
   const { x, y } = BASE;
   ctx.save();
   ctx.translate(x, y);
+  ctx.translate(0, -26);
+  ctx.scale(1.34, 1.34);
   const cy = -6;
   const R = PARAMS.homeR;
   const pulse = 0.55 + Math.sin(t * 1.6) * 0.08;
@@ -584,10 +606,10 @@ function drawCore(
   ctx.font = "700 9px 'D-DIN', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("HOME", 0, cy + R + 8);
+  ctx.fillText("HOME", 0, cy + R - 4);
   ctx.fillStyle = PALETTE.steel;
   ctx.font = "700 10px 'D-DIN Condensed', sans-serif";
-  ctx.fillText(name ?? "VECTOR", 0, cy + R + 19);
+  ctx.fillText(name ?? "VECTOR", 0, cy + R + 8);
 
   for (let i = 0; i < stickers.length; i++) {
     const a = t * 0.35 + (i * Math.PI * 2) / Math.max(1, stickers.length);
@@ -757,8 +779,6 @@ function drawTowerShape(
   const op = item.mod ? OPERATORS[item.mod] : null;
   const family = card.set ? SETS[card.set] : null;
   const c = op?.color ?? family?.color ?? setColor(card.set, card.art);
-  const resting = (item.patchCd ?? 0) > 0;
-  const glow = resting ? PALETTE.steel : c;
   const pulse = 0.55 + Math.sin(t * 3 + x * 0.01) * 0.2;
   ctx.save();
   ctx.translate(x, y);
@@ -923,7 +943,8 @@ function drawTowerShape(
       ctx.restore();
     }
   }
-  paintGunFace(ctx, card, c);
+  const showName = world?.phase === "placement";
+  paintGunFace(ctx, card, c, showName);
   if (item.extraShot && card.stats?.hull !== "twin") {
     ctx.fillStyle = c;
     roundRect(ctx, -13, -50, 7, 14, 2);
@@ -1161,23 +1182,6 @@ function drawTowerShape(
     ctx.fill();
   }
   }
-
-  ctx.fillStyle = hexA("#4aa8e8", resting ? 0.18 : 0.55);
-  roundRect(ctx, -9, -50, 2.4, 11, 1);
-  ctx.fill();
-  ctx.fillStyle = resting ? PALETTE.steel : "#4aa8e8";
-  roundRect(ctx, -12, -36, 24, 2, 1);
-  ctx.fill();
-  ctx.fillStyle = hexA(glow, resting ? 0.4 : 0.9);
-  ctx.beginPath();
-  ctx.arc(0, -42, 2.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  const glyph = op?.glyph ?? family?.glyph ?? "·";
-  ctx.fillStyle = PALETTE.paper;
-  ctx.font = "700 12px 'D-DIN Condensed', sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(glyph, 0, 2);
 
   if (item.level > 1) {
     ctx.fillStyle = c;
@@ -2894,83 +2898,129 @@ function strokeCover(
   }
 }
 
-const gunPics = new Map<string, HTMLImageElement>();
-
-function gunPic(card: RosterItem["card"]): HTMLImageElement | null {
-  if (typeof Image === "undefined") return null;
-  const rolled = card as RosterItem["card"] & { templateId?: string };
-  const src = [rolled.templateId, card.id, card.art, card.stats?.role, card.name.toLowerCase()]
-    .map((key) => cardPortraitSrc(key))
-    .find((s): s is string => !!s);
-  if (!src) return null;
-  let img = gunPics.get(src);
-  if (!img) {
-    img = new Image();
-    img.decoding = "async";
-    img.src = src;
-    gunPics.set(src, img);
-  }
-  return img.complete && img.naturalWidth > 0 ? img : null;
-}
-
-function paintGunFace(ctx: CanvasRenderingContext2D, card: RosterItem["card"], color: string) {
-  const pic = gunPic(card);
+function paintGunMark(ctx: CanvasRenderingContext2D, role: string, color: string) {
   ctx.save();
-  if (pic) {
+  ctx.translate(0, 6);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 3.4;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 10;
+  if (role === "frost") {
     ctx.beginPath();
-    ctx.arc(0, 2, 16, 0, Math.PI * 2);
-    ctx.clip();
-    const side = Math.min(pic.naturalWidth, pic.naturalHeight);
-    const sx = (pic.naturalWidth - side) / 2;
-    const sy = (pic.naturalHeight - side) / 2;
-    ctx.drawImage(pic, sx, sy, side, side, -16, -14, 32, 32);
-    ctx.restore();
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.6;
+    ctx.arc(0, 0, 13, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.beginPath();
-    ctx.arc(0, 2, 16, 0, Math.PI * 2);
+    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (role === "spear") {
+    ctx.beginPath();
+    ctx.moveTo(0, -18);
+    ctx.lineTo(5.5, 8);
+    ctx.lineTo(-5.5, 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(0, 4);
+    ctx.lineTo(0, 16);
+    ctx.stroke();
+  } else if (role === "crater") {
+    ctx.beginPath();
+    ctx.arc(0, -2, 13, 0.25, Math.PI - 0.25);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 6, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (role === "umbra") {
+    ctx.beginPath();
+    for (let i = 0; i < 26; i++) {
+      const a = i * 0.48;
+      const r = 1.4 + i * 0.48;
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r * 0.7;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  } else if (role === "rail") {
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(-15, 0);
+    ctx.lineTo(15, 0);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#f4fbff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-11, 0);
+    ctx.lineTo(11, 0);
+    ctx.stroke();
+  } else if (role === "cascade") {
+    ctx.beginPath();
+    ctx.moveTo(-13, 9);
+    ctx.lineTo(-4, -9);
+    ctx.lineTo(3, 7);
+    ctx.lineTo(13, -11);
+    ctx.stroke();
+  } else if (role === "sweep") {
+    ctx.beginPath();
+    ctx.arc(0, 10, 18, -2.5, -0.64);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 10, 10, -2.4, -0.74);
+    ctx.stroke();
+  } else if (role === "brand") {
+    ctx.beginPath();
+    ctx.moveTo(0, -14);
+    ctx.lineTo(4, -3);
+    ctx.lineTo(14, 0);
+    ctx.lineTo(4, 3);
+    ctx.lineTo(0, 14);
+    ctx.lineTo(-4, 3);
+    ctx.lineTo(-14, 0);
+    ctx.lineTo(-4, -3);
+    ctx.closePath();
+    ctx.fill();
+  } else if (role === "mine") {
+    ctx.beginPath();
+    ctx.moveTo(0, -13);
+    ctx.lineTo(11, 0);
+    ctx.lineTo(0, 13);
+    ctx.lineTo(-11, 0);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (role === "orbit") {
+    ctx.beginPath();
+    ctx.ellipse(-5, 0, 9, 5.5, 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(5, 0, 9, 5.5, -0.5, 0, Math.PI * 2);
     ctx.stroke();
   } else {
-    paintJerseyHull(ctx, card.stats?.hull ?? card.art, color, 1);
+    ctx.beginPath();
+    ctx.arc(0, 0, 9, 0, Math.PI * 2);
+    ctx.stroke();
   }
   ctx.restore();
+}
+
+function paintGunFace(ctx: CanvasRenderingContext2D, card: RosterItem["card"], color: string, showName = false) {
+  paintGunMark(ctx, card.stats?.role ?? card.art, color);
+  if (!showName) return;
   ctx.save();
-  ctx.font = "700 9px 'D-DIN Condensed', sans-serif";
+  ctx.font = "700 11px 'D-DIN Condensed', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = PALETTE.paper;
-  ctx.fillText(card.name.toUpperCase(), 0, 22);
-  ctx.restore();
-}
-
-function paintJerseyHull(ctx: CanvasRenderingContext2D, art: string, color: string, level = 1) {
-  const cut = cutForHull(art);
-  const lv = Math.max(1, Math.min(4, level));
-  ctx.save();
-  ctx.translate(-22, -58);
-  ctx.scale(0.58, 0.58);
-  if (typeof Path2D === "undefined") {
-    ctx.restore();
-    return;
-  }
-  const p = new Path2D(cut.d);
-  const steel = ctx.createLinearGradient(18, 4, 62, 48);
-  steel.addColorStop(0, "#eef3f7");
-  steel.addColorStop(0.28, color);
-  steel.addColorStop(0.72, "#2a3038");
-  steel.addColorStop(1, "#12151c");
-  ctx.fillStyle = steel;
-  ctx.strokeStyle = lv >= 4 ? "#e8c15a" : hexA("#eef3f7", 0.9);
-  ctx.lineWidth = lv >= 3 ? 3.2 : 2.4;
-  ctx.lineJoin = "round";
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 8;
-  ctx.fill(p);
-  ctx.shadowBlur = 0;
-  ctx.stroke(p);
-  ctx.fillStyle = hexA("#4aa8e8", 0.7);
-  ctx.fillRect(37, 16, 6, 22);
+  ctx.shadowColor = "#05060b";
+  ctx.shadowBlur = 4;
+  ctx.fillText(card.name.toUpperCase(), 0, 42);
   ctx.restore();
 }
 
@@ -3459,6 +3509,7 @@ export function drawWorld(
   drawVaultSky(ctx, w);
   drawMapWash(ctx, w, theme);
   drawPath(ctx, theme, w.looks?.includes("ion-path") || w.vaultPath === "ion", w.visT, w.vaultPath ?? null);
+  drawDocks(ctx, w);
   drawBores(ctx, w, w.visT);
   drawCoverage(ctx, w, "placed");
   drawPads(ctx, w, theme.plot);
@@ -3482,8 +3533,8 @@ export function drawWorld(
     const pad = w.selectedPad ? padById(w.selectedPad) : null;
     if (stats && pad && item && !item.placedPad) {
       ctx.save();
-      ctx.fillStyle = "rgba(255,92,42,0.12)";
-      ctx.strokeStyle = "rgba(255,92,42,0.75)";
+      ctx.fillStyle = hexA(PALETTE.moonstone, 0.12);
+      ctx.strokeStyle = hexA(PALETTE.moonstone, 0.72);
       ctx.lineWidth = 2.2;
       strokeCover(
         ctx,
