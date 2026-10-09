@@ -1,0 +1,20 @@
+{
+  "scale": 0.5,
+  "items": {
+    "pad": { "src": "pad.png", "w": 168, "h": 96, "foot": [84, 48] },
+    "pad-hot": { "src": "pad-hot.png", "w": 168, "h": 96, "foot": [84, 48] },
+    "exit": { "src": "exit.png", "w": 168, "h": 96, "foot": [84, 48] },
+    "lance": { "src": "lance.png", "w": 240, "h": 320, "foot": [120, 250] },
+    "halo": { "src": "halo.png", "w": 240, "h": 320, "foot": [120, 250] },
+    "crater": { "src": "crater.png", "w": 240, "h": 320, "foot": [120, 250] },
+    "rail": { "src": "rail.png", "w": 240, "h": 320, "foot": [120, 250] },
+    "beacon": { "src": "beacon.png", "w": 240, "h": 320, "foot": [120, 250] },
+    "grunt": { "src": "grunt.png", "w": 160, "h": 120, "foot": [80, 86] },
+    "swift": { "src": "swift.png", "w": 160, "h": 120, "foot": [80, 86] },
+    "plate": { "src": "plate.png", "w": 160, "h": 120, "foot": [80, 86] },
+    "swarm": { "src": "swarm.png", "w": 160, "h": 120, "foot": [80, 86] },
+    "auger": { "src": "auger.png", "w": 220, "h": 150, "foot": [110, 108] },
+    "boost": { "src": "boost.png", "w": 220, "h": 150, "foot": [110, 108] },
+    "shrike": { "src": "shrike.png", "w": 220, "h": 150, "foot": [110, 108] }
+  }
+}

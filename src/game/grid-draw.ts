@@ -1,6 +1,7 @@
 import { GRID_H, GRID_W, type Point } from "./grid";
 import { pointAlong, type GridEnemy, type GridRun } from "./grid-sim";
 import { TOWERS as GUNS, type TowerId } from "./matchup";
+import { blitPack, ensurePack } from "./pack";
 
 const HW = 42;
 const HH = 21;
@@ -188,6 +189,10 @@ function glowDot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number,
 }
 
 function building(ctx: CanvasRenderingContext2D, id: TowerId, cx: number, cy: number, flash: boolean) {
+  if (blitPack(ctx, id, cx, cy)) {
+    if (flash) glowDot(ctx, cx, cy - 52, 4, id === "crater" ? EMBER_H : id === "beacon" ? GOLD_H : FROST_H);
+    return;
+  }
   shadow(ctx, cx, cy, 18);
   if (id === "lance") {
     prism(ctx, cx, cy, 16, 8, 10, [LIGHT, METAL], [METAL, METAL_D], ["#243044", INK]);
@@ -266,10 +271,12 @@ function paintGround(ctx: CanvasRenderingContext2D, run: GridRun) {
     const key = `${cell.x},${cell.y}`;
     const exit = cell.x === run.grid.exit.x && cell.y === run.grid.exit.y;
     if (onPath.has(key) && !exit) continue;
-    if (exit) plot(ctx, p.x, p.y, "#3a2a68", "#1a1430", INK);
-    else {
+    if (exit) {
+      if (!blitPack(ctx, "exit", p.x, p.y)) plot(ctx, p.x, p.y, "#3a2a68", "#1a1430", INK);
+    } else {
       const hot = run.selected && run.press?.x === cell.x && run.press.y === cell.y;
-      plot(ctx, p.x, p.y, hot ? "#35506a" : "#2a384c", hot ? "#1c2c40" : "#121820", INK);
+      const painted = blitPack(ctx, hot ? "pad-hot" : "pad", p.x, p.y);
+      if (!painted) plot(ctx, p.x, p.y, hot ? "#35506a" : "#2a384c", hot ? "#1c2c40" : "#121820", INK);
     }
   }
   const skin = run.grid.skin;
@@ -314,16 +321,17 @@ function putEnemy(ctx: CanvasRenderingContext2D, run: GridRun, enemy: GridEnemy)
   }
   const body = enemy.tag === "swift" ? FROST : enemy.tag === "plate" ? LIGHT : enemy.tag === "swarm" ? EMBER : METAL;
   const light = enemy.tag === "swift" ? FROST_H : enemy.tag === "swarm" ? EMBER_H : PAPER;
-  hull(ctx, p.x, p.y + bob, enemy.tag === "plate" ? 1.15 : enemy.tag === "swarm" ? 0.7 : 0.9, body, light);
+  if (!blitPack(ctx, enemy.tag, p.x, p.y + bob)) hull(ctx, p.x, p.y + bob, enemy.tag === "plate" ? 1.15 : enemy.tag === "swarm" ? 0.7 : 0.9, body, light);
   if (enemy.flash > 0) glowDot(ctx, p.x, p.y - 6, 3, PAPER);
 }
 
 function putShip(ctx: CanvasRenderingContext2D, run: GridRun) {
   const p = proj(run.grid.exit.x, run.grid.exit.y);
   const bob = Math.sin(run.time * 2.4) * 2;
+  const key = run.companion === "comp-boost" ? "boost" : run.companion === "comp-shrike" ? "shrike" : "auger";
   const body = run.companion === "comp-boost" ? EMBER : run.companion === "comp-shrike" ? "#1f8f52" : PURPLE;
   const light = run.companion === "comp-boost" ? EMBER_H : run.companion === "comp-shrike" ? "#8dffb8" : PURPLE_H;
-  hull(ctx, p.x, p.y - 8 + bob, 1.45, body, light);
+  if (!blitPack(ctx, key, p.x, p.y - 8 + bob)) hull(ctx, p.x, p.y - 8 + bob, 1.45, body, light);
   glowDot(ctx, p.x + 16, p.y - 6 + bob, run.abilityT > 0 ? 4 : 2.5, light);
   const filled = run.companionHp / run.companionMax;
   ctx.fillStyle = "rgba(0,0,0,0.45)";
@@ -372,6 +380,7 @@ export function drawGrid(
   hover: Point | null,
 ) {
   const view = layout(cssW, cssH);
+  ensurePack();
   placeCam(cssW, cssH, view.map, String(run.seed));
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = true;
