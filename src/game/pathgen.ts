@@ -51,9 +51,9 @@ export function buildGrid(
   const path: Point[] = [{ x: 0, y: entryY }];
 
   if (entryY === exitY) {
-    const midY = entryY <= 4 ? entryY + 3 : entryY - 3;
-    const x1 = 4 + randInt(rng, 0, 2);
-    const x2 = 9 + randInt(rng, 0, 2);
+    const midY = entryY <= 2 ? entryY + 2 : entryY - 2;
+    const x1 = 3;
+    const x2 = 5;
     walk(path, { x: x1, y: entryY });
     walk(path, { x: x1, y: midY });
     walk(path, { x: x2, y: midY });
@@ -61,7 +61,7 @@ export function buildGrid(
     walk(path, { x: GRID_W - 2, y: entryY });
     walk(path, { x: GRID_W - 1, y: entryY });
   } else {
-    const x1 = 4 + randInt(rng, 0, 4);
+    const x1 = 3;
     walk(path, { x: x1, y: entryY });
     walk(path, { x: x1, y: exitY });
     walk(path, { x: GRID_W - 2, y: exitY });

@@ -7,10 +7,10 @@ test("forty seeds are legal boards", () => {
   for (let seed = 1; seed <= 40; seed++) {
     const grid = buildGrid(seed);
     assert.deepEqual(auditGrid(grid), [], `seed ${seed}`);
-    assert.equal(grid.w, 16);
-    assert.equal(grid.h, 10);
+    assert.equal(grid.w, 8);
+    assert.equal(grid.h, 6);
     assert.equal(grid.entry.x, 0);
-    assert.equal(grid.exit.x, 15);
+    assert.equal(grid.exit.x, 7);
     assert.equal(grid.path.at(-1).x, grid.exit.x);
     assert.equal(grid.path.at(-1).y, grid.exit.y);
     assert.ok(longestStraight(grid.path) >= 4);
@@ -21,9 +21,9 @@ test("forty seeds are legal boards", () => {
     }
     const button = grid.cells.findIndex((kind) => kind === "button");
     assert.ok(button >= 0);
-    assert.equal(canPlace(grid, button % 16, Math.floor(button / 16)), true);
+    assert.equal(canPlace(grid, button % 8, Math.floor(button / 8)), true);
     assert.equal(canPlace(grid, -1, 0), false);
-    assert.equal(canPlace(grid, 16, 0), false);
+    assert.equal(canPlace(grid, 8, 0), false);
   }
 });
 

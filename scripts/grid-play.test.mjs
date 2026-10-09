@@ -5,10 +5,10 @@ import { cellFromPoint } from "../src/game/grid-draw.ts";
 import { startRun, stepRun, tryPlace } from "../src/game/grid-sim.ts";
 
 test("a tap on the board still picks a pad", () => {
-  const hit = cellFromPoint(390, 654, 20, 220);
+  const hit = cellFromPoint(390, 654, 195, 327);
   assert.ok(hit);
-  assert.equal(hit.x >= 0 && hit.x < 16, true);
-  assert.equal(hit.y >= 0 && hit.y < 10, true);
+  assert.equal(hit.x >= 0 && hit.x < 8, true);
+  assert.equal(hit.y >= 0 && hit.y < 6, true);
 });
 
 test("a tower sits on a button and the path refuses it", () => {

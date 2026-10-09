@@ -1,10 +1,10 @@
 # Grid contract
 
-Branch `grid`. The moon lane stays on `main` at tag `v0.9.1-lane`. Do not delete it. Playable slice versions as `0.10.0`. This file is the rules. If code and this file disagree, the file wins until we change it on purpose.
+Branch `grid`. The moon lane stays on `main` at tag `v0.9.1-lane`. Do not delete it. Playable slice versions as `0.12.0`. This file is the rules. If code and this file disagree, the file wins until we change it on purpose.
 
 ## Board
 
-16 columns, 10 rows. The whole level is on screen. No scrolling.
+8 columns, 6 rows. Fewer plots so a tower can be a building. The camera is isometric: each pad is a diamond, buildings have a roof and two walls, and the whole level stays on screen. No scrolling.
 
 A cell is a button, a path, or the exit. Towers sit on buttons only. The path is one cell wide, orthogonal, no diagonals, no reused cell. It starts on an edge and ends on the exit. The companion stands on the exit. Enemies that reach it hurt that ship.
 

@@ -1,7 +1,7 @@
-/** 16×10 board. A cell is a button, a path tile, or the companion's exit. */
+/** 8×6 board. Fewer pads so a tower can be a building, not an icon. */
 
-export const GRID_W = 16;
-export const GRID_H = 10;
+export const GRID_W = 8;
+export const GRID_H = 6;
 
 export type Skin = "alloy" | "road" | "dirt";
 export type CellKind = "button" | "path" | "exit";
