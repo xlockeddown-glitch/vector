@@ -34,39 +34,39 @@
       "h": 320,
       "foot": [
         119,
-        214
+        243
       ],
-      "draw": 0.13
+      "draw": 0.181
     },
     "halo": {
       "src": "halo.png",
       "w": 240,
       "h": 320,
       "foot": [
-        119,
-        213
+        112,
+        245
       ],
-      "draw": 0.13
+      "draw": 0.18
     },
     "crater": {
       "src": "crater.png",
       "w": 240,
       "h": 320,
       "foot": [
-        120,
-        202
+        119,
+        236
       ],
-      "draw": 0.13
+      "draw": 0.186
     },
     "rail": {
       "src": "rail.png",
       "w": 240,
       "h": 320,
       "foot": [
-        103,
-        195
+        69,
+        234
       ],
-      "draw": 0.13
+      "draw": 0.188
     },
     "beacon": {
       "src": "beacon.png",
@@ -74,9 +74,9 @@
       "h": 320,
       "foot": [
         119,
-        205
+        248
       ],
-      "draw": 0.13
+      "draw": 0.177
     },
     "grunt": {
       "src": "grunt.png",
