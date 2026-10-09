@@ -967,6 +967,10 @@ img.card-paint,
   visibility: hidden;
   pointer-events: none;
 }
+.play-shell[data-phase="title"] canvas.grid-board {
+  visibility: visible;
+  pointer-events: auto;
+}
 .title-photo {
   filter: saturate(0.22) contrast(1.04) brightness(0.28) grayscale(0.55);
   transform: scale(1.02);

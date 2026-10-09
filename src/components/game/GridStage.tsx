@@ -106,7 +106,7 @@ export function GridStage({
         <p className="ml-auto tabular text-legend">{run.credit}</p>
         <p className="tabular text-frost">{Math.ceil(run.companionHp)}</p>
       </header>
-      <canvas ref={canvasRef} className="min-h-0 w-full flex-1 touch-none" onPointerDown={onPointer} />
+      <canvas ref={canvasRef} className="grid-board min-h-0 w-full flex-1 touch-none" onPointerDown={onPointer} />
       <div className="flex flex-col gap-2 px-3 pb-3 pt-2">
         <button
           type="button"
