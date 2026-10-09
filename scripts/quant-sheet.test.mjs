@@ -53,16 +53,15 @@ test("a mark pays more and dies faster, except under beacon's own gun", () => {
   }
 });
 
-test("start credit buys one shooter, not two, and not beacon", () => {
+test("start credit buys two shooters, not three", () => {
   assert.equal(canAfford(START_CREDIT, "lance"), true);
   assert.equal(canAfford(START_CREDIT, "halo"), true);
-  assert.equal(canAfford(START_CREDIT, "crater"), true);
-  assert.equal(canAfford(START_CREDIT, "rail"), true);
-  assert.equal(canAfford(START_CREDIT, "beacon"), false);
-  for (const id of ["lance", "halo", "crater", "rail"]) {
-    assert.equal(canAfford(START_CREDIT - TOWERS[id].cost, id), false);
-  }
-  const after = START_CREDIT - TOWERS.lance.cost + wavePay(LEVEL_1);
+  assert.equal(canAfford(START_CREDIT, "beacon"), true);
+  const afterTwo = START_CREDIT - TOWERS.lance.cost - TOWERS.rail.cost;
+  assert.equal(canAfford(afterTwo, "lance"), false);
+  assert.equal(canAfford(afterTwo, "halo"), false);
+  assert.equal(canAfford(START_CREDIT - TOWERS.beacon.cost, "lance"), false);
+  const after = afterTwo + wavePay(LEVEL_1);
   assert.ok(after >= RANK_COST[2]);
   assert.ok(after < TOWERS.beacon.cost + RANK_COST[2]);
 });

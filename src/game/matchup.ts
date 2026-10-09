@@ -6,7 +6,7 @@ export type EnemyTag = "grunt" | "swift" | "plate" | "swarm";
 export const TOWER_IDS: TowerId[] = ["lance", "halo", "crater", "rail", "beacon"];
 export const ENEMY_TAGS: EnemyTag[] = ["grunt", "swift", "plate", "swarm"];
 
-export const START_CREDIT = 60;
+export const START_CREDIT = 110;
 
 type Tower = {
   name: string;

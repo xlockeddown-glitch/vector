@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { canPlace } from "../src/game/grid.ts";
 import { cellFromPoint } from "../src/game/grid-draw.ts";
 import { startRun, stepRun, tryPlace } from "../src/game/grid-sim.ts";
+import { TOWERS } from "../src/game/matchup.ts";
 
 test("a tap on the board still picks a pad", () => {
   const hit = cellFromPoint(390, 654, 195, 327);
@@ -21,8 +22,13 @@ test("a tower sits on a button and the path refuses it", () => {
   for (let y = 0; y < run.grid.h && !placed; y++) {
     for (let x = 0; x < run.grid.w; x++) {
       if (!canPlace(run.grid, x, y)) continue;
+      const before = run.credit;
       assert.equal(tryPlace(run, x, y), true);
-      assert.equal(run.credit, 10);
+      assert.equal(run.credit, before - TOWERS.lance.cost);
+      assert.equal(run.towers.length, 1);
+      assert.equal(tryPlace(run, x, y), true);
+      assert.equal(run.towers.length, 1);
+      assert.equal(run.towers[0].rank, 2);
       assert.equal(tryPlace(run, x, y), false);
       placed = true;
       break;

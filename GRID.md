@@ -20,7 +20,7 @@ Draft, signals, card flip, moons, the bezier lane. They stay in git. They are no
 
 One currency: Credit. Numbers live in `matchup.ts`. The live sim does not spend them yet.
 
-Start at 60. Lance, Crater, and Rail cost 50. Halo costs 55. Beacon costs 70, so the first kills have to pay for it. Rank 2 costs 45. Rank 3 costs 90.
+Start at 110. That buys two of Lance, Crater, or Rail (50 each), or Halo (55) plus one of those. Beacon is 70, and buying it leaves too little for a second gun. Rank 2 costs 45. Rank 3 costs 90.
 
 | Tower | Wins against | Loses to |
 |---|---|---|

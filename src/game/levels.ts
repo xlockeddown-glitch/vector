@@ -18,7 +18,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     level: 1,
     seed: 1,
     skin: "alloy",
-    credit: 60,
+    credit: 110,
     blurb: "Grunts, then a few fast ones.",
     waves: [
       { tag: "grunt", count: 6 },
@@ -30,7 +30,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     level: 2,
     seed: 11,
     skin: "alloy",
-    credit: 60,
+    credit: 110,
     blurb: "They bunch. Sit Crater on a corner.",
     waves: [
       { tag: "swift", count: 6 },
@@ -42,7 +42,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     level: 3,
     seed: 9,
     skin: "alloy",
-    credit: 70,
+    credit: 120,
     blurb: "A pack. Splash, or you are too slow.",
     waves: [
       { tag: "grunt", count: 4 },
@@ -54,7 +54,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     level: 4,
     seed: 14,
     skin: "alloy",
-    credit: 60,
+    credit: 110,
     blurb: "Armor. A straight line.",
     waves: [
       { tag: "grunt", count: 4 },
@@ -66,7 +66,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     level: 5,
     seed: 3,
     skin: "dirt",
-    credit: 70,
+    credit: 120,
     blurb: "Dirt. Same rules.",
     waves: [
       { tag: "grunt", count: 6 },
@@ -78,7 +78,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     level: 6,
     seed: 6,
     skin: "road",
-    credit: 80,
+    credit: 130,
     blurb: "Two bends. More than one gun.",
     waves: [
       { tag: "swift", count: 5 },
@@ -90,8 +90,8 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     level: 7,
     seed: 18,
     skin: "alloy",
-    credit: 90,
-    blurb: "One gun first. Kills pay for Beacon.",
+    credit: 150,
+    blurb: "Plates on a straight line.",
     waves: [
       { tag: "grunt", count: 8 },
       { tag: "plate", count: 5 },
@@ -101,7 +101,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     level: 8,
     seed: 21,
     skin: "road",
-    credit: 110,
+    credit: 170,
     blurb: "All four. Then it keeps going.",
     waves: [
       { tag: "grunt", count: 6 },
