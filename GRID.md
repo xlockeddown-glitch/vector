@@ -18,7 +18,21 @@ Companions are `comp-auger`, `comp-boost`, `comp-shrike`.
 
 Draft, signals, card flip, moons, the bezier lane. They stay in git. They are not loaded here.
 
-One currency later: Credit. Not this slice.
+One currency: Credit. Numbers live in `matchup.ts`. The live sim does not spend them yet.
+
+Start at 60. Lance, Crater, and Rail cost 50. Halo costs 55. Beacon costs 70, so the first kills have to pay for it. Rank 2 costs 45. Rank 3 costs 90.
+
+| Tower | Wins against | Loses to |
+|---|---|---|
+| Rail | Grunt | Swift |
+| Halo | Swift | Plate |
+| Lance | Plate | Swarm, because one shot does not clear the pack |
+| Crater | Swarm | Plate |
+| Beacon | Nobody. It marks. Marked kills pay 1.5× and take 25% more from the others. | |
+
+Level 1 is 6 grunts, 4 swifts, 4 grunts.
+
+Endless scale is `scale.ts`. Level 9 is tier 1. Health ×1.12 a tier, count ×1.06, speed ×1.04 and never past 1.6. Do not tune this by feel.
 
 ## Files
 
@@ -26,6 +40,8 @@ One currency later: Credit. Not this slice.
 |---|---|
 | `src/game/grid.ts` | Board. Cells, placement, audit. |
 | `src/game/pathgen.ts` | Board. Seeded paths. |
+| `src/game/matchup.ts` | Combat. Towers, tags, Credit, level 1. |
+| `src/game/scale.ts` | Quant. Endless curve. |
 | `src/game/sim.ts` | Do not grow it for this. |
 
 Art does not edit these. Numbers do not land until a path audit is green.
