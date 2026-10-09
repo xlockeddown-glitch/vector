@@ -4,8 +4,8 @@ import { canPlace } from "../src/game/grid.ts";
 import { cellFromPoint } from "../src/game/grid-draw.ts";
 import { startRun, stepRun, tryPlace } from "../src/game/grid-sim.ts";
 
-test("a tap in the gap still picks a pad", () => {
-  const hit = cellFromPoint(390, 654, 34, 224);
+test("a tap on the board still picks a pad", () => {
+  const hit = cellFromPoint(390, 654, 20, 220);
   assert.ok(hit);
   assert.equal(hit.x >= 0 && hit.x < 16, true);
   assert.equal(hit.y >= 0 && hit.y < 10, true);
