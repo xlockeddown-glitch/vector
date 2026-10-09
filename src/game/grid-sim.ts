@@ -79,6 +79,8 @@ export type GridRun = {
   time: number;
   won: boolean;
   lost: boolean;
+  /** True until the player starts the round. Money and towers are already set; nothing spawns. */
+  hold: boolean;
   nextUid: number;
   press: { x: number; y: number; life: number } | null;
   level: number;
@@ -146,6 +148,7 @@ export function startRun(
     time: 0,
     won: false,
     lost: false,
+    hold: true,
     nextUid: 1,
     press: null,
     level: opts?.level ?? 1,
@@ -300,9 +303,21 @@ function targetsFor(run: GridRun, tower: GridTower) {
   return run.enemies.filter((e) => e.alive && manhattan(impact, enemyCell(run, e)) <= 1);
 }
 
+export function beginRound(run: GridRun) {
+  if (run.won || run.lost) return;
+  run.hold = false;
+}
+
 export function stepRun(run: GridRun, dt: number) {
   if (run.won || run.lost) return;
   const step = Math.max(0, Math.min(0.05, dt));
+  if (run.hold) {
+    if (run.press) {
+      run.press.life -= step;
+      if (run.press.life <= 0) run.press = null;
+    }
+    return;
+  }
   run.time += step;
   if (run.press) {
     run.press.life -= step;

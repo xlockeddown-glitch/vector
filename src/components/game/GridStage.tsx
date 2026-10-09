@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { cellFromPoint, drawGrid, panBy, resetCamera } from "@/game/grid-draw";
-import { castAbility, startLevel, stepRun, tryPlace, type GridRun } from "@/game/grid-sim";
+import { beginRound, castAbility, startLevel, stepRun, tryPlace, type GridRun } from "@/game/grid-sim";
 import { levelAt } from "@/game/levels";
 import { SKILLS, type SkillId } from "@/game/skills";
 import { TOWER_IDS, TOWERS, canAfford, type TowerId } from "@/game/matchup";
@@ -150,7 +150,21 @@ export function GridStage({
           {SHIP[run.companion]}
           {run.abilityCd > 0 ? ` ${Math.ceil(run.abilityCd)}` : ""}
         </button>
-        <p className="pb-1 text-center text-[12px] text-muted">Drag to look. Tap a pad.</p>
+        <p className="pb-1 text-center text-[12px] text-muted">
+          {run.hold ? "Place your guns, then start." : "Drag to look. Tap a pad."}
+        </p>
+        {run.hold && (
+          <button
+            type="button"
+            className="ui-btn ui-btn-primary w-full"
+            onClick={() => {
+              beginRound(runRef.current);
+              setTick((n) => n + 1);
+            }}
+          >
+            Start
+          </button>
+        )}
         <div className="grid grid-cols-5 gap-1.5">
           {TOWER_IDS.map((id) => {
             const on = run.selected === id;

@@ -19,6 +19,7 @@ test("eight levels then the scale", () => {
 
 test("endless health is the scaled grunt", () => {
   const run = startLevel(9, "comp-shrike", ["ship-hold"]);
+  run.hold = false;
   for (let i = 0; i < 180; i++) stepRun(run, 1 / 60);
   const grunt = run.enemies.find((e) => e.tag === "grunt");
   assert.ok(grunt);

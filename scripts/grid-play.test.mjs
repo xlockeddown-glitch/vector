@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { canPlace } from "../src/game/grid.ts";
 import { cellFromPoint } from "../src/game/grid-draw.ts";
-import { startRun, stepRun, tryPlace } from "../src/game/grid-sim.ts";
+import { beginRound, startRun, stepRun, tryPlace } from "../src/game/grid-sim.ts";
 import { TOWERS } from "../src/game/matchup.ts";
 
 test("a tap on the board still picks a pad", () => {
@@ -37,8 +37,22 @@ test("a tower sits on a button and the path refuses it", () => {
   assert.equal(placed, true);
 });
 
+test("a round waits until you start, then money and towers are fresh", () => {
+  const run = startRun(1, "comp-auger");
+  run.selected = "lance";
+  assert.equal(run.hold, true);
+  assert.equal(run.towers.length, 0);
+  for (let i = 0; i < 180; i++) stepRun(run, 1 / 60);
+  assert.equal(run.enemies.length, 0);
+  assert.equal(run.time, 0);
+  beginRound(run);
+  for (let i = 0; i < 180; i++) stepRun(run, 1 / 60);
+  assert.ok(run.enemies.length > 0);
+});
+
 test("a leak hurts the ship, and a short run stays finite", () => {
   const run = startRun(2, "comp-shrike");
+  run.hold = false;
   run.spawns.length = 0;
   run.enemies.push({
     uid: 1,
@@ -55,6 +69,7 @@ test("a leak hurts the ship, and a short run stays finite", () => {
   stepRun(run, 0.05);
   assert.ok(run.companionHp < before);
   const quiet = startRun(8, "comp-boost");
+  quiet.hold = false;
   for (let i = 0; i < 60 * 20; i++) stepRun(quiet, 1 / 60);
   assert.ok(Number.isFinite(quiet.credit));
   assert.ok(Number.isFinite(quiet.companionHp));
