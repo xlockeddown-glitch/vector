@@ -127,8 +127,14 @@ export function GridStage({
           <p className="font-display text-lg tracking-wide">{run.level > 8 ? `Endless ${run.level - 8}` : `Level ${run.level}`}</p>
           <p className="truncate text-[12px] text-muted">{def.blurb}</p>
         </div>
-        <p className="ml-auto tabular text-legend">{run.credit}</p>
-        <p className="tabular text-frost">{Math.ceil(run.companionHp)}</p>
+        <div className="ml-auto flex flex-col items-end">
+          <p className="tabular text-legend">{run.credit}</p>
+          <p className="text-[10px] text-muted">credit</p>
+        </div>
+        <div className="flex flex-col items-end">
+          <p className="tabular text-frost">{Math.ceil(run.companionHp)}</p>
+          <p className="text-[10px] text-muted">hull</p>
+        </div>
       </header>
       <canvas
         ref={canvasRef}
@@ -138,21 +144,20 @@ export function GridStage({
         onPointerUp={onPointerUp}
       />
       <div className="flex flex-col gap-2 px-3 pb-3 pt-2">
-        <button
-          type="button"
-          disabled={!ready}
-          onClick={() => {
-            castAbility(runRef.current);
-            setTick((n) => n + 1);
-          }}
-          className={cn("ui-btn w-full", ready ? "ui-btn-primary" : "ui-btn-ghost")}
-        >
-          {SHIP[run.companion]}
-          {run.abilityCd > 0 ? ` ${Math.ceil(run.abilityCd)}` : ""}
-        </button>
-        <p className="pb-1 text-center text-[12px] text-muted">
-          {run.hold ? "Place your guns, then start." : "Drag to look. Tap a pad."}
-        </p>
+        {!run.hold && !run.won && !run.lost && (
+          <button
+            type="button"
+            disabled={!ready}
+            onClick={() => {
+              castAbility(runRef.current);
+              setTick((n) => n + 1);
+            }}
+            className={cn("ui-btn w-full", ready ? "ui-btn-primary" : "ui-btn-ghost")}
+          >
+            {SHIP[run.companion]}
+            {run.abilityCd > 0 ? ` ${Math.ceil(run.abilityCd)}` : ""}
+          </button>
+        )}
         {run.hold && (
           <button
             type="button"
@@ -165,6 +170,13 @@ export function GridStage({
             Start
           </button>
         )}
+        <p className="pb-1 text-center text-[12px] text-muted">
+          {run.hold
+            ? run.selected
+              ? `Tap a pad for ${NAMES[run.selected]}.`
+              : "Pick a gun, then a pad."
+            : "Drag to look. Tap a pad."}
+        </p>
         <div className="grid grid-cols-5 gap-1.5">
           {TOWER_IDS.map((id) => {
             const on = run.selected === id;

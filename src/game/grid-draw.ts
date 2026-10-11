@@ -191,7 +191,7 @@ function building(ctx: CanvasRenderingContext2D, id: TowerId, cx: number, cy: nu
   ctx.ellipse(cx + 1, cy + 2, 8, 3, 0, 0, Math.PI * 2);
   ctx.fill();
   if (blitPack(ctx, id, cx, cy)) {
-    if (flash) glowDot(ctx, cx, cy - 52, 4, id === "crater" ? EMBER_H : id === "beacon" ? GOLD_H : FROST_H);
+    if (flash) glowDot(ctx, cx, cy - 16, 4, id === "crater" ? EMBER_H : id === "beacon" ? GOLD_H : FROST_H);
     return;
   }
   shadow(ctx, cx, cy, 18);
@@ -310,30 +310,36 @@ function paintGround(ctx: CanvasRenderingContext2D, run: GridRun) {
 function putEnemy(ctx: CanvasRenderingContext2D, run: GridRun, enemy: GridEnemy) {
   const at = pointAlong(run.grid.path, enemy.along);
   const p = proj(at.x, at.y);
-  const bob = Math.sin(run.time * 6 + enemy.uid) * 2;
   if (!enemy.alive) {
     glowDot(ctx, p.x, p.y, 4, EMBER_H);
     return;
   }
   const body = enemy.tag === "swift" ? FROST : enemy.tag === "plate" ? LIGHT : enemy.tag === "swarm" ? EMBER : METAL;
   const light = enemy.tag === "swift" ? FROST_H : enemy.tag === "swarm" ? EMBER_H : PAPER;
-  if (!blitPack(ctx, enemy.tag, p.x, p.y + bob)) hull(ctx, p.x, p.y + bob, enemy.tag === "plate" ? 1.15 : enemy.tag === "swarm" ? 0.7 : 0.9, body, light);
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y + 2, 7, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (!blitPack(ctx, enemy.tag, p.x, p.y)) hull(ctx, p.x, p.y, enemy.tag === "plate" ? 1.15 : enemy.tag === "swarm" ? 0.7 : 0.9, body, light);
   if (enemy.flash > 0) glowDot(ctx, p.x, p.y - 6, 3, PAPER);
 }
 
 function putShip(ctx: CanvasRenderingContext2D, run: GridRun) {
   const p = proj(run.grid.exit.x, run.grid.exit.y);
-  const bob = Math.sin(run.time * 2.4) * 2;
   const key = run.companion === "comp-boost" ? "boost" : run.companion === "comp-shrike" ? "shrike" : "auger";
   const body = run.companion === "comp-boost" ? EMBER : run.companion === "comp-shrike" ? "#1f8f52" : PURPLE;
   const light = run.companion === "comp-boost" ? EMBER_H : run.companion === "comp-shrike" ? "#8dffb8" : PURPLE_H;
-  if (!blitPack(ctx, key, p.x, p.y - 8 + bob)) hull(ctx, p.x, p.y - 8 + bob, 1.45, body, light);
-  glowDot(ctx, p.x + 16, p.y - 6 + bob, run.abilityT > 0 ? 4 : 2.5, light);
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y + 2, 12, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (!blitPack(ctx, key, p.x, p.y)) hull(ctx, p.x, p.y, 1.45, body, light);
+  if (run.abilityT > 0) glowDot(ctx, p.x, p.y - 14, 3, light);
   const filled = run.companionHp / run.companionMax;
   ctx.fillStyle = "rgba(0,0,0,0.45)";
-  ctx.fillRect(p.x - 16, p.y + 14, 32, 4);
+  ctx.fillRect(p.x - 14, p.y + 8, 28, 3);
   ctx.fillStyle = FROST_H;
-  ctx.fillRect(p.x - 16, p.y + 14, 32 * filled, 4);
+  ctx.fillRect(p.x - 14, p.y + 8, 28 * filled, 3);
 }
 
 function putShot(ctx: CanvasRenderingContext2D, shot: GridRun["shots"][number]) {
@@ -341,14 +347,14 @@ function putShot(ctx: CanvasRenderingContext2D, shot: GridRun["shots"][number]) 
   const a = proj(shot.x, shot.y);
   const b = proj(shot.tx, shot.ty);
   const x = a.x + (b.x - a.x) * t;
-  const y = a.y - 36 + (b.y - 8 - (a.y - 36)) * t;
+  const y = a.y - 16 + (b.y - 6 - (a.y - 16)) * t;
   ctx.save();
   ctx.strokeStyle = shot.color;
   ctx.shadowColor = shot.color;
   ctx.shadowBlur = 8;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(a.x, a.y - 36);
+  ctx.moveTo(a.x, a.y - 16);
   ctx.lineTo(x, y);
   ctx.stroke();
   ctx.restore();
