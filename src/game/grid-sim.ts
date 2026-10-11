@@ -1,7 +1,8 @@
 import { auditGrid, canPlace, type CompanionId, type Point, type Skin } from "./grid";
 import { buildGrid } from "./pathgen";
-import { levelAt } from "./levels";
+import { levelAt, ruleAt, type Rule } from "./levels";
 import type { SkillId } from "./skills";
+import { defaultAim, type Aim, type PartId } from "./grid-parts";
 import {
   ENEMIES,
   LEVEL_1,
@@ -25,10 +26,10 @@ const RANGE: Record<TowerId, number> = {
 };
 
 const LEAK: Record<EnemyTag, number> = {
-  grunt: 8,
-  swift: 6,
-  plate: 16,
-  swarm: 4,
+  grunt: 12,
+  swift: 10,
+  plate: 22,
+  swarm: 8,
 };
 
 export type GridEnemy = {
@@ -49,6 +50,8 @@ export type GridTower = {
   id: TowerId;
   rank: 1 | 2 | 3;
   cd: number;
+  aim: Aim;
+  part: PartId | null;
 };
 
 export type GridShot = {
@@ -87,6 +90,12 @@ export type GridRun = {
   hpMul: number;
   speedMul: number;
   skills: SkillId[];
+  rule: Rule;
+  preview: { tag: EnemyTag; count: number };
+  callAt: number | null;
+  focus: { uid: number; life: number } | null;
+  picked: { x: number; y: number } | null;
+  handsOff: boolean;
 };
 
 function rankMul(rank: number) {
@@ -115,6 +124,7 @@ export function startRun(
     speedMul?: number;
     skills?: SkillId[];
     level?: number;
+    heat?: number;
   },
 ): GridRun {
   const grid = buildGrid(seed, { companion, skin: opts?.skin });
@@ -129,6 +139,8 @@ export function startRun(
     }
     at += 1.3;
   }
+  const heat = opts?.heat ?? 0;
+  const waves = opts?.waves ?? LEVEL_1;
   return {
     seed,
     companion,
@@ -152,9 +164,15 @@ export function startRun(
     nextUid: 1,
     press: null,
     level: opts?.level ?? 1,
-    hpMul: opts?.hpMul ?? 1,
+    hpMul: (opts?.hpMul ?? 1) * 1.08 ** heat,
     speedMul: opts?.speedMul ?? 1,
     skills: opts?.skills ?? [],
+    rule: "none",
+    preview: { tag: waves[0]!.tag, count: waves[0]!.count },
+    callAt: null,
+    focus: null,
+    picked: null,
+    handsOff: false,
   };
 }
 
@@ -163,6 +181,7 @@ export function startLevel(
   companion: CompanionId,
   skills: SkillId[] = [],
   keep: GridTower[] = [],
+  heat = 0,
 ) {
   const def = levelAt(level);
   const run = startRun(def.seed, companion, {
@@ -173,13 +192,30 @@ export function startLevel(
     speedMul: def.speedMul,
     skills,
     level: def.level,
+    heat,
   });
+  run.rule = ruleAt(def.level);
+  if (def.level >= 5 && run.spawns.length) {
+    const mid = run.spawns[Math.floor(run.spawns.length / 2)]!.at;
+    for (let i = 0; i < 4; i++) run.spawns.push({ tag: "swift", at: mid + i * 0.35 });
+    run.spawns.sort((a, b) => a.at - b.at);
+    run.spawnTotal = run.spawns.length;
+    run.callAt = mid;
+  }
   const seen = new Set<string>();
   run.towers = keep.flatMap((tower) => {
     const key = `${tower.x},${tower.y}`;
     if (seen.has(key) || !canPlace(run.grid, tower.x, tower.y)) return [];
     seen.add(key);
-    return [{ x: tower.x, y: tower.y, id: tower.id, rank: tower.rank, cd: 0.35 }];
+    return [{
+      x: tower.x,
+      y: tower.y,
+      id: tower.id,
+      rank: tower.rank,
+      cd: 0.35,
+      aim: tower.aim ?? defaultAim(tower.id),
+      part: tower.part ?? null,
+    }];
   });
   return run;
 }
@@ -198,12 +234,14 @@ export function tryPlace(run: GridRun, x: number, y: number) {
   if (held) return tryRank(run, x, y);
   const id = run.selected;
   if (!id) return false;
+  if (run.rule === "lock" && !run.hold) return false;
   if (!canPlace(run.grid, x, y)) return false;
   const cost = TOWERS[id].cost;
   if (run.credit < cost) return false;
   run.credit -= cost;
-  run.towers.push({ x, y, id, rank: 1, cd: 0.35 });
+  run.towers.push({ x, y, id, rank: 1, cd: 0.35, aim: defaultAim(id), part: null });
   run.press = { x, y, life: 0.16 };
+  run.picked = { x, y };
   return true;
 }
 
@@ -219,8 +257,43 @@ export function tryRank(run: GridRun, x: number, y: number) {
   return true;
 }
 
+const AIM_CYCLE: Aim[] = ["near", "far", "strong", "mark"];
+
+export function sellValue(run: GridRun, tower: GridTower) {
+  let paid = TOWERS[tower.id].cost;
+  if (tower.rank >= 2) paid += RANK_COST[2];
+  if (tower.rank >= 3) paid += RANK_COST[3];
+  return run.hold ? paid : Math.floor(paid / 2);
+}
+
+export function trySell(run: GridRun, x: number, y: number) {
+  const tower = towerAt(run, x, y);
+  if (!tower || run.won || run.lost) return 0;
+  const back = sellValue(run, tower);
+  run.credit += back;
+  run.towers = run.towers.filter((item) => item !== tower);
+  if (run.picked?.x === x && run.picked.y === y) run.picked = null;
+  return back;
+}
+
+export function cycleAim(run: GridRun, x: number, y: number) {
+  const tower = towerAt(run, x, y);
+  if (!tower) return false;
+  const i = AIM_CYCLE.indexOf(tower.aim);
+  tower.aim = AIM_CYCLE[(i + 1) % AIM_CYCLE.length]!;
+  return true;
+}
+
+export function tryFocus(run: GridRun, x: number, y: number) {
+  if (run.hold || run.handsOff || run.won || run.lost) return false;
+  const enemy = run.enemies.find((item) => item.alive && enemyCell(run, item).x === x && enemyCell(run, item).y === y);
+  if (!enemy) return false;
+  run.focus = { uid: enemy.uid, life: 4 };
+  return true;
+}
+
 export function castAbility(run: GridRun) {
-  if (run.abilityCd > 0 || run.won || run.lost) return false;
+  if (run.handsOff || run.abilityCd > 0 || run.won || run.lost || run.hold) return false;
   const lasting = hasSkill(run, "ship-hold");
   run.abilityT = lasting ? 4.5 : 3;
   run.abilityCd = lasting ? 12 : 16;
@@ -249,19 +322,21 @@ function chebyshev(a: Point, b: Point) {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }
 
-function rangeOf(run: GridRun, id: TowerId) {
-  if (id === "halo" && hasSkill(run, "halo-ring")) return 3;
-  if (id === "rail" && hasSkill(run, "rail-long")) return 11;
-  return RANGE[id];
+function rangeOf(run: GridRun, id: TowerId, part: PartId | null) {
+  let range = RANGE[id];
+  if (id === "halo" && hasSkill(run, "halo-ring")) range += 1;
+  if (id === "halo" && part === "dewar") range += 1;
+  if (id === "rail" && hasSkill(run, "rail-long")) range = 11;
+  return range;
 }
 
-function inRange(run: GridRun, id: TowerId, from: Point, to: Point) {
-  const range = rangeOf(run, id);
-  if (id === "lance" || id === "rail") {
+function inRange(run: GridRun, tower: GridTower, from: Point, to: Point) {
+  const range = rangeOf(run, tower.id, tower.part);
+  if (tower.id === "lance" || tower.id === "rail") {
     const line = from.x === to.x || from.y === to.y;
     return line && manhattan(from, to) <= range && manhattan(from, to) > 0;
   }
-  if (id === "halo") return chebyshev(from, to) <= range;
+  if (tower.id === "halo") return chebyshev(from, to) <= range;
   return manhattan(from, to) <= range && manhattan(from, to) > 0;
 }
 
@@ -272,7 +347,9 @@ function hurt(run: GridRun, e: GridEnemy, amount: number, mark: boolean) {
   if (mark) e.marked = true;
   if (e.hp > 0) return;
   e.alive = false;
-  run.credit += killPay(e.tag, e.marked);
+  const pay = killPay(e.tag, e.marked);
+  const iff = e.marked && run.towers.some((tower) => tower.part === "iff");
+  run.credit += iff ? pay * 2 : pay;
 }
 
 function fire(run: GridRun, tower: GridTower, targets: GridEnemy[]) {
@@ -305,15 +382,28 @@ function shotColor(id: TowerId) {
 
 function targetsFor(run: GridRun, tower: GridTower) {
   const from = { x: tower.x, y: tower.y };
-  const live = run.enemies.filter((e) => e.alive && inRange(run, tower.id, from, enemyCell(run, e)));
-  live.sort((a, b) => manhattan(from, enemyCell(run, a)) - manhattan(from, enemyCell(run, b)));
+  const live = run.enemies.filter((e) => e.alive && inRange(run, tower, from, enemyCell(run, e)));
+  const aim = run.handsOff ? "near" : tower.part === "shunt" ? "far" : tower.aim;
+  const dist = (e: GridEnemy) => manhattan(from, enemyCell(run, e));
+  live.sort((a, b) => {
+    if (aim === "far") return dist(b) - dist(a);
+    if (aim === "strong") return b.hp - a.hp;
+    if (aim === "mark") return Number(b.marked) - Number(a.marked) || dist(a) - dist(b);
+    return dist(a) - dist(b);
+  });
+  if (run.focus) {
+    const index = live.findIndex((e) => e.uid === run.focus!.uid);
+    if (index > 0) live.unshift(live.splice(index, 1)[0]!);
+  }
   if (tower.id === "halo") return live;
-  if (tower.id === "lance") return live.slice(0, hasSkill(run, "lance-pierce") ? 3 : 2);
+  const pierce = (hasSkill(run, "lance-pierce") ? 3 : 2) + (tower.part === "sabot" ? 1 : 0);
+  if (tower.id === "lance") return live.slice(0, pierce);
   const first = live[0];
   if (!first) return [];
   if (tower.id !== "crater") return [first];
   const impact = enemyCell(run, first);
-  return run.enemies.filter((e) => e.alive && manhattan(impact, enemyCell(run, e)) <= 1);
+  const splash = tower.part === "canister" ? 2 : 1;
+  return run.enemies.filter((e) => e.alive && manhattan(impact, enemyCell(run, e)) <= splash);
 }
 
 export function beginRound(run: GridRun) {
@@ -339,6 +429,11 @@ export function stepRun(run: GridRun, dt: number) {
   if (run.flinch > 0) run.flinch -= step;
   if (run.abilityT > 0) run.abilityT -= step;
   if (run.abilityCd > 0) run.abilityCd -= step;
+  if (run.focus) {
+    run.focus.life -= step;
+    const still = run.enemies.some((e) => e.alive && e.uid === run.focus!.uid);
+    if (run.focus.life <= 0 || !still) run.focus = null;
+  }
   for (const shot of run.shots) shot.life -= step;
   run.shots = run.shots.filter((s) => s.life > 0);
 
@@ -365,7 +460,8 @@ export function stepRun(run: GridRun, dt: number) {
     if (e.flash > 0) e.flash -= step;
     if (e.slowT > 0) e.slowT -= step;
     let speed = ENEMIES[e.tag].speed * 1.15 * run.speedMul;
-    if (e.slowT > 0) speed *= 0.55;
+    const frozen = e.slowT > 0 && !(run.rule === "armor" && e.tag === "plate");
+    if (frozen) speed *= 0.55;
     if (auger) speed *= 0.55;
     e.along += speed * step;
     if (e.along >= run.grid.path.length - 1) {
@@ -383,6 +479,7 @@ export function stepRun(run: GridRun, dt: number) {
 
   const boost = run.abilityT > 0 && run.companion === "comp-boost" ? 1.35 : 1;
   for (const tower of run.towers) {
+    if (run.rule === "jam" && tower.id === "beacon") continue;
     tower.cd -= step * boost;
     if (tower.cd > 0) continue;
     const targets = targetsFor(run, tower);

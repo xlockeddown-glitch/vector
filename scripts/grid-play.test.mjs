@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { canPlace } from "../src/game/grid.ts";
 import { cellFromPoint } from "../src/game/grid-draw.ts";
-import { beginRound, startLevel, startRun, stepRun, tryPlace } from "../src/game/grid-sim.ts";
+import { beginRound, castAbility, cycleAim, startLevel, startRun, stepRun, tryPlace, trySell } from "../src/game/grid-sim.ts";
+import { offerSkills } from "../src/game/skills.ts";
 import { TOWERS } from "../src/game/matchup.ts";
 
 test("a tap on the board still picks a pad", () => {
@@ -71,6 +72,62 @@ test("a round waits until you start, then money and towers are fresh", () => {
   beginRound(run);
   for (let i = 0; i < 180; i++) stepRun(run, 1 / 60);
   assert.ok(run.enemies.length > 0);
+});
+
+test("an empty board dies once the leaks are real", () => {
+  const run = startLevel(3, "comp-auger");
+  beginRound(run);
+  for (let i = 0; i < 60 * 40 && !run.won && !run.lost; i++) stepRun(run, 1 / 60);
+  assert.equal(run.lost, true);
+});
+
+test("sell gives the full price before the round and half after", () => {
+  const run = startLevel(1, "comp-auger");
+  run.selected = "lance";
+  let spot = null;
+  for (let y = 0; y < run.grid.h && !spot; y++) {
+    for (let x = 0; x < run.grid.w; x++) {
+      if (!canPlace(run.grid, x, y)) continue;
+      tryPlace(run, x, y);
+      spot = { x, y };
+      break;
+    }
+  }
+  const back = trySell(run, spot.x, spot.y);
+  assert.equal(back, TOWERS.lance.cost);
+  assert.equal(run.towers.length, 0);
+  tryPlace(run, spot.x, spot.y);
+  beginRound(run);
+  assert.equal(trySell(run, spot.x, spot.y), Math.floor(TOWERS.lance.cost / 2));
+});
+
+test("hands-off will not fire the ship, and a win offers three skills", () => {
+  const run = startLevel(1, "comp-auger");
+  run.handsOff = true;
+  beginRound(run);
+  assert.equal(castAbility(run), false);
+  assert.equal(offerSkills([], 2).length, 3);
+});
+
+test("far aim reaches past the body on the nose", () => {
+  const run = startLevel(1, "comp-auger");
+  run.selected = "lance";
+  let spot = null;
+  for (let y = 0; y < run.grid.h && !spot; y++) {
+    for (let x = 0; x < run.grid.w; x++) {
+      if (!canPlace(run.grid, x, y)) continue;
+      const straight = run.grid.path.filter((cell) => cell.x === x || cell.y === y);
+      if (straight.length < 3) continue;
+      tryPlace(run, x, y);
+      spot = { x, y, cells: straight };
+      break;
+    }
+  }
+  assert.ok(spot);
+  const tower = run.towers[0];
+  assert.equal(tower.aim, "far");
+  cycleAim(run, tower.x, tower.y);
+  assert.equal(tower.aim, "strong");
 });
 
 test("a leak hurts the ship, and a short run stays finite", () => {

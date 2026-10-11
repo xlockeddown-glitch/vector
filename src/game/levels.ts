@@ -31,7 +31,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     seed: 11,
     skin: "alloy",
     credit: 110,
-    blurb: "They bunch. Sit Crater on a corner.",
+    blurb: "Swifts. Halo on a corner.",
     waves: [
       { tag: "swift", count: 6 },
       { tag: "grunt", count: 4 },
@@ -55,7 +55,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     seed: 14,
     skin: "alloy",
     credit: 110,
-    blurb: "Armor. A straight line.",
+    blurb: "Armor. Lance or Rail on a straight pad.",
     waves: [
       { tag: "grunt", count: 4 },
       { tag: "plate", count: 4 },
@@ -67,7 +67,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     seed: 3,
     skin: "dirt",
     credit: 120,
-    blurb: "Dirt. Same rules.",
+    blurb: "Beacon is jammed.",
     waves: [
       { tag: "grunt", count: 6 },
       { tag: "swift", count: 4 },
@@ -112,6 +112,23 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
   },
 ];
 
+export type Rule = "none" | "jam" | "armor" | "lock";
+
+export function ruleAt(level: number): Rule {
+  if (level % 5 !== 0) return "none";
+  const which = (level / 5) % 3;
+  if (which === 1) return "jam";
+  if (which === 2) return "armor";
+  return "lock";
+}
+
+const RULE_LINE: Record<Rule, string> = {
+  none: "Keep going.",
+  jam: "Beacon is jammed.",
+  armor: "Plates ignore frost.",
+  lock: "Pads lock when the round starts.",
+};
+
 export function levelAt(level: number): LevelDef {
   const n = Math.max(1, Math.floor(level));
   if (n <= CAMPAIGN.length) {
@@ -126,7 +143,7 @@ export function levelAt(level: number): LevelDef {
     seed: 40 + n,
     skin: skins[n % skins.length]!,
     credit: mix.credit,
-    blurb: "Keep going.",
+    blurb: RULE_LINE[ruleAt(n)],
     waves: mix.waves.map((g) => ({
       tag: g.tag,
       count: Math.max(1, Math.round(g.count * scale.count)),

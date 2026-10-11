@@ -1,6 +1,6 @@
 import { GRID_H, GRID_W, type Point } from "./grid";
 import { pointAlong, type GridEnemy, type GridRun } from "./grid-sim";
-import { TOWERS as GUNS, type TowerId } from "./matchup";
+import { TOWERS as GUNS, MATCHUP, type TowerId } from "./matchup";
 import { blitPack, ensurePack } from "./pack";
 
 const HW = 42;
@@ -321,6 +321,20 @@ function putEnemy(ctx: CanvasRenderingContext2D, run: GridRun, enemy: GridEnemy)
   ctx.ellipse(p.x, p.y + 2, 7, 3, 0, 0, Math.PI * 2);
   ctx.fill();
   if (!blitPack(ctx, enemy.tag, p.x, p.y)) hull(ctx, p.x, p.y, enemy.tag === "plate" ? 1.15 : enemy.tag === "swarm" ? 0.7 : 0.9, body, light);
+  if (run.focus?.uid === enemy.uid) {
+    ctx.strokeStyle = GOLD_H;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 10, 12, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  if (run.selected) {
+    const mul = MATCHUP[run.selected][enemy.tag];
+    ctx.fillStyle = mul >= 1 ? FROST_H : mul < 0.7 ? EMBER_H : "rgba(215,228,239,0.35)";
+    ctx.beginPath();
+    ctx.arc(p.x + 10, p.y - 16, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
   if (enemy.flash > 0) glowDot(ctx, p.x, p.y - 6, 3, PAPER);
 }
 
@@ -335,6 +349,13 @@ function putShip(ctx: CanvasRenderingContext2D, run: GridRun) {
   ctx.fill();
   if (!blitPack(ctx, key, p.x, p.y)) hull(ctx, p.x, p.y, 1.45, body, light);
   if (run.abilityT > 0) glowDot(ctx, p.x, p.y - 14, 3, light);
+  const cap = run.skills.includes("ship-hold") ? 12 : 16;
+  const ready = run.abilityCd <= 0 ? 1 : 1 - run.abilityCd / cap;
+  ctx.strokeStyle = ready >= 1 ? FROST_H : "rgba(126,246,238,0.85)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.04, ready));
+  ctx.stroke();
   const filled = run.companionHp / run.companionMax;
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fillRect(p.x - 14, p.y + 8, 28, 3);
@@ -398,7 +419,19 @@ export function drawGrid(
     const period = 1 / GUNS[tower.id].rate;
     const flash = tower.cd > period - 0.09;
     const p = proj(tower.x, tower.y);
-    actors.push({ key: tower.x + tower.y, draw: () => building(ctx, tower.id, p.x, p.y, flash) });
+    const picked = run.picked?.x === tower.x && run.picked?.y === tower.y;
+    actors.push({
+      key: tower.x + tower.y,
+      draw: () => {
+        building(ctx, tower.id, p.x, p.y, flash);
+        ctx.fillStyle = picked ? GOLD_H : "#c4a15a";
+        for (let i = 0; i < tower.rank; i++) {
+          ctx.beginPath();
+          ctx.arc(p.x - 6 + i * 6, p.y + 7, 1.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      },
+    });
   }
   if (hover && run.selected && !run.towers.some((t) => t.x === hover.x && t.y === hover.y)) {
     const kind = run.grid.cells[hover.y * GRID_W + hover.x];
@@ -411,6 +444,25 @@ export function drawGrid(
           ctx.globalAlpha = 0.5;
           building(ctx, run.selected!, p.x, p.y, false);
           ctx.restore();
+        },
+      });
+    }
+  }
+  if (run.hold && run.preview) {
+    const gate = run.grid.path[0];
+    if (gate) {
+      const p = proj(gate.x, gate.y);
+      actors.push({
+        key: gate.x + gate.y + 0.15,
+        draw: () => {
+          ctx.save();
+          ctx.globalAlpha = 0.9;
+          blitPack(ctx, run.preview.tag, p.x, p.y - 4);
+          ctx.restore();
+          ctx.fillStyle = PAPER;
+          ctx.font = "12px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(String(run.preview.count), p.x, p.y + 16);
         },
       });
     }

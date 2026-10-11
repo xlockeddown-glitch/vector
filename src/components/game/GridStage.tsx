@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { cellFromPoint, drawGrid, panBy, resetCamera } from "@/game/grid-draw";
-import { beginRound, castAbility, startLevel, stepRun, tryPlace, type GridRun } from "@/game/grid-sim";
+import { beginRound, castAbility, cycleAim, sellValue, startLevel, stepRun, tryFocus, tryPlace, tryRank, trySell, type GridRun } from "@/game/grid-sim";
 import { levelAt } from "@/game/levels";
-import { SKILLS, type SkillId } from "@/game/skills";
-import { TOWER_IDS, TOWERS, canAfford, type TowerId } from "@/game/matchup";
+import { offerSkills, SKILLS, type SkillId } from "@/game/skills";
+import { MATCHUP, TOWER_IDS, TOWERS, canAfford, type TowerId } from "@/game/matchup";
+import { AIM_WORD, offerParts, partById, type PartId } from "@/game/grid-parts";
+import { loadMeta, openGrey, saveMeta, settlePatrol } from "@/game/grid-meta";
 import type { CompanionId } from "@/game/grid";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +24,15 @@ const SHIP: Record<CompanionId, string> = {
   "comp-shrike": "Shrike",
 };
 
+function arm(run: GridRun) {
+  const meta = loadMeta();
+  for (const tower of run.towers) {
+    const part = meta.equipped[tower.id];
+    if (part) tower.part = part;
+  }
+  return run;
+}
+
 export function GridStage({
   companion,
   onExit,
@@ -30,14 +41,40 @@ export function GridStage({
   onExit: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const climb = useRef({ level: 1, skills: [] as SkillId[], points: 0, paid: 0 });
+  const climb = useRef({
+    level: 1,
+    skills: [] as SkillId[],
+    points: 0,
+    paid: 0,
+    rolled: 0,
+    heat: 0,
+    offer: [] as SkillId[],
+    parts: [] as PartId[],
+    clean: false,
+    partTaken: false,
+  });
   const runRef = useRef<GridRun>(startLevel(1, companion, []));
   const [tick, setTick] = useState(0);
+  const [note, setNote] = useState("");
 
   useEffect(() => {
-    climb.current = { level: 1, skills: [], points: 0, paid: 0 };
+    const settled = settlePatrol(loadMeta(), Date.now());
+    saveMeta(settled.meta);
+    setNote(settled.gained > 0 ? `Patrol brought ${settled.gained} scrap.` : "");
+    climb.current = {
+      level: settled.meta.level || 1,
+      skills: settled.meta.skills,
+      points: 0,
+      paid: 0,
+      rolled: 0,
+      heat: settled.meta.heat,
+      offer: [],
+      parts: [],
+      clean: false,
+      partTaken: false,
+    };
     resetCamera();
-    runRef.current = startLevel(1, companion, []);
+    runRef.current = arm(startLevel(climb.current.level, companion, climb.current.skills, [], climb.current.heat));
     const canvas = canvasRef.current;
     if (!canvas) return;
     let frame = 0;
@@ -48,9 +85,20 @@ export function GridStage({
       acc += Math.min(0.1, (now - last) / 1000);
       last = now;
       const run = runRef.current;
-      if (run.won && climb.current.paid < run.level) {
+      if (run.won && climb.current.rolled < run.level) {
+        climb.current.rolled = run.level;
         climb.current.points += 1;
         climb.current.paid = run.level;
+        climb.current.offer = offerSkills(climb.current.skills, run.level * 3);
+        climb.current.clean = run.companionHp >= run.companionMax;
+        const meta = loadMeta();
+        climb.current.parts = offerParts(run.level * 11 + (climb.current.clean ? 50 : 0), climb.current.clean ? meta.owned : []);
+        climb.current.partTaken = false;
+        meta.scrap += 20 + run.level * 2 + (climb.current.clean ? 15 : 0);
+        meta.best = Math.max(meta.best, run.level);
+        meta.level = run.level;
+        meta.skills = climb.current.skills;
+        saveMeta(meta);
       }
       while (acc >= 1 / 60) {
         stepRun(run, 1 / 60);
@@ -105,8 +153,19 @@ export function GridStage({
     const cell = cellFromPoint(e.currentTarget.clientWidth, e.currentTarget.clientHeight, localX, localY);
     if (!cell) return;
     const run = runRef.current;
-    const placed = tryPlace(run, cell.x, cell.y);
-    if (!placed && run.selected) run.press = { x: cell.x, y: cell.y, life: 0.22 };
+    const tower = run.towers.find((item) => item.x === cell.x && item.y === cell.y);
+    if (!run.selected && tower) {
+      run.picked = { x: cell.x, y: cell.y };
+    } else if (!run.selected) {
+      tryFocus(run, cell.x, cell.y);
+      run.picked = null;
+    } else {
+      tryPlace(run, cell.x, cell.y);
+      const fresh = run.towers.find((item) => item.x === cell.x && item.y === cell.y);
+      const gear = fresh ? loadMeta().equipped[fresh.id] : undefined;
+      if (fresh && gear) fresh.part = gear;
+      if (!fresh && run.selected) run.press = { x: cell.x, y: cell.y, life: 0.22 };
+    }
     paintHover(cell);
     setTick((n) => n + 1);
   };
@@ -134,6 +193,10 @@ export function GridStage({
         <div className="flex flex-col items-end">
           <p className="tabular text-frost">{Math.ceil(run.companionHp)}</p>
           <p className="text-[10px] text-muted">hull</p>
+        </div>
+        <div className="flex flex-col items-end">
+          <p className="tabular text-paper">{loadMeta().scrap}</p>
+          <p className="text-[10px] text-muted">scrap</p>
         </div>
       </header>
       <canvas
@@ -171,12 +234,66 @@ export function GridStage({
           </button>
         )}
         <p className="pb-1 text-center text-[12px] text-muted">
-          {run.hold
-            ? run.selected
-              ? `Tap a pad for ${NAMES[run.selected]}.`
-              : "Pick a gun, then a pad."
-            : "Drag to look. Tap a pad."}
+          {run.callAt != null && !run.hold && run.time > run.callAt - 2 && run.time < run.callAt + 2
+            ? "Swifts break out."
+            : run.hold
+              ? run.selected
+                ? `Tap a pad for ${NAMES[run.selected]}.`
+                : "Pick a gun, then a pad. Tap a tower to aim or sell."
+              : run.handsOff
+                ? "Hands off. Nearest target. Ship stays dark."
+                : "Drag to look. Tap a body to focus it."}
         </p>
+        {note && <p className="text-center text-[12px] text-steel">{note}</p>}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className={cn("ui-btn flex-1", run.handsOff ? "ui-btn-primary" : "ui-btn-ghost")}
+            onClick={() => {
+              runRef.current.handsOff = !runRef.current.handsOff;
+              setTick((n) => n + 1);
+            }}
+          >
+            Hands off
+          </button>
+          {loadMeta().scrap >= 40 && (
+            <button
+              type="button"
+              className="ui-btn ui-btn-ghost flex-1"
+              onClick={() => {
+                const meta = loadMeta();
+                const opened = openGrey(meta, Date.now() % 100000);
+                if (!opened) return;
+                saveMeta(meta);
+                const spec = partById(opened.part);
+                if (!opened.duplicate) meta.equipped[spec.gun] = opened.part;
+                saveMeta(meta);
+                for (const tower of runRef.current.towers) {
+                  if (tower.id === spec.gun) tower.part = meta.equipped[spec.gun] ?? tower.part;
+                }
+                setNote(opened.duplicate ? `${spec.name} came back as scrap.` : `${spec.name}. ${spec.line}`);
+                setTick((n) => n + 1);
+              }}
+            >
+              Grey crate
+            </button>
+          )}
+        </div>
+        {run.picked && (() => {
+          const tower = run.towers.find((item) => item.x === run.picked!.x && item.y === run.picked!.y);
+          if (!tower) return null;
+          const rankCost = tower.rank === 1 ? 45 : tower.rank === 2 ? 90 : 0;
+          return (
+            <div className="flex items-center gap-1.5">
+              <p className="min-w-16 text-[12px] text-steel">{NAMES[tower.id]} · {AIM_WORD[tower.aim]}</p>
+              <button type="button" className="ui-btn ui-btn-ghost flex-1" onClick={() => { cycleAim(run, tower.x, tower.y); setTick((n) => n + 1); }}>Aim</button>
+              <button type="button" className="ui-btn ui-btn-ghost flex-1" onClick={() => { trySell(run, tower.x, tower.y); setTick((n) => n + 1); }}>Sell {sellValue(run, tower)}</button>
+              {tower.rank < 3 && (
+                <button type="button" className="ui-btn ui-btn-ghost flex-1" disabled={run.credit < rankCost} onClick={() => { tryRank(run, tower.x, tower.y); setTick((n) => n + 1); }}>Rank {rankCost}</button>
+              )}
+            </div>
+          );
+        })()}
         <div className="grid grid-cols-5 gap-1.5">
           {TOWER_IDS.map((id) => {
             const on = run.selected === id;
@@ -198,6 +315,9 @@ export function GridStage({
               >
                 <span className="font-display text-sm uppercase tracking-wide text-paper">{NAMES[id]}</span>
                 <span className="tabular text-[11px]">{TOWERS[id].cost}</span>
+                {run.hold && (
+                  <span className={cn("mt-0.5 h-1.5 w-1.5 rounded-full", MATCHUP[id][run.preview.tag] >= 1 ? "bg-frost" : MATCHUP[id][run.preview.tag] < 0.7 ? "bg-ember" : "bg-steel")} />
+                )}
               </button>
             );
           })}
@@ -207,25 +327,79 @@ export function GridStage({
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-ink/70 p-6">
           <div className="w-full max-w-xs text-center">
             <h2 className="font-display text-4xl uppercase">{run.won ? "Held" : "The ship fell"}</h2>
-            {run.won && climb.current.points > 0 && (
-              <div className="mt-4 flex max-h-52 flex-col gap-1.5 overflow-y-auto">
-                {SKILLS.filter((skill) => !owned.has(skill.id)).map((skill) => (
-                  <button
-                    key={skill.id}
-                    type="button"
-                    className="rounded-lg border border-line px-3 py-2 text-left"
-                    onClick={() => {
-                      if (climb.current.points < 1 || climb.current.skills.includes(skill.id)) return;
-                      climb.current.skills.push(skill.id);
-                      climb.current.points -= 1;
-                      setTick((n) => n + 1);
-                    }}
-                  >
-                    <span className="font-display uppercase tracking-wide">{skill.name}</span>
-                    <span className="mt-0.5 block text-[13px] text-muted">{skill.line}</span>
-                  </button>
-                ))}
+            {run.won && climb.current.points > 0 && climb.current.offer.length > 0 && (
+              <div className="mt-4 flex max-h-36 flex-col gap-1.5 overflow-y-auto">
+                {climb.current.offer.map((id) => {
+                  const skill = SKILLS.find((item) => item.id === id);
+                  if (!skill || owned.has(skill.id)) return null;
+                  return (
+                    <button
+                      key={skill.id}
+                      type="button"
+                      className="rounded-lg border border-line px-3 py-2 text-left"
+                      onClick={() => {
+                        if (climb.current.points < 1 || climb.current.skills.includes(skill.id)) return;
+                        climb.current.skills.push(skill.id);
+                        climb.current.points -= 1;
+                        climb.current.offer = [];
+                        const meta = loadMeta();
+                        meta.skills = climb.current.skills;
+                        saveMeta(meta);
+                        setTick((n) => n + 1);
+                      }}
+                    >
+                      <span className="font-display uppercase tracking-wide">{skill.name}</span>
+                      <span className="mt-0.5 block text-[13px] text-muted">{skill.line}</span>
+                    </button>
+                  );
+                })}
               </div>
+            )}
+            {run.won && !climb.current.partTaken && climb.current.parts.length > 0 && (
+              <div className="mt-3">
+                <p className="text-[11px] tracking-[0.16em] text-steel">{climb.current.clean ? "Black crate" : "Field pick"}</p>
+                <div className="mt-1.5 flex flex-col gap-1.5">
+                  {climb.current.parts.map((id) => {
+                    const part = partById(id);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className="rounded-lg border border-line px-3 py-2 text-left"
+                        onClick={() => {
+                          const meta = loadMeta();
+                          meta.equipped[part.gun] = id;
+                          if (!meta.owned.includes(id)) meta.owned.push(id);
+                          saveMeta(meta);
+                          for (const tower of run.towers) if (tower.id === part.gun) tower.part = id;
+                          climb.current.partTaken = true;
+                          setTick((n) => n + 1);
+                        }}
+                      >
+                        <span className="font-display uppercase tracking-wide">{part.name}</span>
+                        <span className="mt-0.5 block text-[13px] text-muted">{part.line}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {run.won && (
+              <button
+                type="button"
+                className="ui-btn ui-btn-ghost mt-3 w-full"
+                onClick={() => {
+                  if (climb.current.partTaken) return;
+                  climb.current.heat += 1;
+                  climb.current.partTaken = true;
+                  const meta = loadMeta();
+                  meta.heat = climb.current.heat;
+                  saveMeta(meta);
+                  setTick((n) => n + 1);
+                }}
+              >
+                Leave the dock open
+              </button>
             )}
             <button
               type="button"
@@ -234,7 +408,13 @@ export function GridStage({
                 const current = runRef.current;
                 const kept = current.towers.map((tower) => ({ ...tower }));
                 if (current.won) climb.current.level += 1;
-                runRef.current = startLevel(climb.current.level, companion, climb.current.skills, kept);
+                const meta = loadMeta();
+                meta.level = climb.current.level;
+                meta.skills = climb.current.skills;
+                meta.heat = climb.current.heat;
+                meta.patrolAt = Date.now();
+                saveMeta(meta);
+                runRef.current = arm(startLevel(climb.current.level, companion, climb.current.skills, kept, climb.current.heat));
                 setTick((n) => n + 1);
               }}
             >
