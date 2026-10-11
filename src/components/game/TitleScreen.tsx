@@ -4,44 +4,13 @@ import { fmtCount } from "@/game/format";
 import { CARDS } from "@/game/data/cards";
 import { craftHook, companionSpecialOf } from "@/game/data/companion";
 import { SETS } from "@/game/data/sets";
-import { BoostRocket } from "./BoostRocket";
-import { ShrikeJet } from "./ShrikeJet";
-import { BoreAuger } from "./BoreAuger";
 import { useState } from "react";
 import { markTutorial } from "@/game/persist";
 import { vaultHas, vaultOf } from "@/game/data/vault";
 import { GAME_VERSION } from "@/game/version";
 
-const EXHAUST = [
-  { g: "◆", x: 6, y: 42, d: "0ms", c: "text-steel" },
-  { g: "●", x: -10, y: 58, d: "220ms", c: "text-steel" },
-  { g: "△", x: 14, y: 70, d: "480ms", c: "text-muted" },
-  { g: "▸", x: -4, y: 52, d: "700ms", c: "text-steel" },
-  { g: "◆", x: 2, y: 84, d: "980ms", c: "text-muted" },
-  { g: "●", x: 16, y: 46, d: "1200ms", c: "text-steel" },
-  { g: "△", x: -16, y: 76, d: "1460ms", c: "text-steel" },
-  { g: "▸", x: 8, y: 62, d: "1680ms", c: "text-muted" },
-] as const;
-
-const JET_EXHAUST = [
-  { g: "◆", x: 8, y: 44, d: "80ms", c: "text-frost" },
-  { g: "●", x: -12, y: 60, d: "300ms", c: "text-sage" },
-  { g: "△", x: 16, y: 72, d: "540ms", c: "text-frost" },
-  { g: "▸", x: -6, y: 54, d: "780ms", c: "text-sage" },
-  { g: "◆", x: 4, y: 86, d: "1040ms", c: "text-frost" },
-  { g: "●", x: 18, y: 48, d: "1280ms", c: "text-sage" },
-] as const;
-
-const BORE_EXHAUST = [
-  { g: "◆", x: -18, y: 8, d: "60ms", c: "bore-dust" },
-  { g: "●", x: -28, y: 22, d: "280ms", c: "bore-cyan" },
-  { g: "△", x: -12, y: 30, d: "520ms", c: "bore-dust" },
-  { g: "▸", x: -34, y: 14, d: "760ms", c: "text-frost" },
-  { g: "◆", x: -22, y: 36, d: "1020ms", c: "bore-cyan" },
-  { g: "●", x: -8, y: 18, d: "1280ms", c: "bore-dust" },
-] as const;
-
 const CRAFTS = CARDS.filter((c) => c.kind === "companion");
+const PIECES = ["lance", "halo", "crater", "rail", "beacon", "auger"] as const;
 const GEM_RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
 const PICK_CRAFTS = [...CRAFTS].sort(
   (a, b) => (GEM_RANK[a.rarity] ?? 9) - (GEM_RANK[b.rarity] ?? 9) || a.name.localeCompare(b.name),
@@ -88,57 +57,13 @@ export function TitleScreen({
     onPlay({ mode, tutorial: false });
   };
   return (
-    <div className="absolute inset-0 z-20 overflow-x-hidden overflow-y-auto bg-ink">
+    <div className="title-board absolute inset-0 z-20 overflow-x-hidden overflow-y-auto bg-ink">
       <img
-        src="/game/map/title-cyber.jpg"
+        src="/game/map/title-table.jpg"
         alt=""
-        className="title-photo pointer-events-none absolute inset-0 h-full w-full object-cover"
+        className="title-photo pointer-events-none absolute inset-0 h-full w-full object-cover object-bottom"
       />
-      <div className="title-neon" aria-hidden />
-      <div className="rocket-sky" aria-hidden>
-        <div className="rocket-craft">
-          <div className="relative">
-            <BoostRocket className="rocket-pose rocket-toned relative z-10" />
-            <div className="rocket-reflect-well">
-              <BoostRocket compact puddle className="rocket-reflect" />
-            </div>
-            {EXHAUST.map((p, i) => (
-              <span
-                key={`${p.g}-${i}`}
-                className={`exhaust-glyph text-lg sm:text-2xl ${p.c}`}
-                style={{
-                  animationDelay: p.d,
-                  ["--ex" as string]: `${p.x}px`,
-                  ["--ey" as string]: `${p.y}px`,
-                }}
-              >
-                {p.g}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="jet-craft">
-          <div className="relative">
-            <ShrikeJet className="rocket-pose jet-toned relative z-10" />
-            <div className="rocket-reflect-well jet-reflect-well">
-              <ShrikeJet compact puddle className="rocket-reflect" />
-            </div>
-            {JET_EXHAUST.map((p, i) => (
-              <span
-                key={`j-${p.g}-${i}`}
-                className={`exhaust-glyph text-lg sm:text-2xl ${p.c}`}
-                style={{
-                  animationDelay: p.d,
-                  ["--ex" as string]: `${p.x}px`,
-                  ["--ey" as string]: `${p.y}px`,
-                }}
-              >
-                {p.g}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+      <div className="title-neon absolute inset-0" aria-hidden />
 
       <div className="title-stack relative z-10 flex min-h-full flex-col items-center px-5 pb-6 pt-8 text-center sm:px-10">
         <p className="ui-kicker rise-in text-steel">
@@ -180,7 +105,18 @@ export function TitleScreen({
             </button>
           )}
         </div>
-        <p className="title-start-hint">{onGrid ? "Plant a button. Hold the ship." : "Draft. Plant. Hold 12."}</p>
+        <p className="title-start-hint">{onGrid ? "Pick a gun. Plant it. Hold the ship." : "Draft. Plant. Hold 12."}</p>
+        <div className="mt-2 flex items-end justify-center gap-1">
+          {PIECES.map((id) => (
+            <div key={id} className="flex h-28 w-14 items-end justify-center overflow-hidden">
+              <img
+                src={`/game/pack/${id}.png`}
+                alt=""
+                className="h-44 w-auto max-w-none object-contain"
+              />
+            </div>
+          ))}
+        </div>
         <p className="title-version">v{GAME_VERSION}</p>
         {(best.runs > 0 || hasRun) && (
         <div className="title-banks rise-in" style={{ animationDelay: "190ms" }}>
@@ -226,27 +162,6 @@ export function TitleScreen({
         </div>
         </div>
         )}
-        <div className="bore-craft rise-in" style={{ animationDelay: "200ms" }}>
-          <div className="relative">
-            <BoreAuger className="rocket-pose bore-toned relative z-10" />
-            <div className="rocket-reflect-well bore-reflect-well">
-              <BoreAuger compact puddle className="rocket-reflect" />
-            </div>
-            {BORE_EXHAUST.map((p, i) => (
-              <span
-                key={`b-${p.g}-${i}`}
-                className={`exhaust-glyph text-lg sm:text-2xl ${p.c}`}
-                style={{
-                  animationDelay: p.d,
-                  ["--ex" as string]: `${p.x}px`,
-                  ["--ey" as string]: `${p.y}px`,
-                }}
-              >
-                {p.g}
-              </span>
-            ))}
-          </div>
-        </div>
         {(best.runs > 0 || (best.bestWave ?? 0) > 0) && (
           <p className="mt-6 tabular text-[12px] text-faint">
             {[

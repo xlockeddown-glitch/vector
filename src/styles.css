@@ -971,9 +971,12 @@ img.card-paint,
   visibility: visible;
   pointer-events: auto;
 }
-.title-photo {
-  filter: saturate(0.22) contrast(1.04) brightness(0.28) grayscale(0.55);
-  transform: scale(1.02);
+.title-board .title-photo {
+  filter: saturate(0.9) contrast(1.05) brightness(0.82);
+}
+.title-board .title-neon {
+  background:
+    linear-gradient(oklab(0% none none / 0.72) 0%, oklab(0% none none / 0.28) 32%, oklab(0% none none / 0.45) 68%, oklab(0% none none / 0.78) 100%);
 }
 .title-neon {
   pointer-events: none;
