@@ -274,6 +274,18 @@ function paintGround(ctx: CanvasRenderingContext2D, run: GridRun) {
     const road = onPath.has(key) && !exit;
     const hot = !road && run.selected && run.press?.x === cell.x && run.press.y === cell.y;
     slab(ctx, p.x, p.y, exit ? "exit" : road ? "road" : hot ? "hot" : "pad");
+    if (run.rule === "armor" && road) {
+      ctx.strokeStyle = EMBER_H;
+      ctx.stroke();
+    }
+    if (run.rule === "lock" && !run.hold && !road && !exit) {
+      ctx.strokeStyle = GOLD_H;
+      ctx.stroke();
+    }
+    if (run.rule === "jam" && !road && !exit) {
+      ctx.fillStyle = "rgba(212,196,255,0.14)";
+      ctx.fill();
+    }
   }
   const skin = run.grid.skin;
   const edge = skin === "dirt" ? "#c47a3a" : skin === "road" ? "#d7e4ef" : FROST_H;
@@ -429,6 +441,10 @@ export function drawGrid(
           ctx.beginPath();
           ctx.arc(p.x - 6 + i * 6, p.y + 7, 1.6, 0, Math.PI * 2);
           ctx.fill();
+        }
+        if (tower.part) {
+          ctx.fillStyle = FROST_H;
+          ctx.fillRect(p.x - 2, p.y + 4, 4, 2);
         }
       },
     });

@@ -284,13 +284,18 @@ export function GridStage({
           if (!tower) return null;
           const rankCost = tower.rank === 1 ? 45 : tower.rank === 2 ? 90 : 0;
           return (
-            <div className="flex items-center gap-1.5">
-              <p className="min-w-16 text-[12px] text-steel">{NAMES[tower.id]} · {AIM_WORD[tower.aim]}</p>
+            <div className="flex flex-col gap-1">
+              <p className="text-[12px] text-steel">
+                {NAMES[tower.id]} · {AIM_WORD[tower.aim]}
+                {tower.part ? ` · ${partById(tower.part).name}` : ""}
+              </p>
+              <div className="flex items-center gap-1.5">
               <button type="button" className="ui-btn ui-btn-ghost flex-1" onClick={() => { cycleAim(run, tower.x, tower.y); setTick((n) => n + 1); }}>Aim</button>
               <button type="button" className="ui-btn ui-btn-ghost flex-1" onClick={() => { trySell(run, tower.x, tower.y); setTick((n) => n + 1); }}>Sell {sellValue(run, tower)}</button>
               {tower.rank < 3 && (
                 <button type="button" className="ui-btn ui-btn-ghost flex-1" disabled={run.credit < rankCost} onClick={() => { tryRank(run, tower.x, tower.y); setTick((n) => n + 1); }}>Rank {rankCost}</button>
               )}
+              </div>
             </div>
           );
         })()}
