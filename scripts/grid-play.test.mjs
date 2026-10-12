@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { canPlace } from "../src/game/grid.ts";
 import { cellFromPoint } from "../src/game/grid-draw.ts";
 import { beginRound, castAbility, cycleAim, startLevel, startRun, stepRun, tryPlace, trySell } from "../src/game/grid-sim.ts";
+import { offerGrey } from "../src/game/grid-parts.ts";
 import { offerSkills } from "../src/game/skills.ts";
 import { TOWERS } from "../src/game/matchup.ts";
 
@@ -153,4 +154,35 @@ test("a leak hurts the ship, and a short run stays finite", () => {
   for (let i = 0; i < 60 * 20; i++) stepRun(quiet, 1 / 60);
   assert.ok(Number.isFinite(quiet.credit));
   assert.ok(Number.isFinite(quiet.companionHp));
+});
+
+test("a grey crate cannot roll a part that changes the gun", () => {
+  const strong = new Set(["sabot", "shunt", "dewar", "canister", "iff"]);
+  for (let seed = 1; seed <= 12; seed++) {
+    for (const id of offerGrey(seed)) assert.equal(strong.has(id), false);
+  }
+});
+
+test("a watched lance outlasts hands-off on the armor", () => {
+  const play = (id, handsOff) => {
+    const run = startLevel(4, "comp-auger");
+    run.selected = id;
+    run.handsOff = handsOff;
+    let placed = 0;
+    for (let y = 0; y < run.grid.h && placed < 2; y++) {
+      for (let x = 0; x < run.grid.w && placed < 2; x++) {
+        if (!canPlace(run.grid, x, y)) continue;
+        if (id === "lance") {
+          const straight = run.grid.path.filter((cell) => cell.x === x || cell.y === y).length;
+          if (straight < 3) continue;
+        }
+        if (tryPlace(run, x, y)) placed += 1;
+      }
+    }
+    assert.equal(placed, 2);
+    beginRound(run);
+    for (let i = 0; i < 60 * 45 && !run.won && !run.lost; i++) stepRun(run, 1 / 60);
+    return run.companionHp;
+  };
+  assert.ok(play("lance", false) > play("halo", true));
 });

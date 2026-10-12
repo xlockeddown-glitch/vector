@@ -1,6 +1,6 @@
-import { auditGrid, canPlace, type CompanionId, type Point, type Skin } from "./grid";
+import { auditGrid, canPlace, cellIndex, type CompanionId, type Point, type Skin } from "./grid";
 import { buildGrid } from "./pathgen";
-import { levelAt, ruleAt, type Rule } from "./levels";
+import { levelAt, ruleAt, stretchAt, type Rule } from "./levels";
 import type { SkillId } from "./skills";
 import { defaultAim, type Aim, type PartId } from "./grid-parts";
 import {
@@ -42,6 +42,7 @@ export type GridEnemy = {
   flash: number;
   slowT: number;
   marked: boolean;
+  detour: boolean;
 };
 
 export type GridTower = {
@@ -96,6 +97,8 @@ export type GridRun = {
   focus: { uid: number; life: number } | null;
   picked: { x: number; y: number } | null;
   handsOff: boolean;
+  spur: Point[] | null;
+  stretch: ReturnType<typeof stretchAt>;
 };
 
 function rankMul(rank: number) {
@@ -173,6 +176,8 @@ export function startRun(
     focus: null,
     picked: null,
     handsOff: false,
+    spur: null,
+    stretch: null,
   };
 }
 
@@ -195,6 +200,8 @@ export function startLevel(
     heat,
   });
   run.rule = ruleAt(def.level);
+  run.stretch = stretchAt(def.level);
+  if (run.stretch === "swarm") run.spur = carveSpur(run.grid);
   if (def.level >= 5 && run.spawns.length) {
     const mid = run.spawns[Math.floor(run.spawns.length / 2)]!.at;
     for (let i = 0; i < 4; i++) run.spawns.push({ tag: "swift", at: mid + i * 0.35 });
@@ -218,6 +225,35 @@ export function startLevel(
     }];
   });
   return run;
+}
+
+function carveSpur(grid: ReturnType<typeof buildGrid>): Point[] | null {
+  const path = grid.path;
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+  const button = (p: Point) => {
+    if (p.x < 0 || p.y < 0 || p.x >= grid.w || p.y >= grid.h) return false;
+    return grid.cells[cellIndex(grid.w, p.x, p.y)] === "button";
+  };
+  for (let i = 2; i < path.length - 3; i++) {
+    const origin = path[i]!;
+    for (const [dx, dy] of dirs) {
+      const a = { x: origin.x + dx, y: origin.y + dy };
+      const b = { x: origin.x + dx * 2, y: origin.y + dy * 2 };
+      if (!button(a) || !button(b)) continue;
+      for (let j = i + 2; j < path.length - 1; j++) {
+        const back = path[j]!;
+        if (Math.abs(back.x - b.x) + Math.abs(back.y - b.y) !== 1) continue;
+        grid.cells[cellIndex(grid.w, a.x, a.y)] = "path";
+        grid.cells[cellIndex(grid.w, b.x, b.y)] = "path";
+        return [...path.slice(0, i + 1), a, b, ...path.slice(j)];
+      }
+    }
+  }
+  return null;
+}
+
+export function routeOf(run: GridRun, enemy: { detour?: boolean }) {
+  return enemy.detour && run.spur ? run.spur : run.grid.path;
 }
 
 function hasSkill(run: GridRun, id: SkillId) {
@@ -310,7 +346,7 @@ export function castAbility(run: GridRun) {
 }
 
 function enemyCell(run: GridRun, e: GridEnemy) {
-  const p = pointAlong(run.grid.path, e.along);
+  const p = pointAlong(routeOf(run, e), e.along);
   return { x: Math.round(p.x), y: Math.round(p.y) };
 }
 
@@ -349,7 +385,8 @@ function hurt(run: GridRun, e: GridEnemy, amount: number, mark: boolean) {
   e.alive = false;
   const pay = killPay(e.tag, e.marked);
   const iff = e.marked && run.towers.some((tower) => tower.part === "iff");
-  run.credit += iff ? pay * 2 : pay;
+  const bulb = e.marked && run.towers.some((tower) => tower.part === "bulb");
+  run.credit += iff ? pay * 2 : bulb ? Math.round(pay * 1.15) : pay;
 }
 
 function fire(run: GridRun, tower: GridTower, targets: GridEnemy[]) {
@@ -359,8 +396,11 @@ function fire(run: GridRun, tower: GridTower, targets: GridEnemy[]) {
     const punch = tower.id === "crater" && hasSkill(run, "crater-punch") ? 1.3 : 1;
     const mult =
       MATCHUP[tower.id][e.tag] * (e.marked && tower.id !== "beacon" ? 1 + mark : 1) * rankMul(tower.rank) * punch;
-    hurt(run, e, TOWERS[tower.id].damage * mult, tower.id === "beacon");
-    if (tower.id === "halo") e.slowT = Math.max(e.slowT, 1.1);
+    let damage = TOWERS[tower.id].damage * mult;
+    if (tower.part === "casing" && tower.id === "lance") damage *= 1.08;
+    if (tower.part === "spark" && tower.id === "crater") damage *= 1.08;
+    hurt(run, e, damage, tower.id === "beacon");
+    if (tower.id === "halo") e.slowT = Math.max(e.slowT, tower.part === "film" ? 1.6 : 1.1);
     const at = enemyCell(run, e);
     run.shots.push({
       x: from.x,
@@ -451,6 +491,7 @@ export function stepRun(run: GridRun, dt: number) {
       flash: 0,
       slowT: 0,
       marked: false,
+      detour: spawn.tag === "swarm" && run.spur != null,
     });
   }
 
@@ -464,7 +505,8 @@ export function stepRun(run: GridRun, dt: number) {
     if (frozen) speed *= 0.55;
     if (auger) speed *= 0.55;
     e.along += speed * step;
-    if (e.along >= run.grid.path.length - 1) {
+    const route = routeOf(run, e);
+    if (e.along >= route.length - 1) {
       e.alive = false;
       run.companionHp -= LEAK[e.tag];
       run.flinch = 0.28;
@@ -485,7 +527,8 @@ export function stepRun(run: GridRun, dt: number) {
     const targets = targetsFor(run, tower);
     if (!targets.length) continue;
     fire(run, tower, targets);
-    tower.cd = 1 / TOWERS[tower.id].rate;
+    const rate = tower.part === "grease" ? TOWERS[tower.id].rate * 1.1 : TOWERS[tower.id].rate;
+    tower.cd = 1 / rate;
   }
 
   const pending = run.spawns.length > 0;

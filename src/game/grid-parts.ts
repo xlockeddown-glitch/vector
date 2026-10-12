@@ -2,7 +2,17 @@ import type { TowerId } from "./matchup";
 import { mulberry32 } from "./rng";
 
 export type Aim = "near" | "far" | "strong" | "mark";
-export type PartId = "sabot" | "shunt" | "dewar" | "canister" | "iff";
+export type PartId =
+  | "sabot"
+  | "shunt"
+  | "dewar"
+  | "canister"
+  | "iff"
+  | "casing"
+  | "film"
+  | "spark"
+  | "grease"
+  | "bulb";
 
 export const AIM_WORD: Record<Aim, string> = {
   near: "Near",
@@ -19,8 +29,18 @@ export const PARTS: { id: PartId; gun: TowerId; name: string; line: string }[] =
   { id: "iff", gun: "beacon", name: "IFF", line: "A marked kill pays double." },
 ];
 
+const GREY: { id: PartId; gun: TowerId; name: string; line: string }[] = [
+  { id: "casing", gun: "lance", name: "Casing", line: "A little more punch." },
+  { id: "film", gun: "halo", name: "Film", line: "The frost holds a bit longer." },
+  { id: "spark", gun: "crater", name: "Spark", line: "A little more blast." },
+  { id: "grease", gun: "rail", name: "Grease", line: "Cycles a little faster." },
+  { id: "bulb", gun: "beacon", name: "Bulb", line: "A marked kill pays a little more." },
+];
+
+const ALL_PARTS = [...PARTS, ...GREY];
+
 export function partById(id: PartId) {
-  return PARTS.find((part) => part.id === id)!;
+  return ALL_PARTS.find((part) => part.id === id)!;
 }
 
 export function defaultAim(id: TowerId): Aim {
@@ -44,4 +64,9 @@ export function offerParts(seed: number, owned: PartId[] = []) {
   const fresh = shuffle(PARTS.filter((part) => !owned.includes(part.id)).map((part) => part.id), seed);
   const had = shuffle(PARTS.filter((part) => owned.includes(part.id)).map((part) => part.id), seed + 9);
   return [...fresh, ...had].slice(0, 3);
+}
+
+/** Grey crates. Never the parts that change how a gun aims or pierces. */
+export function offerGrey(seed: number) {
+  return shuffle(GREY.map((part) => part.id), seed);
 }

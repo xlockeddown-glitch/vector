@@ -56,11 +56,13 @@ export function GridStage({
   const runRef = useRef<GridRun>(startLevel(1, companion, []));
   const [tick, setTick] = useState(0);
   const [note, setNote] = useState("");
+  const [patrol, setPatrol] = useState(0);
 
   useEffect(() => {
     const settled = settlePatrol(loadMeta(), Date.now());
     saveMeta(settled.meta);
     setNote(settled.gained > 0 ? `Patrol brought ${settled.gained} scrap.` : "");
+    setPatrol(settled.gained);
     climb.current = {
       level: settled.meta.level || 1,
       skills: settled.meta.skills,
@@ -183,8 +185,11 @@ export function GridStage({
           Back
         </button>
         <div className="min-w-0">
-          <p className="font-display text-lg tracking-wide">{run.level > 8 ? `Endless ${run.level - 8}` : `Level ${run.level}`}</p>
-          <p className="truncate text-[12px] text-muted">{def.blurb}</p>
+          <p className="font-display text-lg tracking-wide">{run.level > 8 ? def.blurb.split(".")[0] : `Level ${run.level}`}</p>
+          <p className="truncate text-[12px] text-muted">
+            {run.level > 8 ? `Endless ${run.level - 8}` : def.blurb}
+            {climb.current.heat > 0 ? ` · Heat ${climb.current.heat}` : ""}
+          </p>
         </div>
         <div className="ml-auto flex flex-col items-end">
           <p className="tabular text-legend">{run.credit}</p>
@@ -234,7 +239,7 @@ export function GridStage({
           </button>
         )}
         <p className="pb-1 text-center text-[12px] text-muted">
-          {run.callAt != null && !run.hold && run.time > run.callAt - 2 && run.time < run.callAt + 2
+          {run.callAt != null && !run.hold && run.time > run.callAt - 3 && run.time < run.callAt + 2
             ? "Swifts break out."
             : run.hold
               ? run.selected
@@ -266,12 +271,7 @@ export function GridStage({
                 if (!opened) return;
                 saveMeta(meta);
                 const spec = partById(opened.part);
-                if (!opened.duplicate) meta.equipped[spec.gun] = opened.part;
-                saveMeta(meta);
-                for (const tower of runRef.current.towers) {
-                  if (tower.id === spec.gun) tower.part = meta.equipped[spec.gun] ?? tower.part;
-                }
-                setNote(opened.duplicate ? `${spec.name} came back as scrap.` : `${spec.name}. ${spec.line}`);
+                setNote(opened.duplicate ? `${spec.name} came back as scrap.` : `${spec.name} is in the bin. Fit it from the tower.`);
                 setTick((n) => n + 1);
               }}
             >
@@ -295,6 +295,26 @@ export function GridStage({
               {tower.rank < 3 && (
                 <button type="button" className="ui-btn ui-btn-ghost flex-1" disabled={run.credit < rankCost} onClick={() => { tryRank(run, tower.x, tower.y); setTick((n) => n + 1); }}>Rank {rankCost}</button>
               )}
+              {(() => {
+                const spare = loadMeta().owned.find((id) => partById(id).gun === tower.id && id !== tower.part);
+                if (!spare) return null;
+                const spec = partById(spare);
+                return (
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn-ghost flex-1"
+                    onClick={() => {
+                      const meta = loadMeta();
+                      meta.equipped[tower.id] = spare;
+                      saveMeta(meta);
+                      tower.part = spare;
+                      setTick((n) => n + 1);
+                    }}
+                  >
+                    Fit {spec.name}
+                  </button>
+                );
+              })()}
               </div>
             </div>
           );
@@ -328,6 +348,19 @@ export function GridStage({
           })}
         </div>
       </div>
+      {patrol > 0 && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-ink/80 p-6">
+          <div className="w-full max-w-xs text-center">
+            <img src={`/game/pack/${companion === "comp-boost" ? "boost" : companion === "comp-shrike" ? "shrike" : "auger"}.png`} alt="" className="mx-auto h-28 w-auto object-contain opacity-80" />
+            <p className="mt-2 font-display text-2xl uppercase">Patrol</p>
+            <p className="mt-1 text-[14px] text-steel">The ship ran the last table without you.</p>
+            <p className="mt-2 tabular text-lg text-paper">+{patrol} scrap</p>
+            <button type="button" className="ui-btn ui-btn-primary mt-4 w-full" onClick={() => setPatrol(0)}>
+              Back to the table
+            </button>
+          </div>
+        </div>
+      )}
       {(run.won || run.lost) && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-ink/70 p-6">
           <div className="w-full max-w-xs text-center">
@@ -370,7 +403,7 @@ export function GridStage({
                       <button
                         key={id}
                         type="button"
-                        className="rounded-lg border border-line px-3 py-2 text-left"
+                        className="flex items-center gap-2 rounded-lg border border-line bg-ink px-2 py-2 text-left"
                         onClick={() => {
                           const meta = loadMeta();
                           meta.equipped[part.gun] = id;
@@ -381,8 +414,11 @@ export function GridStage({
                           setTick((n) => n + 1);
                         }}
                       >
-                        <span className="font-display uppercase tracking-wide">{part.name}</span>
-                        <span className="mt-0.5 block text-[13px] text-muted">{part.line}</span>
+                        <img src={`/game/pack/${part.gun}.png`} alt="" className="h-14 w-10 object-contain" />
+                        <span>
+                          <span className="font-display uppercase tracking-wide">{part.name}</span>
+                          <span className="mt-0.5 block text-[13px] text-muted">{part.line}</span>
+                        </span>
                       </button>
                     );
                   })}

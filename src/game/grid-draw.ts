@@ -1,5 +1,5 @@
 import { GRID_H, GRID_W, type Point } from "./grid";
-import { pointAlong, type GridEnemy, type GridRun } from "./grid-sim";
+import { pointAlong, routeOf, type GridEnemy, type GridRun } from "./grid-sim";
 import { TOWERS as GUNS, MATCHUP, type TowerId } from "./matchup";
 import { blitPack, ensurePack } from "./pack";
 
@@ -316,11 +316,75 @@ function paintGround(ctx: CanvasRenderingContext2D, run: GridRun) {
   const a = proj(run.grid.path[i]!.x, run.grid.path[i]!.y);
   const b = proj(run.grid.path[i + 1]!.x, run.grid.path[i + 1]!.y);
   glowDot(ctx, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, 3, edge);
+  if (run.spur) {
+    ctx.beginPath();
+    run.spur.forEach((cell, i) => {
+      const p = proj(cell.x, cell.y);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.strokeStyle = "#d4c4ff";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+  paintHold(ctx, run);
   ctx.restore();
 }
 
+function paintHold(ctx: CanvasRenderingContext2D, run: GridRun) {
+  if (run.rule === "jam") {
+    let mast = false;
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        if (run.grid.cells[y * GRID_W + x] !== "button") continue;
+        if ((x * 3 + y) % 5 !== 0) continue;
+        const p = proj(x, y);
+        ctx.fillStyle = "#1a120c";
+        ctx.fillRect(p.x - 4, p.y - 2, 5, 3);
+        ctx.fillStyle = "#6a5030";
+        ctx.fillRect(p.x + 2, p.y + 1, 3, 2);
+        if (!mast) {
+          ctx.strokeStyle = "#d4c4ff";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x, p.y - 16);
+          ctx.stroke();
+          mast = true;
+        }
+      }
+    }
+  }
+  if (run.rule === "armor") {
+    run.grid.path.forEach((cell, i) => {
+      if (i % 3 !== 0) return;
+      const p = proj(cell.x, cell.y);
+      ctx.strokeStyle = EMBER_H;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x - 6, p.y);
+      ctx.lineTo(p.x + 6, p.y);
+      ctx.stroke();
+    });
+  }
+  if (run.rule === "lock" && !run.hold) {
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        if (run.grid.cells[y * GRID_W + x] !== "button") continue;
+        const p = proj(x, y);
+        ctx.strokeStyle = GOLD_H;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x - 7, p.y);
+        ctx.lineTo(p.x + 7, p.y);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
 function putEnemy(ctx: CanvasRenderingContext2D, run: GridRun, enemy: GridEnemy) {
-  const at = pointAlong(run.grid.path, enemy.along);
+  const at = pointAlong(routeOf(run, enemy), enemy.along);
   const p = proj(at.x, at.y);
   if (!enemy.alive) {
     glowDot(ctx, p.x, p.y, 4, EMBER_H);
@@ -463,6 +527,21 @@ export function drawGrid(
         },
       });
     }
+  }
+  if (run.callAt != null && !run.hold && run.time < run.callAt + 1.5) {
+    const t = Math.max(0, Math.min(1, (run.callAt - run.time) / 3));
+    const along = (1 - t) * Math.max(1, run.grid.path.length * 0.4);
+    const at = pointAlong(run.grid.path, along);
+    const p = proj(at.x, at.y);
+    actors.push({
+      key: at.x + at.y + 0.12,
+      draw: () => {
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        blitPack(ctx, "swift", p.x, p.y - 6);
+        ctx.restore();
+      },
+    });
   }
   if (run.hold && run.preview) {
     const gate = run.grid.path[0];

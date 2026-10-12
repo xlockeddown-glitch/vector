@@ -129,6 +129,42 @@ const RULE_LINE: Record<Rule, string> = {
   lock: "Pads lock when the round starts.",
 };
 
+export function stretchAt(level: number): "debris" | "convoy" | "swarm" | null {
+  if (level <= 8) return null;
+  const names = ["debris", "convoy", "swarm"] as const;
+  return names[Math.floor((level - 9) / 3) % names.length]!;
+}
+
+const STRETCHES: Record<NonNullable<ReturnType<typeof stretchAt>>, { name: string; skin: Skin; waves: WaveGroup[] }> = {
+  debris: {
+    name: "Debris",
+    skin: "dirt",
+    waves: [
+      { tag: "grunt", count: 6 },
+      { tag: "swift", count: 6 },
+      { tag: "grunt", count: 4 },
+    ],
+  },
+  convoy: {
+    name: "Convoy",
+    skin: "road",
+    waves: [
+      { tag: "grunt", count: 4 },
+      { tag: "plate", count: 5 },
+      { tag: "plate", count: 3 },
+    ],
+  },
+  swarm: {
+    name: "Swarm dump",
+    skin: "alloy",
+    waves: [
+      { tag: "swarm", count: 8 },
+      { tag: "grunt", count: 4 },
+      { tag: "swarm", count: 6 },
+    ],
+  },
+};
+
 export function levelAt(level: number): LevelDef {
   const n = Math.max(1, Math.floor(level));
   if (n <= CAMPAIGN.length) {
@@ -136,15 +172,15 @@ export function levelAt(level: number): LevelDef {
     return { ...row, waves: row.waves.map((g) => ({ ...g })), hpMul: 1, speedMul: 1 };
   }
   const scale = scaleAt(n);
-  const mix = CAMPAIGN[CAMPAIGN.length - 1]!;
-  const skins: Skin[] = ["alloy", "road", "dirt"];
+  const stretch = STRETCHES[stretchAt(n)!];
+  const rule = ruleAt(n);
   return {
     level: n,
     seed: 40 + n,
-    skin: skins[n % skins.length]!,
-    credit: mix.credit,
-    blurb: RULE_LINE[ruleAt(n)],
-    waves: mix.waves.map((g) => ({
+    skin: stretch.skin,
+    credit: 170,
+    blurb: rule === "none" ? `${stretch.name}.` : `${stretch.name}. ${RULE_LINE[rule]}`,
+    waves: stretch.waves.map((g) => ({
       tag: g.tag,
       count: Math.max(1, Math.round(g.count * scale.count)),
     })),

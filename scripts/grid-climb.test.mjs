@@ -12,6 +12,9 @@ test("eight levels then the scale", () => {
   assert.ok(levelAt(4).waves.some((g) => g.tag === "plate"));
   assert.equal(levelAt(8).hpMul, 1);
   assert.ok(levelAt(9).hpMul > 1);
+  assert.equal(levelAt(9).blurb.startsWith("Debris"), true);
+  assert.equal(levelAt(12).blurb.startsWith("Convoy"), true);
+  assert.equal(levelAt(15).blurb.startsWith("Swarm dump"), true);
   assert.ok(levelAt(9).waves[0].count >= levelAt(8).waves[0].count);
   assert.equal(levelAt(40).speedMul, 1.6);
   assert.equal(startLevel(5, "comp-auger").grid.skin, "dirt");

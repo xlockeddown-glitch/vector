@@ -1,6 +1,6 @@
 import { levelAt } from "./levels";
 import { wavePay, type TowerId } from "./matchup";
-import { offerParts, type PartId } from "./grid-parts";
+import { offerGrey, type PartId } from "./grid-parts";
 import type { SkillId } from "./skills";
 
 const KEY = "vector-grid-meta";
@@ -53,7 +53,7 @@ export function settlePatrol(meta: GridMeta, now: number) {
 export function openGrey(meta: GridMeta, seed: number) {
   if (meta.scrap < 40) return null;
   meta.scrap -= 40;
-  const part = offerParts(seed)[0];
+  const part = offerGrey(seed)[0];
   if (!part) return null;
   const duplicate = meta.owned.includes(part);
   if (duplicate) meta.scrap += 15;
