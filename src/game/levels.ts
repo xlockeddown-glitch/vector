@@ -1,6 +1,7 @@
 import type { Skin } from "./grid";
 import type { WaveGroup } from "./matchup";
 import { scaleAt } from "./scale";
+import { TOP_UP } from "./matchup";
 
 export type LevelDef = {
   level: number;
@@ -43,7 +44,7 @@ const CAMPAIGN: Omit<LevelDef, "hpMul" | "speedMul">[] = [
     seed: 9,
     skin: "alloy",
     credit: 120,
-    blurb: "A pack. Splash, or you are too slow.",
+    blurb: "A pack of small ones.",
     waves: [
       { tag: "grunt", count: 4 },
       { tag: "swarm", count: 6 },
@@ -141,8 +142,9 @@ const STRETCHES: Record<NonNullable<ReturnType<typeof stretchAt>>, { name: strin
     skin: "dirt",
     waves: [
       { tag: "grunt", count: 6 },
-      { tag: "swift", count: 6 },
-      { tag: "grunt", count: 4 },
+      { tag: "swift", count: 5 },
+      { tag: "swarm", count: 5 },
+      { tag: "plate", count: 4 },
     ],
   },
   convoy: {
@@ -169,7 +171,7 @@ export function levelAt(level: number): LevelDef {
   const n = Math.max(1, Math.floor(level));
   if (n <= CAMPAIGN.length) {
     const row = CAMPAIGN[n - 1]!;
-    return { ...row, waves: row.waves.map((g) => ({ ...g })), hpMul: 1, speedMul: 1 };
+    return { ...row, credit: n === 1 ? row.credit : TOP_UP, waves: row.waves.map((g) => ({ ...g })), hpMul: 1, speedMul: 1 };
   }
   const scale = scaleAt(n);
   const stretch = STRETCHES[stretchAt(n)!];
@@ -178,7 +180,7 @@ export function levelAt(level: number): LevelDef {
     level: n,
     seed: 40 + n,
     skin: stretch.skin,
-    credit: 170,
+    credit: TOP_UP,
     blurb: rule === "none" ? `${stretch.name}.` : `${stretch.name}. ${RULE_LINE[rule]}`,
     waves: stretch.waves.map((g) => ({
       tag: g.tag,

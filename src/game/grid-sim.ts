@@ -10,6 +10,9 @@ import {
   MARK_BONUS,
   RANK_COST,
   START_CREDIT,
+  GUN_CAP,
+  TOP_UP,
+  BANK_CAP,
   TOWERS,
   killPay,
   type EnemyTag,
@@ -43,6 +46,7 @@ export type GridEnemy = {
   slowT: number;
   marked: boolean;
   detour: boolean;
+  slowGrip: number;
 };
 
 export type GridTower = {
@@ -167,7 +171,7 @@ export function startRun(
     nextUid: 1,
     press: null,
     level: opts?.level ?? 1,
-    hpMul: (opts?.hpMul ?? 1) * 1.08 ** heat,
+    hpMul: (opts?.hpMul ?? 1) * (1 + 0.6 * heat),
     speedMul: opts?.speedMul ?? 1,
     skills: opts?.skills ?? [],
     rule: "none",
@@ -187,6 +191,7 @@ export function startLevel(
   skills: SkillId[] = [],
   keep: GridTower[] = [],
   heat = 0,
+  bank = 0,
 ) {
   const def = levelAt(level);
   const run = startRun(def.seed, companion, {
@@ -199,6 +204,7 @@ export function startLevel(
     level: def.level,
     heat,
   });
+  if (def.level > 1) run.credit = Math.min(BANK_CAP, TOP_UP + Math.max(0, bank));
   run.rule = ruleAt(def.level);
   run.stretch = stretchAt(def.level);
   if (run.stretch === "swarm") run.spur = carveSpur(run.grid);
@@ -210,11 +216,18 @@ export function startLevel(
     run.callAt = mid;
   }
   const seen = new Set<string>();
-  run.towers = keep.flatMap((tower) => {
+  let refund = 0;
+  run.towers = [];
+  for (const tower of keep) {
     const key = `${tower.x},${tower.y}`;
-    if (seen.has(key) || !canPlace(run.grid, tower.x, tower.y)) return [];
+    if (seen.has(key) || !canPlace(run.grid, tower.x, tower.y)) {
+      refund += TOWERS[tower.id].cost;
+      if (tower.rank >= 2) refund += RANK_COST[2];
+      if (tower.rank >= 3) refund += RANK_COST[3];
+      continue;
+    }
     seen.add(key);
-    return [{
+    run.towers.push({
       x: tower.x,
       y: tower.y,
       id: tower.id,
@@ -222,8 +235,9 @@ export function startLevel(
       cd: 0.35,
       aim: tower.aim ?? defaultAim(tower.id),
       part: tower.part ?? null,
-    }];
-  });
+    });
+  }
+  run.credit += refund;
   return run;
 }
 
@@ -265,11 +279,12 @@ function towerAt(run: GridRun, x: number, y: number) {
 }
 
 export function tryPlace(run: GridRun, x: number, y: number) {
-  if (run.won || run.lost) return false;
+  if (!run.hold || run.won || run.lost) return false;
   const held = towerAt(run, x, y);
   if (held) return tryRank(run, x, y);
   const id = run.selected;
   if (!id) return false;
+  if (run.towers.length >= GUN_CAP) return false;
   if (run.rule === "lock" && !run.hold) return false;
   if (!canPlace(run.grid, x, y)) return false;
   const cost = TOWERS[id].cost;
@@ -282,6 +297,7 @@ export function tryPlace(run: GridRun, x: number, y: number) {
 }
 
 export function tryRank(run: GridRun, x: number, y: number) {
+  if (!run.hold || run.won || run.lost) return false;
   const tower = towerAt(run, x, y);
   if (!tower || tower.rank >= 3) return false;
   const next = (tower.rank + 1) as 2 | 3;
@@ -400,7 +416,11 @@ function fire(run: GridRun, tower: GridTower, targets: GridEnemy[]) {
     if (tower.part === "casing" && tower.id === "lance") damage *= 1.08;
     if (tower.part === "spark" && tower.id === "crater") damage *= 1.08;
     hurt(run, e, damage, tower.id === "beacon");
-    if (tower.id === "halo") e.slowT = Math.max(e.slowT, tower.part === "film" ? 1.6 : 1.1);
+    if (tower.id === "halo") {
+      const grip = MATCHUP.halo[e.tag];
+      e.slowGrip = Math.max(e.slowGrip, grip);
+      if (grip >= 0.7) e.slowT = Math.max(e.slowT, tower.part === "film" ? 1.6 : 1.1);
+    }
     const at = enemyCell(run, e);
     run.shots.push({
       x: from.x,
@@ -492,6 +512,7 @@ export function stepRun(run: GridRun, dt: number) {
       slowT: 0,
       marked: false,
       detour: spawn.tag === "swarm" && run.spur != null,
+      slowGrip: 1,
     });
   }
 
@@ -502,7 +523,7 @@ export function stepRun(run: GridRun, dt: number) {
     if (e.slowT > 0) e.slowT -= step;
     let speed = ENEMIES[e.tag].speed * 1.15 * run.speedMul;
     const frozen = e.slowT > 0 && !(run.rule === "armor" && e.tag === "plate");
-    if (frozen) speed *= 0.55;
+    if (frozen) speed *= e.slowGrip >= 1 ? 0.55 : 0.82;
     if (auger) speed *= 0.55;
     e.along += speed * step;
     const route = routeOf(run, e);

@@ -52,7 +52,7 @@ test("towers stay between levels when the new path does not cover them", () => {
     }
   }
   const next = startLevel(2, "comp-auger", [], first.towers);
-  assert.equal(next.credit, 110);
+  assert.equal(next.credit, 45);
   const kept = next.towers.find((tower) => tower.x === spot.x && tower.y === spot.y);
   if (canPlace(next.grid, spot.x, spot.y)) {
     assert.ok(kept);
@@ -166,6 +166,7 @@ test("a grey crate cannot roll a part that changes the gun", () => {
 test("a watched lance outlasts hands-off on the armor", () => {
   const play = (id, handsOff) => {
     const run = startLevel(4, "comp-auger");
+    run.credit = 200;
     run.selected = id;
     run.handsOff = handsOff;
     let placed = 0;

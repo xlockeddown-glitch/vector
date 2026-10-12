@@ -7,6 +7,9 @@ export const TOWER_IDS: TowerId[] = ["lance", "halo", "crater", "rail", "beacon"
 export const ENEMY_TAGS: EnemyTag[] = ["grunt", "swift", "plate", "swarm"];
 
 export const START_CREDIT = 110;
+export const GUN_CAP = 6;
+export const TOP_UP = 45;
+export const BANK_CAP = 90;
 
 type Tower = {
   name: string;

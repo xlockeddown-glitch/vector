@@ -89,13 +89,20 @@ export function GridStage({
       const run = runRef.current;
       if (run.won && climb.current.rolled < run.level) {
         climb.current.rolled = run.level;
-        climb.current.points += 1;
         climb.current.paid = run.level;
-        climb.current.offer = offerSkills(climb.current.skills, run.level * 3);
         climb.current.clean = run.companionHp >= run.companionMax;
         const meta = loadMeta();
-        climb.current.parts = offerParts(run.level * 11 + (climb.current.clean ? 50 : 0), climb.current.clean ? meta.owned : []);
-        climb.current.partTaken = false;
+        const skillWin = run.level % 3 === 0;
+        if (skillWin) {
+          climb.current.points += 1;
+          climb.current.offer = offerSkills(climb.current.skills, run.level * 3);
+          climb.current.parts = [];
+          climb.current.partTaken = true;
+        } else {
+          climb.current.offer = [];
+          climb.current.parts = offerParts(run.level * 11 + (climb.current.clean ? 50 : 0), climb.current.clean ? meta.owned : []);
+          climb.current.partTaken = false;
+        }
         meta.scrap += 20 + run.level * 2 + (climb.current.clean ? 15 : 0);
         meta.best = Math.max(meta.best, run.level);
         meta.level = run.level;
@@ -196,6 +203,10 @@ export function GridStage({
           <p className="text-[10px] text-muted">credit</p>
         </div>
         <div className="flex flex-col items-end">
+          <p className="tabular text-paper">{run.towers.length}/6</p>
+          <p className="text-[10px] text-muted">guns</p>
+        </div>
+        <div className="flex flex-col items-end">
           <p className="tabular text-frost">{Math.ceil(run.companionHp)}</p>
           <p className="text-[10px] text-muted">hull</p>
         </div>
@@ -243,7 +254,9 @@ export function GridStage({
             ? "Swifts break out."
             : run.hold
               ? run.selected
-                ? `Tap a pad for ${NAMES[run.selected]}.`
+                ? run.towers.length >= 6
+                  ? "Six guns. Sell one to swap."
+                  : `Tap a pad for ${NAMES[run.selected]}.`
                 : "Pick a gun, then a pad. Tap a tower to aim or sell."
               : run.handsOff
                 ? "Hands off. Nearest target. Ship stays dark."
@@ -293,7 +306,7 @@ export function GridStage({
               <button type="button" className="ui-btn ui-btn-ghost flex-1" onClick={() => { cycleAim(run, tower.x, tower.y); setTick((n) => n + 1); }}>Aim</button>
               <button type="button" className="ui-btn ui-btn-ghost flex-1" onClick={() => { trySell(run, tower.x, tower.y); setTick((n) => n + 1); }}>Sell {sellValue(run, tower)}</button>
               {tower.rank < 3 && (
-                <button type="button" className="ui-btn ui-btn-ghost flex-1" disabled={run.credit < rankCost} onClick={() => { tryRank(run, tower.x, tower.y); setTick((n) => n + 1); }}>Rank {rankCost}</button>
+                <button type="button" className="ui-btn ui-btn-ghost flex-1" disabled={!run.hold || run.credit < rankCost} onClick={() => { tryRank(run, tower.x, tower.y); setTick((n) => n + 1); }}>Rank {rankCost}</button>
               )}
               {(() => {
                 const spare = loadMeta().owned.find((id) => partById(id).gun === tower.id && id !== tower.part);
@@ -425,12 +438,11 @@ export function GridStage({
                 </div>
               </div>
             )}
-            {run.won && (
+            {run.won && !climb.current.partTaken && climb.current.parts.length > 0 && (
               <button
                 type="button"
                 className="ui-btn ui-btn-ghost mt-3 w-full"
                 onClick={() => {
-                  if (climb.current.partTaken) return;
                   climb.current.heat += 1;
                   climb.current.partTaken = true;
                   const meta = loadMeta();
@@ -455,7 +467,7 @@ export function GridStage({
                 meta.heat = climb.current.heat;
                 meta.patrolAt = Date.now();
                 saveMeta(meta);
-                runRef.current = arm(startLevel(climb.current.level, companion, climb.current.skills, kept, climb.current.heat));
+                runRef.current = arm(startLevel(climb.current.level, companion, climb.current.skills, kept, climb.current.heat, current.won ? current.credit : 0));
                 setTick((n) => n + 1);
               }}
             >
