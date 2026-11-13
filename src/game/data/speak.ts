@@ -21,7 +21,6 @@ export const SPEAK = [
   { say: "gem", mean: "Moonstone Sapphire Ruby Amethyst Citrine." },
   { say: "gift", mean: "Road Freeze Jump Peel pack lean." },
   { say: "combo", mean: "Same-color set bonus." },
-  { say: "climb", mean: "Old name. Now Bonus. Run perk this game." },
   { say: "keep", mean: "Vault. Spend credits." },
   { say: "vault", mean: "Between-games store. Spend credits." },
   { say: "flux", mean: "Old name. Now credit." },

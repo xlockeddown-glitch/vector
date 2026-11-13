@@ -170,7 +170,6 @@ export function GameApp() {
           odds={hud.draftOdds}
           opening={phase === "opening"}
           loot={phase === "loot"}
-          climb={hud.draftLane === "level"}
           stamp={hud.draftLane === "stamp"}
           heat={hud.draftLane === "round" ? hud.packHeat : null}
           packMode={hud.packMode}

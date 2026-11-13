@@ -40,7 +40,7 @@ import { waveAt, WAVES } from "./data/waves";
 import { countSets } from "./data/sets";
 import { OPERATORS } from "./data/sets";
 import { lordFlags } from "./data/lords";
-import { climbFx, climbMaxed, climbOf, dealClimbCards, emptyClimb } from "./data/climb";
+import { canTakeCraftJob, craftDockHealMul, craftHullMul, craftPicksLeft } from "./data/craft-tree";
 import { dealSpecials, maxSpecials, pickRoundForLevel, specialOf, type SpecialDef } from "./data/specials";
 import { dealParts, partOf, partOfferWeak, refreshPartOffer, type PartRoll } from "./data/parts";
 import { glowHasFx, glowRadius, hullGlow, isGlowHull } from "./data/glow";
@@ -58,7 +58,7 @@ import { bondFill, bondJobCount, bondKits, bondLookCount, bondMul, xpFromCraft }
 import { inCover, COVER } from "./cover";
 import { companionFx, companionMaxHp, companionSpecialOf, pickTaunt, type CompanionState } from "./data/companion";
 import { skillsForCraft } from "./data/skills";
-import { BONUS_CREDIT, CREDIT_SPARE, fluxFromBank, fluxFromRound, hangarOf, hangarStartCredit } from "./data/hangar";
+import { BONUS_CREDIT, fluxFromBank, fluxFromRound, hangarOf, hangarStartCredit } from "./data/hangar";
 import { vaultHas, vaultOf } from "./data/vault";
 import type {
   ActiveCharm,
@@ -336,7 +336,6 @@ export type World = {
   tutorialPendingGate?: boolean;
   wantTutorial?: boolean;
   parked?: boolean;
-  climb: { bay: number; pack: number; crew: number };
   swapTokens: number;
   swapPity: number;
   swapToast: boolean;
@@ -514,7 +513,6 @@ export function createWorld(): World {
     tutorialDoneReady: false,
     tutorialPendingGate: false,
     parked: false,
-    climb: emptyClimb(),
     swapTokens: START_SWAP,
     swapPity: 0,
     swapToast: false,
@@ -549,7 +547,7 @@ function applyStamps(w) {
 }
 
 export function padCap(w) {
-  return Math.min(MAX_TOWERS, BASE_PADS + levelPadBonus(w.runLevel) + w.stampPads + (w.mapPads ?? 0) + (w.hangarPads ?? 0) + climbFx(w.climb).pads);
+  return Math.min(MAX_TOWERS, BASE_PADS + levelPadBonus(w.runLevel) + w.stampPads + (w.mapPads ?? 0) + (w.hangarPads ?? 0));
 }
 
 export function livePads(w) {
@@ -1248,7 +1246,7 @@ function killEnemy(w, e, from = null) {
   let goldMul = 1;
   for (const c of skyCrafts(w)) {
     if (c.home) continue;
-    const fx = companionFx(c.card, c.kits);
+    const fx = companionFx(c.card, c.kits, c.jobs);
     if (fx.goldMul && dist2(c.x, c.y, e.x, e.y) <= fx.radius * fx.radius) goldMul *= fx.goldMul;
   }
   pay *= Math.min(1.45, goldMul);
@@ -1352,7 +1350,7 @@ function lerpAng(a, b, t) {
 function hopBurn(w, e) {
   if ((e.burnT ?? 0) <= 0 && (e.burnDps ?? 0) <= 0) return;
   const sets = liveSets(w);
-  const lords = lordFlags(w.companions, sets, climbFx(w.climb).lordLimp);
+  const lords = lordFlags(w.companions, sets);
   if (!lords.wildfire) return;
   const r2 = 92 * 92;
   for (const o of w.enemies) {
@@ -1486,7 +1484,7 @@ function tribeOnHit(w, e, stats) {
   const tribe = stats?.tribe;
   if (!tribe || !e?.alive) return;
   const sets = liveSets(w);
-  const lords = lordFlags(w.companions, sets, climbFx(w.climb).lordLimp);
+  const lords = lordFlags(w.companions, sets);
   if (tribe === "heat" && (sets.heat ?? 0) >= 2) {
     dropPatch(w, e.x, e.y, "fire", {
       radius: lords.wildfire ? 28 : 22,
@@ -1640,7 +1638,7 @@ function chainHit(w, x, y, start, dmg, hops, stats) {
 
 function voltPoles(w) {
   const sets = liveSets(w);
-  const lords = lordFlags(w.companions, sets, climbFx(w.climb).lordLimp);
+  const lords = lordFlags(w.companions, sets);
   if (!lords.liveRail) return [];
   const pts = [];
   for (const item of placedGuns(w)) {
@@ -1825,7 +1823,7 @@ function tickGunGlow(w, item, stats, pos, dt, hot) {
 function stepTowers(w, dt) {
   const sets = liveSets(w);
   const shared = sharedCurrentRange(w, sets);
-  const lords = lordFlags(w.companions, sets, climbFx(w.climb).lordLimp);
+  const lords = lordFlags(w.companions, sets);
   for (const item of placedGuns(w)) {
     const card = item.card;
     let stats = itemStats(w, item, sets);
@@ -1870,7 +1868,7 @@ function stepTowers(w, dt) {
     let halo = 0;
     for (const c of skyCrafts(w)) {
       if (c.home) continue;
-      halo = Math.max(halo, companionFx(c.card, c.kits).buffRate || 0);
+      halo = Math.max(halo, companionFx(c.card, c.kits, c.jobs).buffRate || 0);
     }
     const buff = item.placedPad && w.padBuff?.[item.placedPad] > 0 ? 1 + (halo || 0.22) : 1;
     const oc = hot ? PARAMS.overclockMul * (hasSig(w.signals, "sig-slam") ? 1.55 : 1) : 1;
@@ -1885,7 +1883,7 @@ function stepTowers(w, dt) {
     if (home && e) w.defenderAim = Math.atan2(e.y - pos.y, e.x - pos.x);
     const cap = PATH_ALONG[e?.route ?? 0] ?? 1;
     const late = e && (e.along ?? 0) / cap > 0.7;
-    const dmg = stats.damage * (home ? 1.28 * climbFx(w.climb).coreDmg : 1) * (home && late ? 1.22 : 1) * oc;
+    const dmg = stats.damage * (home ? 1.28 : 1) * (home && late ? 1.22 : 1) * oc;
     const role = stats.role;
     const aim = item.aim ?? 0;
     if (item.trick === "drones") dronePeck(w, pos, stats, dmg, item.aim ?? 0);
@@ -2236,7 +2234,7 @@ function grantXp(w, t, quiet = false) {
 }
 
 function luckOf(w) {
-  return w.draftBump + levelDraftBump(w.runLevel) + (w.stampLuck || 0) + (w.hangarLuck || 0) + climbFx(w.climb).luck;
+  return w.draftBump + levelDraftBump(w.runLevel) + (w.stampLuck || 0) + (w.hangarLuck || 0);
 }
 
 export function startWave(w) {
@@ -2597,14 +2595,14 @@ function homeSlot(w, c) {
 }
 
 function dockHealRate(w, c) {
-  let rate = DOCK_HEAL * climbFx(w.climb).healMul * (w.vaultHealMul || 1);
+  let rate = DOCK_HEAL * craftDockHealMul(c) * (w.vaultHealMul || 1);
   if (hasSig(w.signals, "sig-dock")) rate *= 1.55;
   for (const k of c.kits ?? []) {
     if (k.kit?.healMul) rate *= k.kit.healMul;
   }
   for (const m of skyCrafts(w)) {
     if (m.uid === c.uid || m.home) continue;
-    const fx = companionFx(m.card, m.kits);
+    const fx = companionFx(m.card, m.kits, m.jobs);
     if (!fx.heal) continue;
     if (dist2(m.x, m.y, c.x, c.y) > fx.radius * fx.radius) continue;
     rate += fx.heal * 0.85;
@@ -2717,7 +2715,7 @@ function autoPlaceSocket(w, card) {
 
 function spawnCompanion(w, card) {
   const role = card.companion?.role ?? "hunter";
-  const hpMax = Math.round(companionMaxHp(role) * climbFx(w.climb).hpMul);
+  const hpMax = companionMaxHp(role);
   const flying = skyCrafts(w).length < MAX_COMPANIONS;
   const id = uid(w);
   const offset = skyCrafts(w).length;
@@ -3114,7 +3112,7 @@ function stepOneCraft(w, c, dt) {
     if (c.bubbleT <= 0) c.bubble = null;
   }
   if (c.placedPad !== SKY_PAD) return;
-  const fx = companionFx(c.card, c.kits);
+  const fx = companionFx(c.card, c.kits, c.jobs);
   if (c.trick === "catch") fx.intercept = Math.max(fx.intercept || 0, 36) * 1.45;
   if (c.trick === "hunt") fx.radius *= 1.12;
   if (c.trick === "trail") fx.burnDps = (fx.burnDps || 5) * 1.35;
@@ -3438,7 +3436,7 @@ function stepOneCraft(w, c, dt) {
         if (fx.slowMul) {
           e.slowT = Math.max(e.slowT, 1.1);
           e.slowMul = Math.min(e.slowMul || 1, fx.slowMul);
-          const ice = lordFlags(w.companions, liveSets(w), climbFx(w.climb).lordLimp).icebox;
+          const ice = lordFlags(w.companions, liveSets(w)).icebox;
           if (ice && !e.iced) {
             e.iced = true;
             e.freezeT = 0.55;
@@ -3770,7 +3768,7 @@ function stepNades(w, dt) {
       if (c.home) continue;
       const role = c.card.companion?.role;
       if (role !== "lens") continue;
-      const fx = companionFx(c.card, c.kits);
+      const fx = companionFx(c.card, c.kits, c.jobs);
       const d = Math.hypot(n.x - c.x, n.y - c.y);
       if (d > fx.radius) continue;
       let prey = null;
@@ -4404,13 +4402,6 @@ export function pickDraft(w, id) {
     checkpoint(w);
     return;
   }
-  if (n.kind === "climb" || w.draftLane === "level") {
-    applyClimbPick(w, n.templateId ?? n.id);
-    w.draftPicksLeft = 0;
-    w.draftCards = [];
-    finishDraftStep(w);
-    return;
-  }
   if (n.kind !== "tower" && ownedTemplates(w).has(n.templateId)) {
     w.message = "You already have that. Pick a different one.";
     w.uiDirty = true;
@@ -4612,32 +4603,6 @@ export function scrapTower(w, t) {
   return true;
 }
 
-function applyClimbPick(w, id) {
-  if (!w.climb) w.climb = emptyClimb();
-  if (id === "climb-gold") {
-    bankFlux(w, CREDIT_SPARE);
-    w.message = `Spare credit. +${CREDIT_SPARE}.`;
-    return;
-  }
-  const perk = climbOf(id);
-  if (!perk) return;
-  w.climb[perk.branch] = Math.max(w.climb[perk.branch] ?? 0, perk.rank);
-  const fx = climbFx(w.climb);
-  if (perk.id === "climb-bay-2") w.swapTokens = Math.min(MAX_SWAP, (w.swapTokens ?? 0) + 1);
-  if (perk.id === "climb-pack-2") w.skipCharge = Math.max(w.skipCharge ?? 0, 1);
-  if (perk.id === "climb-crew-3") {
-    for (const c of w.companions ?? []) {
-      const next = Math.round(c.hpMax * fx.hpMul);
-      if (next > c.hpMax) {
-        const ratio = c.hp / Math.max(1, c.hpMax);
-        c.hpMax = next;
-        c.hp = Math.min(c.hpMax, Math.round(c.hpMax * ratio));
-      }
-    }
-  }
-  w.message = `${perk.name}. ${perk.blurb}`;
-}
-
 export function upgradeTower(w, t, n, tuneId) {
   const r = w.roster.find((x) => x.uid === t);
   if (!r?.placedPad) return false;
@@ -4655,6 +4620,28 @@ export function upgradeTower(w, t, n, tuneId) {
   w.uiDirty = true;
   const a = towerPoint(r);
   if (a) addFx(w, { kind: "ring", x: a.x, y: a.y, life: 0.3, color: "#f0f1f4", size: 28 });
+  return true;
+}
+
+export function upgradeCraft(w, craftUid, nodeId) {
+  const c = (w.companions ?? []).find((x) => x.uid === craftUid);
+  if (!c || !nodeId) return false;
+  if (craftPicksLeft(c) <= 0) return false;
+  const cost = upgradeCost(c.card, (c.jobs ?? []).length);
+  if (cost <= 0 || w.points < cost) return false;
+  if (!canTakeCraftJob(c, nodeId)) return false;
+  const before = craftHullMul(c);
+  c.jobs = [...(c.jobs ?? []), nodeId];
+  const grow = craftHullMul(c) / before;
+  if (grow > 1) {
+    const ratio = c.hp / Math.max(1, c.hpMax);
+    c.hpMax = Math.round(c.hpMax * grow);
+    c.hp = Math.min(c.hpMax, Math.round(c.hpMax * ratio));
+  }
+  w.points -= cost;
+  w.upgradesMade = (w.upgradesMade ?? 0) + 1;
+  w.uiDirty = true;
+  addFx(w, { kind: "ring", x: c.x, y: c.y, life: 0.3, color: "#3cd6cc", size: 28 });
   return true;
 }
 
@@ -4948,7 +4935,6 @@ function resetWatchRank(w) {
   w.xp = 0;
   w.pendingLevels = 0;
   w.roundXp = 0;
-  w.climb = emptyClimb();
 }
 
 export function beginNextWatch(w) {
@@ -5132,6 +5118,7 @@ function snapshotRun(w) {
       parts: c.parts ?? [],
       partOffer: c.partOffer ?? [],
       clone: !!c.clone,
+      jobs: c.jobs ?? [],
     })),
     runKills: w.runKills ?? 0,
     runLeaks: w.runLeaks ?? 0,
@@ -5148,7 +5135,6 @@ function snapshotRun(w) {
     pendingCompensate: w.pendingCompensate ?? null,
     bansThisRound: w.bansThisRound ?? 0,
     runBanned: w.runBanned ?? [],
-    climb: w.climb ?? emptyClimb(),
   };
 }
 
@@ -5314,7 +5300,6 @@ export function applyRun(w, run) {
   w.draftCompensate = false;
   w.bansThisRound = run.bansThisRound ?? 0;
   w.runBanned = run.runBanned ?? [];
-  w.climb = run.climb ?? emptyClimb();
   w.parked = false;
   {
     const meta = loadMeta();
@@ -5373,7 +5358,11 @@ export function applyRun(w, run) {
         parts: match?.parts ?? [],
         partOffer: match?.partOffer ?? [],
         clone: !!match?.clone,
+        jobs: match?.jobs ?? [],
       });
+      const restored = w.companions[w.companions.length - 1];
+      restored.hpMax = Math.round(restored.hpMax * craftHullMul(restored));
+      restored.hp = restored.hpMax;
     }
   } else {
     for (const s of savedCrafts) {
@@ -5388,6 +5377,9 @@ export function applyRun(w, run) {
       c.parts = s.parts ?? [];
       c.partOffer = s.partOffer ?? [];
       c.clone = !!s.clone;
+      c.jobs = s.jobs ?? [];
+      c.hpMax = Math.round(c.hpMax * craftHullMul(c));
+      c.hp = c.hpMax;
     }
   }
   applyStamps(w);

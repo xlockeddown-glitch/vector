@@ -14,7 +14,6 @@ export type CardKind =
   | "sticker"
   | "companion"
   | "kit"
-  | "climb"
   | "set"
   | "signal";
 export type ThemeId = "water" | "earth" | "space";
@@ -22,7 +21,7 @@ export type PlayMode = "story" | "arcade";
 export type SetId = "heat" | "cold" | "spark" | "iron";
 export type OpId = "mul" | "add" | "raise" | "take";
 export type PackMode = "show" | "mystery" | "cut";
-export type DraftLane = "open" | "level" | "round" | "part" | "loot" | "stamp";
+export type DraftLane = "open" | "round" | "part" | "loot" | "stamp";
 export type PackHeat = "quiet" | "live" | "peak" | "nova";
 export type PackGift = "road" | "freeze" | "jump" | "peel";
 export type GemId = "ruby" | "emerald" | "sapphire" | "diamond";
@@ -269,7 +268,6 @@ export type CardDef = {
   companion?: CompanionEffect;
   kit?: KitEffect;
   sticker?: StickerEffect;
-  climb?: { branch: "bay" | "pack" | "crew"; rank: number };
   /** Two gun template ids. Set cards only. */
   setGuns?: string[];
   /** MUT position: Credit Guns Crafts Path Bonus Lives. Never an overall number. */
@@ -516,6 +514,7 @@ export type RunSave = {
     parts?: PartRoll[];
     partOffer?: PartRoll[];
     clone?: boolean;
+    jobs?: string[];
   }>;
   runKills?: number;
   runLeaks?: number;
@@ -532,7 +531,6 @@ export type RunSave = {
   pendingCompensate?: "kit" | "companion" | null;
   bansThisRound?: number;
   runBanned?: string[];
-  climb?: { bay: number; pack: number; crew: number };
 };
 
 export type LiveOffer = {

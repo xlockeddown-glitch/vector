@@ -26,7 +26,6 @@ export function DraftBoard({
   setCounts: Record<SetId, number>;
   onPick: (id: string) => void;
   loot?: boolean;
-  climb?: boolean;
   stamp?: boolean;
   heat?: PackHeat | null;
   packMode?: PackMode;

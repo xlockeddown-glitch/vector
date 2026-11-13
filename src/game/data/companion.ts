@@ -1,4 +1,5 @@
 import type { CardDef, CompanionRole, RolledCard } from "../types";
+import { applyCraftJobs } from "./craft-tree";
 
 export type CompanionFx = {
   role: CompanionRole;
@@ -66,6 +67,8 @@ export type CompanionState = {
   clone?: boolean;
   shots?: number;
   levelPop?: number;
+  /** Craft skill tree nodes bought this run. */
+  jobs?: string[];
 };
 
 const LINES = [
@@ -219,7 +222,7 @@ export function pickTaunt(seed: number, role: CompanionRole = "hunter"): string 
   return pool[i]!;
 }
 
-export function companionFx(card: RolledCard, kits: RolledCard[]): CompanionFx {
+export function companionFx(card: RolledCard, kits: RolledCard[], jobs?: string[] | null): CompanionFx {
   const base = card.companion ?? { role: "hunter" as CompanionRole, dps: 10, radius: 80, tauntRate: 1 };
   const out: CompanionFx = {
     role: base.role ?? "hunter",
@@ -264,7 +267,7 @@ export function companionFx(card: RolledCard, kits: RolledCard[]): CompanionFx {
     if (e.burnDps) out.burnDps += e.burnDps;
     if (e.speedMul) out.speedMul *= e.speedMul;
   }
-  return out;
+  return applyCraftJobs(out, jobs, card);
 }
 
 export function companionMaxHp(role: CompanionRole): number {

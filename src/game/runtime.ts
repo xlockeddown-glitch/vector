@@ -33,6 +33,7 @@ import {
   stepWorld,
   unstickWorld,
   upgradeTower,
+  upgradeCraft,
   tryFuseGuns,
   pickTrick,
   pickSpecial,
@@ -75,6 +76,7 @@ export type Action =
   | { type: "shopContinue" }
   | { type: "buyPick" }
   | { type: "upgrade"; uid?: string; mod?: OpId; tune?: string }
+  | { type: "upgradeCraft"; uid: string; node: string }
   | { type: "trick"; uid: string; id: string }
   | { type: "special"; uid: string; id: string }
   | { type: "fuse"; keep: string; eat: string }
@@ -146,7 +148,6 @@ type QaSnap = {
   giftLean: number;
   message: string | null;
   announce: string | null;
-  climb: { bay: number; pack: number; crew: number } | null;
   speed: number;
   selectedCard: string | null;
   remainingPads: number;
@@ -270,7 +271,6 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
       : 0,
     message: world.message ?? null,
     announce: world.announce ?? null,
-    climb: world.climb ?? null,
     speed: world.speed ?? 1,
     selectedCard: world.selectedCard ?? null,
     remainingPads: livePads(world).filter((p) => !world.roster.some((r) => r.placedPad === p.id && r.card.kind === "tower")).length,
@@ -1122,6 +1122,12 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
           audio.play(ok ? "place" : "ui");
           pushHud(true);
         }
+        break;
+      }
+      case "upgradeCraft": {
+        const ok = upgradeCraft(world, action.uid, action.node);
+        audio.play(ok ? "place" : "ui");
+        pushHud(true);
         break;
       }
       case "trick": {
