@@ -421,67 +421,6 @@ function pathLengthOf(path: Vec[]): number {
   return n;
 }
 
-/** Clean U-folds on the two longest interior runs. About +15% walk. */
-function lengthenPath(path: Vec[], extra = 0.15): Vec[] {
-  if (path.length < 4) return path.map((p) => ({ ...p }));
-  const need = pathLengthOf(path) * extra;
-  const mag = Math.max(72, Math.min(148, need / 4));
-  const segs: { i: number; len: number }[] = [];
-  for (let i = 1; i < path.length - 1; i++) {
-    const a = path[i - 1]!;
-    const b = path[i]!;
-    segs.push({ i, len: Math.hypot(b.x - a.x, b.y - a.y) });
-  }
-  segs.sort((a, b) => b.len - a.len);
-  const foldAt = new Set(segs.slice(0, 2).map((s) => s.i));
-  const out: Vec[] = [{ ...path[0]! }];
-  const clamp = (p: Vec): Vec => ({
-    x: Math.max(64, Math.min(WORLD.w - 64, p.x)),
-    y: Math.max(48, Math.min(WORLD.h - 72, p.y)),
-  });
-  for (let i = 1; i < path.length; i++) {
-    const a = out[out.length - 1]!;
-    const b = path[i]!;
-    if (!foldAt.has(i)) {
-      out.push({ ...b });
-      continue;
-    }
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const ux = dx / len;
-    const uy = dy / len;
-    const px = -uy;
-    const py = ux;
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    const s = (WORLD.w / 2 - mid.x) * px + (WORLD.h / 2 - mid.y) * py >= 0 ? 1 : -1;
-    const inset = Math.min(150, len * 0.26);
-    const p1 = clamp({ x: a.x + ux * inset, y: a.y + uy * inset });
-    const p2 = clamp({ x: p1.x + px * mag * s, y: p1.y + py * mag * s });
-    const p4 = clamp({ x: b.x - ux * inset, y: b.y - uy * inset });
-    const p3 = clamp({ x: p4.x + px * mag * s, y: p4.y + py * mag * s });
-    out.push(p1, p2, p3, p4, { ...b });
-  }
-  return out;
-}
-
-function jogPath(path: Vec[], jog: number): Vec[] {
-  const out = path.map((p) => ({ x: p.x, y: p.y }));
-  if (!jog || out.length < 5) return out;
-  const i = 2 + (Math.abs(Math.floor(jog)) % (out.length - 4));
-  const a = out[i - 1]!;
-  const b = out[i]!;
-  const c = out[i + 1]!;
-  const dx = c.x - a.x;
-  const dy = c.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const mag = 52 + (Math.abs(jog) % 3) * 10;
-  const sign = jog >= 0 ? 1 : -1;
-  b.x = Math.max(80, Math.min(WORLD.w - 80, b.x + (-dy / len) * mag * sign));
-  b.y = Math.max(80, Math.min(WORLD.h - 80, b.y + (dx / len) * mag * sign));
-  return out;
-}
-
 function seatFor(turn: number, i: number): CoverShape {
   if (turn > 0.7) return "diamond";
   if (turn > 0.28) return "cone";
@@ -503,24 +442,54 @@ function packLayout(paths: Vec[][], _pads?: Pad[]): PackedLayout {
   };
 }
 
+/**
+ * Hand-made lanes. Clean right angles, parallel runs ≥150 apart so moons fit between,
+ * every run ≥96 long (corner radius 48). All end at Home, bottom right (1204, 648).
+ *   twin-s — three long rows, a classic serpent (Mare)
+ *   shelf  — a comb of up-and-down columns (Regolith)
+ *   hook   — a wide loop that hooks back under itself (Void)
+ */
 const RAW: Record<string, Vec[]> = {
   "twin-s": [
-    { x: 72, y: 200 },
-    { x: 1088, y: 200 },
-    { x: 1088, y: 352 },
-    { x: 196, y: 352 },
-    { x: 196, y: 504 },
-    { x: 1088, y: 504 },
-    { x: 1088, y: 648 },
+    { x: 72, y: 190 },
+    { x: 1130, y: 190 },
+    { x: 1130, y: 345 },
+    { x: 170, y: 345 },
+    { x: 170, y: 500 },
+    { x: 1100, y: 500 },
+    { x: 1100, y: 648 },
     { x: 1204, y: 648 },
   ],
-  shelf: SHELF_PATHS[0]!.map((p) => ({ x: p.x, y: p.y })),
-  hook: HOOK_PATHS[0]!.map((p) => ({ x: p.x, y: p.y })),
+  shelf: [
+    { x: 72, y: 180 },
+    { x: 300, y: 180 },
+    { x: 300, y: 600 },
+    { x: 520, y: 600 },
+    { x: 520, y: 180 },
+    { x: 740, y: 180 },
+    { x: 740, y: 600 },
+    { x: 960, y: 600 },
+    { x: 960, y: 180 },
+    { x: 1150, y: 180 },
+    { x: 1150, y: 648 },
+    { x: 1204, y: 648 },
+  ],
+  hook: [
+    { x: 72, y: 430 },
+    { x: 300, y: 430 },
+    { x: 300, y: 180 },
+    { x: 1150, y: 180 },
+    { x: 1150, y: 400 },
+    { x: 540, y: 400 },
+    { x: 540, y: 648 },
+    { x: 1204, y: 648 },
+  ],
 };
 
-export function setMapLayout(id: string, jog = 0) {
+/** Old per-run "jog" variation is gone: lanes stay the shape they were drawn. */
+export function setMapLayout(id: string, _jog = 0) {
   const raw = RAW[id] ?? RAW["twin-s"]!;
-  const L = packLayout([lengthenPath(jogPath(raw, jog), 0.15)]);
+  const L = packLayout([raw.map((p) => ({ ...p }))]);
   PATHS = L.paths;
   PADS = L.pads;
   PATH_SAMPLES = L.samples;
@@ -622,33 +591,52 @@ function hugPads(path: Vec[], n = MAX_PADS): Pad[] {
   const edge = 110;
   const span = Math.max(1, last - edge * 2);
   const pads: Pad[] = [];
+  const inb = (p: Vec) =>
+    p.x >= 48 &&
+    p.y >= 48 &&
+    p.x <= WORLD.w - 48 &&
+    p.y <= WORLD.h - 48 &&
+    !(p.x > WORLD.w - 200 && p.y > WORLD.h - 130);
+  // A moon must not sit on any other part of the lane, or on another moon.
+  const laneGap = (p: Vec) => {
+    let d = Infinity;
+    for (let k = 0; k < samples.length; k += 3) d = Math.min(d, Math.hypot(samples[k]!.x - p.x, samples[k]!.y - p.y));
+    return d;
+  };
+  const clear = (p: Vec) => inb(p) && laneGap(p) >= PAD_HUG - 10 && pads.every((q) => Math.hypot(q.x - p.x, q.y - p.y) >= 104);
   let prevH = 0;
   for (let i = 0; i < n; i++) {
-    const s = pointAlong(samples, edge + ((i + 0.5) / n) * span);
-    let d = s.heading - prevH;
+    const base = edge + ((i + 0.5) / n) * span;
+    let placed: { pos: Vec; heading: number } | null = null;
+    // Try both sides, then slide along the lane a little, until a clear spot turns up.
+    for (const slide of [0, 40, -40, 80, -80, 120, -120]) {
+      const s = pointAlong(samples, Math.max(edge, Math.min(last - edge, base + slide)));
+      const nx = -Math.sin(s.heading);
+      const ny = Math.cos(s.heading);
+      const first = i % 2 === 0 ? 1 : -1;
+      for (const sign of [first, -first]) {
+        const pos = { x: s.x + nx * PAD_HUG * sign, y: s.y + ny * PAD_HUG * sign };
+        if (clear(pos)) {
+          placed = { pos, heading: s.heading };
+          break;
+        }
+      }
+      if (placed) break;
+    }
+    if (!placed) continue;
+    let d = placed.heading - prevH;
     while (d > Math.PI) d -= Math.PI * 2;
     while (d < -Math.PI) d += Math.PI * 2;
-    const turn = i === 0 ? 0 : Math.abs(d);
-    prevH = s.heading;
-    const nx = -Math.sin(s.heading);
-    const ny = Math.cos(s.heading);
-    const at = (sign: number) => ({ x: s.x + nx * PAD_HUG * sign, y: s.y + ny * PAD_HUG * sign });
-    const inb = (p: Vec) =>
-      p.x >= 48 &&
-      p.y >= 48 &&
-      p.x <= WORLD.w - 48 &&
-      p.y <= WORLD.h - 48 &&
-      !(p.x > WORLD.w - 200 && p.y > WORLD.h - 130);
-    let sign = i % 2 === 0 ? 1 : -1;
-    let pos = at(sign);
-    if (!inb(pos)) pos = at(-sign);
+    const turn = pads.length === 0 ? 0 : Math.abs(d);
+    prevH = placed.heading;
+    const k = pads.length;
     pads.push({
-      id: `p${i + 1}`,
-      x: Math.max(48, Math.min(WORLD.w - 48, pos.x)),
-      y: Math.max(48, Math.min(WORLD.h - 48, pos.y)),
-      zone: i < 9 ? "orbit" : i < 18 ? "nadir" : "merge",
-      seat: seatFor(turn, i),
-      look: moonLook(i),
+      id: `p${k + 1}`,
+      x: Math.max(48, Math.min(WORLD.w - 48, placed.pos.x)),
+      y: Math.max(48, Math.min(WORLD.h - 48, placed.pos.y)),
+      zone: k < 9 ? "orbit" : k < 18 ? "nadir" : "merge",
+      seat: seatFor(turn, k),
+      look: moonLook(k),
     });
   }
   return pads;
