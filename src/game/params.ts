@@ -24,6 +24,10 @@ export const PARAMS = {
   swapRate: 0.1,
   swapPity: 8,
   megaEvery: 6,
+  /** Mega waves bring this many times the usual enemies (was 1.45; wave 12 was a wall). */
+  megaCountMul: 1.25,
+  /** Build mode enemy HP multiplier: stars make Build teams stronger than Arena teams. */
+  buildHpMul: 1.3,
   extraPicksMax: 0,
   draftPickCost: 40,
   /** Craft mastery. Job points to unlock skill 1 / 2 / 3. */
