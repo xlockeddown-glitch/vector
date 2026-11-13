@@ -75,6 +75,14 @@ export const PARAMS = {
   jobSlotsMax: 7,
   /** A gun walks this many job lines. */
   jobBranchesMax: 2,
+  /**
+   * Credit cost of each gun tree pick, by picks already taken.
+   * A 12-wave Arena win pays ~14k Credit (measured, no Credit Signals), ~1k per wave.
+   * A full gun is 4k, so a run maxes about 3 guns, or spreads thinner. Choose.
+   */
+  jobCost: [200, 400, 700, 1100, 1600],
+  /** Credit cost of each craft tree pick, by picks already taken. Full craft 1.6k. */
+  craftJobCost: [250, 500, 850],
   /** Engrave extra hurt per loop. Was 0.06. Level now carries the climb. */
   forgeDmg: 0.03,
   /** Friend crafts. Extra bite per round. */

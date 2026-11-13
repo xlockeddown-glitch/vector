@@ -40,7 +40,7 @@ import { waveAt, WAVES } from "./data/waves";
 import { countSets } from "./data/sets";
 import { OPERATORS } from "./data/sets";
 import { lordFlags } from "./data/lords";
-import { canTakeCraftJob, craftDockHealMul, craftHullMul, craftPicksLeft } from "./data/craft-tree";
+import { canTakeCraftJob, craftUpgradeCost, craftDockHealMul, craftHullMul, craftPicksLeft } from "./data/craft-tree";
 import { dealSpecials, maxSpecials, pickRoundForLevel, specialOf, type SpecialDef } from "./data/specials";
 import { dealParts, partOf, partOfferWeak, refreshPartOffer, type PartRoll } from "./data/parts";
 import { glowHasFx, glowRadius, hullGlow, isGlowHull } from "./data/glow";
@@ -1323,7 +1323,7 @@ function failRun(w) {
   w.waveActive = false;
   payoutBond(w, w.grade?.grade ?? w.lastGrade ?? "F");
   if ((w.points ?? 0) > 0) {
-    bankFlux(w, w.points);
+    bankFlux(w, fluxFromBank(w.points));
     w.points = 0;
   }
   if (!w.recorded) {
@@ -4627,7 +4627,7 @@ export function upgradeCraft(w, craftUid, nodeId) {
   const c = (w.companions ?? []).find((x) => x.uid === craftUid);
   if (!c || !nodeId) return false;
   if (craftPicksLeft(c) <= 0) return false;
-  const cost = upgradeCost(c.card, (c.jobs ?? []).length);
+  const cost = craftUpgradeCost((c.jobs ?? []).length);
   if (cost <= 0 || w.points < cost) return false;
   if (!canTakeCraftJob(c, nodeId)) return false;
   const before = craftHullMul(c);
@@ -4972,7 +4972,7 @@ export function goTitle(w, keep: boolean): boolean {
   w.waveActive = false;
   if (!keep) {
     if ((w.points ?? 0) > 0) {
-      bankFlux(w, w.points);
+      bankFlux(w, fluxFromBank(w.points));
       w.points = 0;
     }
     if (!w.recorded) {

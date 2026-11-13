@@ -48,13 +48,16 @@ export const GRADE_XP: Record<Grade, number> = {
 };
 
 /** Early ranks are close. Later ones stretch. */
+/**
+ * XP for the next run Level. A 12-wave Arena win earns ~480 XP (measured),
+ * so this lands around Level 9 by the last wave, about one Level per 1–2 waves,
+ * and every Level perk (draft bump at 4, extra pick at 5, extra moon at 8) shows up in Arena.
+ * Endless keeps climbing slower past 12.
+ */
 export function xpToNext(level: number): number {
-  if (level <= 1) return 72;
-  if (level === 2) return 90;
-  if (level === 3) return 112;
-  if (level === 4) return 138;
-  if (level === 5) return 168;
-  return Math.round(168 * Math.pow(1.15, level - 5));
+  const lv = Math.max(1, Math.floor(level));
+  if (lv <= 12) return 35 + (lv - 1) * 7;
+  return Math.round(112 * Math.pow(1.12, lv - 12));
 }
 
 export function levelDraftBump(level: number): number {

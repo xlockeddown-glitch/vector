@@ -6,6 +6,7 @@ import {
   craftRankInBranch,
   craftStartedBranches,
   craftTreeOf,
+  craftUpgradeCost,
   offerCraftJobs,
 } from "@/game/data/craft-tree";
 import { upgradeCost } from "@/game/data/cards";
@@ -186,7 +187,7 @@ export function CraftTree({
       left={craftPicksLeft(craft)}
       fullLine="This craft is full."
       note={craft.hullMax ? `Hull ${fmtCount(craft.hull ?? 0)}/${fmtCount(craft.hullMax)}` : undefined}
-      cost={upgradeCost(craft.card, craft.jobs.length)}
+      cost={craftUpgradeCost(craft.jobs.length)}
       credit={credit}
       onBuy={onBuy}
       onClose={onClose}

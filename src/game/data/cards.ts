@@ -208,12 +208,10 @@ export function gunCardFields(card: CardDef): { does: string; hits: string; extr
   };
 }
 
+/** Credit for the next gun tree pick. Table lives in PARAMS.jobCost. */
 export function upgradeCost(_card: CardDef, slotsUsed: number): number {
-  if (slotsUsed <= 0) return 20;
-  if (slotsUsed === 1) return 35;
-  if (slotsUsed === 2) return 50;
-  if (slotsUsed === 3) return 70;
-  return 90;
+  const t = PARAMS.jobCost;
+  return t[Math.max(0, Math.min(t.length - 1, slotsUsed))]!;
 }
 
 export type CombatAmp = { dmg?: number; range?: number; rate?: number };

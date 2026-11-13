@@ -1,4 +1,5 @@
 import type { CompanionFx } from "./companion";
+import { PARAMS } from "../params";
 
 /**
  * Craft skill trees. Same shape as gun trees: 3 branches × 3 nodes.
@@ -245,6 +246,12 @@ export function applyCraftJobs(fx: CompanionFx, jobs: string[] | null | undefine
   if (!jobs?.length) return fx;
   for (const node of craftNodes({ jobs, card })) node.apply?.(fx);
   return fx;
+}
+
+/** Credit for the next craft tree pick. Table lives in PARAMS.craftJobCost. */
+export function craftUpgradeCost(picksTaken: number): number {
+  const t = PARAMS.craftJobCost;
+  return t[Math.max(0, Math.min(t.length - 1, picksTaken))]!;
 }
 
 export function craftHullMul(c: CraftJobState): number {
