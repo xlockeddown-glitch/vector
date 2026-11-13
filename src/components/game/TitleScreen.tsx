@@ -167,13 +167,21 @@ export function TitleScreen({
           </button>
           <button
             type="button"
+            onClick={() => startMode("build")}
+            className="ui-btn ui-btn-primary card-bevel min-w-36"
+            title="Draft a gun after every wave. Copies merge into stars."
+          >
+            Build
+          </button>
+          <button
+            type="button"
             onClick={onHelp}
             className="ui-btn help-btn"
           >
             Briefing
           </button>
         </div>
-        <p className="title-start-hint">Draft. Plant. Hold 12.</p>
+        <p className="title-start-hint">Arena: draft once, hold 12. Build: draft every wave, merge copies.</p>
         <p className="title-version">v{GAME_VERSION}</p>
         {(best.runs > 0 || hasRun) && (
         <div className="title-banks rise-in" style={{ animationDelay: "190ms" }}>

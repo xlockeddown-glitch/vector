@@ -3509,3 +3509,7 @@ img.card-paint,
 @media (max-width: 640px) {
   .tree-elements-row { grid-template-columns: minmax(0, 1fr); }
 }
+.bench-chip-stars {
+  color: #ffd46b;
+  letter-spacing: -0.05em;
+}

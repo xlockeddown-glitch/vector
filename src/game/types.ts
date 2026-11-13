@@ -17,7 +17,7 @@ export type CardKind =
   | "set"
   | "signal";
 export type ThemeId = "water" | "earth" | "space";
-export type PlayMode = "story" | "arcade";
+export type PlayMode = "story" | "arcade" | "build";
 export type SetId = "heat" | "cold" | "spark" | "iron";
 export type OpId = "mul" | "add" | "raise" | "take";
 export type PackMode = "show" | "mystery" | "cut";
@@ -328,6 +328,8 @@ export type RosterItem = {
   uid: string;
   /** Element this gun was infused with this run. */
   infuse?: "heat" | "cold" | "spark" | null;
+  /** Build mode: copies merged into this gun (1 = just itself). 3 = ★2, 9 = ★3. */
+  copies?: number;
   card: RolledCard;
   placedPad: string | null;
   level: number;

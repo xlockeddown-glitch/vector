@@ -167,6 +167,7 @@ export function GameApp() {
           title={hud.draftTitle}
           sub={hud.draftSub}
           cards={hud.draftCards}
+          copyTags={hud.copyTags}
           odds={hud.draftOdds}
           opening={phase === "opening"}
           loot={phase === "loot"}

@@ -7,7 +7,7 @@ import { themeAt } from "./data/themes";
 import { storyWatchLine } from "./data/modes";
 import { waveAt } from "./data/waves";
 import { loadMeta, loadRun, loadProfiles } from "./persist";
-import { fieldedTowers, padCap, scrapValue as scrapOf, socketOnPad, coverPct, bonusPct, inspectGun, type World } from "./sim";
+import { buildCopyTags, fieldedTowers, padCap, scrapValue as scrapOf, socketOnPad, coverPct, bonusPct, inspectGun, type World } from "./sim";
 import { displayName } from "./data/glossary";
 import { companionSpecialOf, companionFx } from "./data/companion";
 import { specialCards } from "./data/specials";
@@ -120,6 +120,8 @@ export type HudState = {
   roster: RosterItem[];
   relics: string[];
   draftCards: CardDef[];
+  /** Build mode: draft card id → "Copy · 2/3 to ★★". */
+  copyTags: Record<string, string>;
   draftTitle: string;
   draftSub: string;
   draftKind: CardKind | null;
@@ -323,6 +325,7 @@ function fromWorld(w: World): HudState {
     roster: w.roster,
     relics: w.relics,
     draftCards: w.draftCards,
+    copyTags: buildCopyTags(w),
     draftTitle: w.draftTitle,
     draftSub: w.draftSub,
     draftKind: w.draftKind,

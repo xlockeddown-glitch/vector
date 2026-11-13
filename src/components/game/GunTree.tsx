@@ -14,6 +14,7 @@ import { upgradeCost } from "@/game/data/cards";
 import { PARAMS } from "@/game/params";
 import type { CardDef, RosterItem } from "@/game/types";
 import { cn } from "@/lib/utils";
+import { copiesToNext, starLabel } from "@/game/data/merge";
 import { fmtCount } from "@/game/format";
 
 type TreeNodeView = { id: string; name: string; blurb: string; cap: boolean };
@@ -202,7 +203,12 @@ export function GunTree({
   return (
     <TreeModal
       kicker="Spend Credit on this gun"
-      title={gun.card.name}
+      title={(gun.copies ?? 1) > 1 ? `${gun.card.name} ${starLabel(gun.copies)}` : gun.card.name}
+      note={(() => {
+        if ((gun.copies ?? 1) <= 1) return undefined;
+        const next = copiesToNext(gun.copies);
+        return next ? `Copies ${next.have}/${next.need} to ${"★".repeat(next.star)}` : "Max ★";
+      })()}
       branches={tree.branches}
       rankOf={(id) => rankInBranch(gun, id)}
       offer={new Set(offerJobs(gun).map((n) => n.id))}

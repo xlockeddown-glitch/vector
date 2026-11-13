@@ -1,4 +1,5 @@
 import { CardMark, CraftPortrait } from "./CardView";
+import { starLabel } from "@/game/data/merge";
 import type { Action } from "@/game/runtime";
 import type { HudState } from "@/game/store";
 import type { CardDef, RolledCard } from "@/game/types";
@@ -99,7 +100,10 @@ export function RosterDock({
               )}
             >
               <ChipArt card={r.card} level={r.level} />
-              <span className="bench-chip-name">{r.card.name}</span>
+              <span className="bench-chip-name">
+                {r.card.name}
+                {(r.copies ?? 1) >= 3 ? <span className="bench-chip-stars"> {starLabel(r.copies)}</span> : null}
+              </span>
             </button>
           );
         })}

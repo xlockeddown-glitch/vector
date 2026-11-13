@@ -55,6 +55,7 @@ import { audio } from "./audio";
 import { addStamp, bumpForge, clearRun, loadMeta, saveRun, noteGunKills, noteLeakless, addFlux, activeProfile, addBondXp, recordRun, markLive } from "./persist";
 import { CHARMS, emptyGems, canAfford, payGems } from "./data/charms";
 import { rollCard } from "./data/roll";
+import { copyTag, starLabel, starMul, starsOf } from "./data/merge";
 import { bondFill, bondJobCount, bondKits, bondLookCount, bondMul, xpFromCraft } from "./data/bond";
 import { inCover, COVER } from "./cover";
 import { companionFx, companionMaxHp, companionSpecialOf, pickTaunt, type CompanionState } from "./data/companion";
@@ -689,6 +690,14 @@ function itemStats(w, item, sets, amp) {
   if (!stats) return stats;
   applyGunSpecials(stats, item, w);
   applyGunParts(stats, item);
+  if ((item.copies ?? 1) > 1) {
+    const m = starMul(item.copies);
+    stats.damage *= m.damage;
+    stats.rate *= m.rate;
+    stats.range *= m.range;
+    if (stats.auraDps) stats.auraDps *= m.damage;
+    if (stats.burnDps) stats.burnDps *= m.damage;
+  }
   if (item.infuse) {
     applyInfusion(stats, item.infuse);
     stats.infuse = item.infuse;
@@ -2358,6 +2367,12 @@ function finishWave(w) {
   const t = w.wave % WAVES_PER_ROUND === WAVES_PER_ROUND - 1;
   const n = WAVE_XP + (waveAt(w.wave).mega ? MEGA_XP : 0);
   if (!t) {
+    if (w.playMode === "build") {
+      grantXp(w, n);
+      sayWave(w);
+      beginBuildDraft(w);
+      return;
+    }
     w.wave += 1;
     w.holdT = 1.35;
     grantXp(w, n);
@@ -2397,6 +2412,11 @@ function finishWave(w) {
   }
   if ((w.wavesCleared ?? 0) >= WIN_WAVES && !w.endless) {
     beginLoopGate(w);
+    return;
+  }
+  if (w.playMode === "build") {
+    audio.play("grade");
+    beginBuildDraft(w);
     return;
   }
   w.wave += 1;
@@ -4155,6 +4175,12 @@ function finishDraftStep(w) {
 }
 
 function dealOpeningRound(w) {
+  // Build mode starts small: the gun pair and the rules only. More guns come from wave drafts.
+  while (w.playMode === "build" && OPENING_ROUNDS[w.openingStep]?.kind === "tower") w.openingStep += 1;
+  if (w.openingStep >= OPENING_PICKS) {
+    beginPlacement(w, true);
+    return;
+  }
   const round = OPENING_ROUNDS[w.openingStep];
   if (!round) return;
   const owned = ownedTemplates(w);
@@ -4344,6 +4370,102 @@ function beginRoundDrafts(w) {
   beginPlacement(w, false);
 }
 
+/** Build mode: one gun pick after every wave. Copies of guns you own show up often and merge. */
+function beginBuildDraft(w) {
+  w.grade = null;
+  w.phase = "draft";
+  w.draftLane = "round";
+  w.draftKind = "tower";
+  w.draftPicksLeft = 1;
+  w.draftTotal = 1;
+  w.draftTitle = `Wave ${w.wave + 2} draft · pick one`;
+  w.draftSub = "Copies merge: 3 of a gun make ★2, 9 make ★3.";
+  w.packHeat = null;
+  w.packMode = "show";
+  w.cutId = null;
+  w.draftCards = dealBuildPack(w);
+  stampDealtPack(w);
+  if (!w.draftCards.length) {
+    finishDraftStep(w);
+    return;
+  }
+  w.uiDirty = true;
+  checkpoint(w);
+}
+
+function ownedGunTemplates(w) {
+  const out = [];
+  for (const r of w.roster ?? []) {
+    if (r.card.kind !== "tower") continue;
+    if (starsOf(r.copies) >= 3) continue;
+    const tid = r.card.templateId ?? r.card.id;
+    if (!out.includes(tid)) out.push(tid);
+  }
+  return out;
+}
+
+function dealBuildPack(w) {
+  const n = PARAMS.packSize;
+  const owned = ownedGunTemplates(w);
+  const skip = ownedTemplates(w, true);
+  const fresh = dealTowerOpening(n, w.forge, skip, rollPackRarity(oddsForGrade(w.lastGrade ?? "C")));
+  const out = [];
+  const used = new Set();
+  for (let i = 0; i < n; i++) {
+    // First card is always a new gun (when one is left), so the team can still grow.
+    const wantCopy = owned.length > 0 && i > 0 && Math.random() < PARAMS.buildCopyOdds;
+    const pickable = owned.filter((t) => !used.has(t));
+    if ((wantCopy || !fresh.length) && pickable.length) {
+      const tid = pickable[Math.floor(Math.random() * pickable.length)];
+      used.add(tid);
+      try {
+        const def = getCard(tid);
+        out.push(rollCard(def, def.rarity, undefined, w.forge[tid] ?? 0));
+        continue;
+      } catch {
+        /* missing gun */
+      }
+    }
+    const f = fresh.shift();
+    if (f) out.push(f);
+  }
+  return out;
+}
+
+/** Build mode: fold a drafted copy into the gun you already own. */
+function mergeCopy(w, r, card) {
+  const before = starsOf(r.copies);
+  r.copies = (r.copies ?? 1) + 1;
+  const after = starsOf(r.copies);
+  if (after > before) {
+    r.jobSlots = Math.min(PARAMS.jobSlotsMax, (r.jobSlots ?? PARAMS.jobSlotsStart) + PARAMS.starSlots);
+    r.levelPop = 1;
+    w.message = `${card.name} ${starLabel(r.copies)}!`;
+    const pos = r.placedPad ? towerPoint(r) : null;
+    if (pos) {
+      addFx(w, { kind: "ring", x: pos.x, y: pos.y, life: 0.6, color: "#ffd46b", size: 46 });
+      addFx(w, { kind: "float", x: pos.x, y: pos.y - 30, life: 1.2, text: starLabel(r.copies), color: "#ffd46b", size: 18 });
+    }
+    audio.play("place");
+  } else {
+    w.message = `${card.name} copy in. ${copyTag(r.copies - 1).replace("Copy · ", "")}`;
+  }
+  w.uiDirty = true;
+}
+
+/** Draft tags for Build mode: which cards are copies of guns you own. */
+export function buildCopyTags(w) {
+  const out = {};
+  if (w.playMode !== "build") return out;
+  for (const c of w.draftCards ?? []) {
+    if (c.kind !== "tower") continue;
+    const tid = c.templateId ?? c.id;
+    const r = (w.roster ?? []).find((x) => x.card.kind === "tower" && (x.card.templateId ?? x.card.id) === tid);
+    if (r) out[c.id] = copyTag(r.copies);
+  }
+  return out;
+}
+
 function beginMysteryPack(w) {
   w.points += BONUS_CREDIT;
   w.message = `+${BONUS_CREDIT} Credit`;
@@ -4482,6 +4604,19 @@ export function pickDraft(w, id) {
     w.message = "You already have that. Pick a different one.";
     w.uiDirty = true;
     return;
+  }
+  if (n.kind === "tower" && w.playMode === "build") {
+    const tid = n.templateId ?? n.id;
+    const mine = (w.roster ?? []).find((r) => r.card.kind === "tower" && (r.card.templateId ?? r.card.id) === tid);
+    if (mine) {
+      mergeCopy(w, mine, n);
+      w.draftPicksLeft = 0;
+      w.draftCards = [];
+      w.packMode = "show";
+      w.cutId = null;
+      finishDraftStep(w);
+      return;
+    }
   }
   if (n.kind === "tower") {
     const tid = n.templateId ?? n.id;
@@ -5100,7 +5235,7 @@ function snapshotRun(w) {
     lives: w.lives,
     maxLives: w.maxLives,
     phase: w.phase,
-    playMode: w.playMode === "arcade" ? "arcade" : "story",
+    playMode: w.playMode === "arcade" || w.playMode === "build" ? w.playMode : "story",
     parked: !!w.parked,
     roster: w.roster.map((r) => ({
       uid: r.uid,
@@ -5114,6 +5249,7 @@ function snapshotRun(w) {
       tuneCap: r.tuneCap ?? null,
       jobs: r.jobs ?? [],
       infuse: r.infuse ?? null,
+      copies: r.copies ?? 1,
       jobSlots: r.jobSlots ?? PARAMS.jobSlotsStart,
       heatXp: r.heatXp ?? 0,
       trick: r.trick ?? null,

@@ -66,7 +66,7 @@ export type Runtime = {
 export type HudSink = (w: World) => void;
 
 export type Action =
-  | { type: "play"; continue?: boolean; tutorial?: boolean; mode?: "story" | "arcade" }
+  | { type: "play"; continue?: boolean; tutorial?: boolean; mode?: "story" | "arcade" | "build" }
   | { type: "help" }
   | { type: "closeHelp" }
   | { type: "pick"; id: string }
@@ -760,7 +760,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
     pushHud(true);
   };
 
-  const play = (resume = false, wantTutorial = false, mode: "story" | "arcade" = "story") => {
+  const play = (resume = false, wantTutorial = false, mode: "story" | "arcade" | "build" = "story") => {
     audio.unlock();
     audio.play("ui");
     markLive(true);
@@ -782,7 +782,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
     world.enemies = [];
     world.projectiles = [];
     world.fx = [];
-    world.playMode = mode === "arcade" ? "arcade" : "story";
+    world.playMode = mode;
     world.wantTutorial = !!wantTutorial;
     beginOpening(world);
     pushHud(true);
@@ -936,7 +936,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
           const p = loadProfiles();
           if (!p.slots[p.active]?.boundId) bindCraft("comp-auger");
         }
-        play(!!action.continue, !!action.tutorial, action.mode === "arcade" ? "arcade" : "story");
+        play(!!action.continue, !!action.tutorial, action.mode === "arcade" || action.mode === "build" ? action.mode : "story");
         break;
       case "help":
         useGame.getState().setHelp(true);

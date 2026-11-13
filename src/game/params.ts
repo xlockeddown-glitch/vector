@@ -102,6 +102,14 @@ export const PARAMS = {
    */
   enemyHpPerWave: 0.11,
   enemyHpPerWave2: 0.005,
+  /** Build mode: chance each card in a wave draft is a copy of a gun you own. */
+  buildCopyOdds: 0.5,
+  /** Build mode star multipliers, index 0 = ★1. */
+  starDamage: [1, 1.8, 3.2],
+  starRate: [1, 1.1, 1.2],
+  starRange: [1, 1.08, 1.16],
+  /** Extra tree picks each star adds (capped by jobSlotsMax). */
+  starSlots: 1,
   /** Credit to infuse a gun with an element. One element per gun. */
   infuseCost: 500,
   /** Plasma infusion: burn per second as a share of the gun's hit damage. */

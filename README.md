@@ -27,6 +27,13 @@ VECTOR combines three things:
 
 ---
 
+## Modes
+
+| Mode | How it plays |
+|---|---|
+| **Arena** | Draft your whole hand up front, then hold 12 waves. |
+| **Build** | Start with two guns. Draft one gun after every wave. Copies of a gun you own merge: **3 copies = ★2, 9 = ★3**. Each star multiplies the gun's damage and opens another tree pick. Hold 12. |
+
 ## How a run works
 
 1. **Pick a craft.** It's already flying.
