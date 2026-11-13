@@ -1,4 +1,5 @@
 import { audio, resumeAudioOnVisible, type Sfx } from "./audio";
+import { drawCapturedText, labelCanvasFor, withCapturedText } from "./labels";
 import { PARAMS } from "./params";
 import { loadAssets, type Assets } from "./assets";
 import { hitPad, PATHS, BASE, nearestPathMeta } from "./data/map";
@@ -310,7 +311,9 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
         audio.play(world.wantSfx as Sfx);
         world.wantSfx = null;
       }
-      drawWorld(ctx!, canvas, world, assets);
+      withCapturedText(ctx!, () => drawWorld(ctx!, canvas, world, assets));
+      const labels = labelCanvasFor(canvas);
+      if (labels) drawCapturedText(canvas, labels);
     } catch (err) {
       console.warn("vector tick", err);
     }
