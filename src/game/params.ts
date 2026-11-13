@@ -102,6 +102,11 @@ export const PARAMS = {
    */
   enemyHpPerWave: 0.11,
   enemyHpPerWave2: 0.005,
+  /**
+   * Board pixel size: the board renders at this fraction of screen resolution and is
+   * scaled up with hard pixel edges. 0.34 ≈ one game pixel per 3×3 screen pixels.
+   */
+  pixelRes: 0.34,
   /** Build mode: chance each card in a wave draft is a copy of a gun you own. */
   buildCopyOdds: 0.5,
   /** Build mode star multipliers, index 0 = ★1. */

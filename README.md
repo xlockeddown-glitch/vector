@@ -104,6 +104,10 @@ Saves stay in the browser.
 
 ---
 
+## Look
+
+Pixel · Neon · Space. The board renders at a third of screen resolution and scales up with hard pixels (`PARAMS.pixelRes`). Headings and buttons use the Pixelify Sans pixel font with a neon glow; corners are square. Card paintings are pixelated from the originals in `art-src/cards` with `art-src/pixelate-cards.mjs`.
+
 ## Where things are
 
 | What | Where |
@@ -111,5 +115,5 @@ Saves stay in the browser.
 | Rules and sim | `src/game/` |
 | Card, Signal and tree data | `src/game/data/` |
 | Screens | `src/components/game/` |
-| Card and enemy art | `public/game/` |
+| Card and enemy art | `public/game/` (original card paintings in `art-src/cards`) |
 | Design notes | `PLAN.md`, `FUN-PLAN.md` |

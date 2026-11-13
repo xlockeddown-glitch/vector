@@ -3487,6 +3487,7 @@ export function drawWorld(
 ) {
   const { scale, ox, oy, dpr, cssW, cssH } = viewTransform(canvas);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
 
   const shake = w.trauma * w.trauma;
   const sx = (Math.random() * 2 - 1) * shake * 8;

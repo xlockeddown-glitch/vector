@@ -1,4 +1,5 @@
 import { audio, resumeAudioOnVisible, type Sfx } from "./audio";
+import { PARAMS } from "./params";
 import { loadAssets, type Assets } from "./assets";
 import { hitPad, PATHS, BASE, nearestPathMeta } from "./data/map";
 import { HOME_PAD, LOOP_WAVES, WORLD } from "./constants";
@@ -208,7 +209,8 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
   if (!ctx) throw new Error("Canvas 2D unavailable");
 
   const resize = () => {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // Pixel look: render below screen resolution and let CSS scale it up pixelated.
+    const dpr = PARAMS.pixelRes;
     const rect = canvas.getBoundingClientRect();
     canvas.width = Math.max(1, Math.floor(rect.width * dpr));
     canvas.height = Math.max(1, Math.floor(rect.height * dpr));
