@@ -396,6 +396,10 @@ export type MetaSave = {
   hangar: HangarRanks;
   boughtSkins: SkinId[];
   orbitXp?: number;
+  /** Battle pass progress for the current season. */
+  pass?: { season: string; xp: number; claimed: number; badges: string[] };
+  /** What the last finished run added to the pass (for the end screen). */
+  lastPass?: { xp: number; rewards: string[]; tier: number } | null;
   vault?: { outfit: number; bay: number; armory: number; sky?: number; myth?: number; ownedIds: string[] };
   tutorialDone?: boolean;
   tutorialSkipped?: boolean;
@@ -527,6 +531,8 @@ export type RunSave = {
   shotsFired?: number;
   upgradesMade?: number;
   wavesCleared?: number;
+  /** Build mode: star-ups made this run (Pass XP). */
+  starsMade?: number;
   swapTokens?: number;
   swapPity?: number;
   skipCharge?: number;

@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef, type PointerEvent } from "react";
+import { useLayoutEffect, useState, useRef, type PointerEvent } from "react";
 import { DraftBoard } from "./DraftBoard";
 import { EndScreen } from "./EndScreen";
 import { EngraveScreen } from "./EngraveScreen";
 import { HangarScreen } from "./HangarScreen";
+import { PassScreen } from "./PassScreen";
 import { HelpSheet } from "./HelpSheet";
 import { LoopScreen } from "./LoopScreen";
 import { TUTORIAL_TIPS } from "@/game/data/vault";
@@ -35,6 +36,7 @@ export function GameApp() {
   const muted = useGame((s) => s.muted);
   const help = useGame((s) => s.help);
   const hangar = useGame((s) => s.hangar);
+  const [passOpen, setPassOpen] = useState(false);
   const ready = useGame((s) => s.ready);
   const best = useGame((s) => s.best);
   const hasRun = useGame((s) => s.hasRun);
@@ -109,6 +111,7 @@ export function GameApp() {
           onContinue={() => act({ type: "play", continue: true })}
           onHelp={() => act({ type: "help" })}
           onHangar={() => act({ type: "hangar" })}
+          onPass={() => setPassOpen(true)}
           onSlot={(id) => act({ type: "slot", id })}
           onBind={(id) => act({ type: "bind", id })}
         />
@@ -215,6 +218,7 @@ export function GameApp() {
       {hud && <HudOverlays hud={hud} onAction={act} />}
       </div>
       {hud && phase !== "title" && <RosterDock hud={hud} onAction={act} />}
+      {passOpen && phase === "title" && <PassScreen best={best} onClose={() => setPassOpen(false)} />}
       {hangar && (
         <HangarScreen
           best={best}

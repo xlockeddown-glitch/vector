@@ -3,7 +3,7 @@ import { drawCapturedText, labelCanvasFor, withCapturedText } from "./labels";
 import { PARAMS } from "./params";
 import { loadAssets, type Assets } from "./assets";
 import { hitPad, PATHS, BASE, nearestPathMeta } from "./data/map";
-import { HOME_PAD, LOOP_WAVES, WORLD } from "./constants";
+import { HOME_PAD, LOOP_WAVES, WIN_WAVES, WORLD } from "./constants";
 import { clearRun, loadMeta, loadRun, recordRun, equipSkin, buyHangar, buyVault, buySkin, addFlux, selectSlot, bindCraft, slotHasRun, loadProfiles, markTutorial, isLive, markLive } from "./persist";
 import { drawWorld, screenToWorld, viewTransform, placeDefendHit } from "./render";
 import {
@@ -1217,6 +1217,9 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
             grade,
             level: world.runLevel,
             loops: Math.floor(world.wave / LOOP_WAVES),
+            wavesCleared: world.wavesCleared ?? 0,
+            won: (world.wavesCleared ?? 0) >= WIN_WAVES,
+            starsMade: world.starsMade ?? 0,
           });
           if (best) useGame.getState().setBest(best);
           world.recorded = true;

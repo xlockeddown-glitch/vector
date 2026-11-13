@@ -71,6 +71,9 @@ Spend leftover Credit in the Vault. The first Vault purchases unlock after a few
 
 ---
 
+### Season pass: across runs
+A free 30-tier season track (**Season 1 · Neon Drift**). Every run earns Pass XP: 10 per wave cleared, +50 for holding 12, +5 per ★ made in Build. Each tier pays out when the run ends: Vault Credit, Vault looks (paths, trails, frames, stars, sun), craft skins and badges. Looks only — nothing on the pass makes guns stronger. Open it from **Pass** on the title screen.
+
 ## Signals
 
 A Signal is a rule for this run, not a gun. You pick two, and they stay on for the whole run.

@@ -1,4 +1,5 @@
 import type { MetaSave, PlayMode, ProfilesSave } from "@/game/types";
+import { SEASON, passFill, passOf } from "@/game/data/pass";
 import { bondFill } from "@/game/data/bond";
 import { fmtCount } from "@/game/format";
 import { CARDS } from "@/game/data/cards";
@@ -52,6 +53,7 @@ export function TitleScreen({
   onContinue,
   onHelp,
   onHangar,
+  onPass,
   onSlot,
   onBind,
   best,
@@ -63,6 +65,7 @@ export function TitleScreen({
   onContinue?: () => void;
   onHelp: () => void;
   onHangar: () => void;
+  onPass: () => void;
   onSlot: (id: number) => void;
   onBind: (id: string) => void;
   best: MetaSave;
@@ -185,6 +188,15 @@ export function TitleScreen({
         <p className="title-version">v{GAME_VERSION}</p>
         {(best.runs > 0 || hasRun) && (
         <div className="title-banks rise-in" style={{ animationDelay: "190ms" }}>
+          <button type="button" onClick={onPass} aria-label="Season pass" className="keep-bank pass-bank">
+            <p className="keep-bank-kicker">Pass</p>
+            <div className="keep-bank-head">
+              <span className="keep-bank-title">Tier</span>
+              <span className="keep-bank-flux tabular">
+                {passFill(passOf(best.pass).xp).tier}/{SEASON.tiers}
+              </span>
+            </div>
+          </button>
           <button type="button" onClick={onHangar} aria-label="Vault" className="keep-bank">
             <p className="keep-bank-kicker">Vault</p>
             <div className="keep-bank-head">

@@ -312,6 +312,8 @@ export type World = {
   upgradesMade: number;
   fuseTip: boolean;
   wavesCleared: number;
+  /** Build mode: star-ups made this run (Pass XP). */
+  starsMade?: number;
   live: LiveOffer | null;
   liveQueue: number;
   liveMark: number;
@@ -1348,6 +1350,9 @@ function failRun(w) {
       grade: w.grade?.grade ?? w.lastGrade ?? "F",
       level: w.runLevel,
       loops: Math.floor(w.wave / LOOP_WAVES),
+      wavesCleared: w.wavesCleared ?? 0,
+      won: (w.wavesCleared ?? 0) >= WIN_WAVES,
+      starsMade: w.starsMade ?? 0,
     });
     w.recorded = true;
   }
@@ -4438,6 +4443,7 @@ function mergeCopy(w, r, card) {
   r.copies = (r.copies ?? 1) + 1;
   const after = starsOf(r.copies);
   if (after > before) {
+    w.starsMade = (w.starsMade ?? 0) + 1;
     r.jobSlots = Math.min(PARAMS.jobSlotsMax, (r.jobSlots ?? PARAMS.jobSlotsStart) + PARAMS.starSlots);
     r.levelPop = 1;
     w.message = `${card.name} ${starLabel(r.copies)}!`;
@@ -5192,6 +5198,9 @@ export function goTitle(w, keep: boolean): boolean {
         grade: w.grade?.grade ?? w.lastGrade ?? "F",
         level: w.runLevel,
         loops: Math.floor(w.wave / LOOP_WAVES),
+        wavesCleared: w.wavesCleared ?? 0,
+        won: (w.wavesCleared ?? 0) >= WIN_WAVES,
+        starsMade: w.starsMade ?? 0,
       });
       w.recorded = true;
     }

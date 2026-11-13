@@ -1,5 +1,7 @@
 import type { HudState } from "@/game/store";
 import { fmtCount, fmtFlux, fmtQty } from "@/game/format";
+import { loadMeta } from "@/game/persist";
+import { SEASON } from "@/game/data/pass";
 
 export function EndScreen({
   hud,
@@ -32,6 +34,7 @@ export function EndScreen({
             <p className="mt-1 text-[12px] text-muted">+{fmtCount(hud.fluxEarned)} this run</p>
           )}
         </div>
+        <PassGain />
         <dl className="mt-5 grid grid-cols-3 gap-2 text-[13px]">
           <EndStat label="Kills" value={fmtCount(hud.runKills)} />
           <EndStat label="Waves" value={fmtCount(hud.wavesCleared)} />
@@ -89,6 +92,27 @@ function EndStat({ label, value, hot }: { label: string; value: string; hot?: bo
       <dd className={`tabular text-[16px] font-medium leading-none ${hot ? "text-ember" : "text-paper"}`}>
         {value}
       </dd>
+    </div>
+  );
+}
+
+/** What this run added to the season pass. Read from the saved meta written when the run ended. */
+function PassGain() {
+  const last = typeof window === "undefined" ? null : loadMeta().lastPass;
+  if (!last || last.xp <= 0) return null;
+  return (
+    <div className="pass-gain mt-4">
+      <p className="text-[10px] font-medium tracking-[0.22em] text-epic">Season pass</p>
+      <p className="text-[13px] text-paper">
+        +{fmtCount(last.xp)} XP · tier {last.tier}/{SEASON.tiers}
+      </p>
+      {last.rewards.length ? (
+        <ul className="mt-1 space-y-0.5 text-[12px] text-frost">
+          {last.rewards.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }
