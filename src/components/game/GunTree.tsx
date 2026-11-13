@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
+import { ELEMENTS, infuseChoices, type ElementId } from "@/game/data/elements";
 import { offerJobs, rankInBranch, startedBranches, treeOf } from "@/game/data/gun-tree";
 import {
   CRAFT_BRANCHES_MAX,
@@ -30,6 +31,7 @@ function TreeModal({
   left,
   fullLine,
   note,
+  extra,
   cost,
   credit,
   onBuy,
@@ -45,6 +47,7 @@ function TreeModal({
   left: number;
   fullLine: string;
   note?: string;
+  extra?: ReactNode;
   cost: number;
   credit: number;
   onBuy: (id: string) => void;
@@ -123,6 +126,58 @@ function TreeModal({
             );
           })}
         </div>
+        {extra}
+      </div>
+    </div>
+  );
+}
+
+/** One-time element infusion for a gun: Plasma, Cryo or Volt. */
+function ElementRow({
+  gun,
+  credit,
+  onInfuse,
+}: {
+  gun: RosterItem;
+  credit: number;
+  onInfuse: (el: ElementId) => void;
+}) {
+  const cost = PARAMS.infuseCost;
+  const have = gun.infuse ?? null;
+  const choices = infuseChoices(gun.card.set);
+  return (
+    <div className="tree-elements">
+      <p className="tree-col-name">
+        Element{" "}
+        <span className="tree-elements-sub">
+          {have ? `Infused · ${ELEMENTS[have].name}` : `One per gun · Credit ${fmtCount(cost)} · two elements on one enemy react`}
+        </span>
+      </p>
+      <div className="tree-elements-row">
+        {choices.map((el) => {
+          const def = ELEMENTS[el];
+          const on = have === el;
+          const open = !have;
+          const poor = open && credit < cost;
+          return (
+            <button
+              key={el}
+              type="button"
+              disabled={!open || poor}
+              title={def.blurb}
+              style={{ ["--el" as string]: def.color }}
+              className={cn("tree-node tree-element", on && "is-on", open && "is-open")}
+              onClick={() => open && !poor && onInfuse(el)}
+            >
+              <span className="tree-node-copy">
+                <span className="tree-node-name">
+                  {def.name} · {def.word}
+                </span>
+                <span className="tree-node-blurb">{def.blurb}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -132,11 +187,13 @@ export function GunTree({
   gun,
   credit,
   onBuy,
+  onInfuse,
   onClose,
 }: {
   gun: RosterItem;
   credit: number;
   onBuy: (id: string) => void;
+  onInfuse?: (el: ElementId) => void;
   onClose: () => void;
 }) {
   const tree = treeOf(gun.card.stats?.role);
@@ -153,6 +210,7 @@ export function GunTree({
       branchesMax={PARAMS.jobBranchesMax}
       left={Math.max(0, (gun.jobSlots ?? PARAMS.jobSlotsStart) - used)}
       fullLine="This gun is full."
+      extra={onInfuse ? <ElementRow gun={gun} credit={credit} onInfuse={onInfuse} /> : null}
       cost={upgradeCost(gun.card, used)}
       credit={credit}
       onBuy={onBuy}

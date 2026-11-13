@@ -38,6 +38,7 @@ import { LOOP_WAVES, loopOf, themeAt } from "./data/themes";
 import { isPlayMode } from "./data/modes";
 import { waveAt, WAVES } from "./data/waves";
 import { countSets } from "./data/sets";
+import { ELEMENTS, REACTIONS, applyInfusion, hitElements, infuseChoices } from "./data/elements";
 import { OPERATORS } from "./data/sets";
 import { lordFlags } from "./data/lords";
 import { canTakeCraftJob, craftUpgradeCost, craftDockHealMul, craftHullMul, craftPicksLeft } from "./data/craft-tree";
@@ -688,6 +689,10 @@ function itemStats(w, item, sets, amp) {
   if (!stats) return stats;
   applyGunSpecials(stats, item, w);
   applyGunParts(stats, item);
+  if (item.infuse) {
+    applyInfusion(stats, item.infuse);
+    stats.infuse = item.infuse;
+  }
   if (hasSig(w.signals, "sig-shade")) stats.range *= 1.12;
   if (hasSig(w.signals, "sig-hot")) stats.rate *= 1.18;
   if (stats.role === "cascade" && hasSig(w.signals, "sig-twin")) stats.chain = (stats.chain ?? 0) + 1;
@@ -1137,6 +1142,8 @@ function spawnEnemy(w, type, route = 0) {
   e.freezeT = 0;
   e.iced = false;
   e.marked = false;
+  e.elUntil = null;
+  e.reactAt = 0;
   e.anim = Math.random() * 4;
   e.facing = 1;
   e.flash = 0;
@@ -1441,6 +1448,7 @@ function liveSets(w) {
   for (const r of w.roster) {
     if (r.card.kind === "companion") continue;
     cards.push(r.card);
+    if (r.infuse && r.placedPad) cards.push({ set: r.infuse });
   }
   for (const s of w.stickers ?? []) cards.push(s);
   return countSets(cards);
@@ -1478,6 +1486,74 @@ function applyHitFx(w, e, stats) {
     addFx(w, { kind: "float", x: e.x, y: e.y - 16, life: 0.7, text: "Back.", color: "#7ef0ea", size: 11 });
   }
   tribeOnHit(w, e, stats);
+  elementOnHit(w, e, stats);
+}
+
+const isBossType = (t) => t === "titan" || t === "colossus";
+
+/** Marks the enemy with the hit's elements; two different live elements react. */
+function elementOnHit(w, e, stats) {
+  if (!e?.alive || !stats) return;
+  const els = hitElements(stats);
+  if (!els.length) return;
+  const now = w.visT ?? 0;
+  if (!e.elUntil) e.elUntil = {};
+  for (const el of els) {
+    if ((e.reactAt ?? 0) <= now) {
+      for (const id of Object.keys(REACTIONS)) {
+        const r = REACTIONS[id];
+        if (!r.pair.includes(el)) continue;
+        const other = r.pair[0] === el ? r.pair[1] : r.pair[0];
+        if ((e.elUntil[other] ?? 0) > now) {
+          react(w, e, id);
+          e.elUntil[other] = 0;
+          e.reactAt = now + PARAMS.reactCd;
+          break;
+        }
+      }
+    }
+    if (e.alive) e.elUntil[el] = now + PARAMS.elementLinger;
+  }
+}
+
+function react(w, e, id) {
+  const r = REACTIONS[id];
+  w.reactions = (w.reactions ?? 0) + 1;
+  addFx(w, { kind: "float", x: e.x, y: e.y - 24, life: 0.8, text: r.name.toUpperCase(), color: r.color, size: 13 });
+  addFx(w, { kind: "ring", x: e.x, y: e.y, life: 0.3, color: r.color, size: id === "overload" ? PARAMS.overloadRadius : 22 });
+  if (id === "shatter") {
+    const share = isBossType(e.type) ? PARAMS.shatterBossHp : PARAMS.shatterHp;
+    e.burnT = 0;
+    e.slowT = 0;
+    applyDamage(w, e, e.maxHp * share, true);
+  } else if (id === "brittle") {
+    e.shredT = Math.max(e.shredT ?? 0, PARAMS.brittleT);
+  } else if (id === "overload") {
+    const r2 = PARAMS.overloadRadius * PARAMS.overloadRadius;
+    for (const o of w.enemies) {
+      if (!o.alive) continue;
+      const dx = o.x - e.x;
+      const dy = o.y - e.y;
+      if (dx * dx + dy * dy > r2) continue;
+      const share = isBossType(o.type) ? PARAMS.overloadBossHp : PARAMS.overloadHp;
+      applyDamage(w, o, o.maxHp * share, true);
+    }
+  }
+}
+
+export function infuseGun(w, uid, el) {
+  const r = (w.roster ?? []).find((x) => x.uid === uid);
+  if (!r || r.infuse || !ELEMENTS[el]) return false;
+  if (!infuseChoices(r.card.set).includes(el)) return false;
+  const cost = PARAMS.infuseCost;
+  if (w.points < cost) return false;
+  w.points -= cost;
+  r.infuse = el;
+  w.upgradesMade = (w.upgradesMade ?? 0) + 1;
+  w.uiDirty = true;
+  const pos = r.placedPad ? towerPoint(r) : null;
+  if (pos) addFx(w, { kind: "ring", x: pos.x, y: pos.y, life: 0.4, color: ELEMENTS[el].color, size: 30 });
+  return true;
 }
 
 function tribeOnHit(w, e, stats) {
@@ -5037,6 +5113,7 @@ function snapshotRun(w) {
       tuneJob: r.tuneJob ?? null,
       tuneCap: r.tuneCap ?? null,
       jobs: r.jobs ?? [],
+      infuse: r.infuse ?? null,
       jobSlots: r.jobSlots ?? PARAMS.jobSlotsStart,
       heatXp: r.heatXp ?? 0,
       trick: r.trick ?? null,

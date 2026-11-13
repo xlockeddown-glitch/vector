@@ -115,6 +115,8 @@ export type TowerStats = {
   role?: TowerRole;
   hull?: TowerHull;
   tribe?: SetId;
+  /** Element added by infusion (Plasma/Cryo/Volt). */
+  infuse?: "heat" | "cold" | "spark" | null;
   knock?: number;
   nova?: number;
   mines?: boolean;
@@ -324,6 +326,8 @@ export type EnemyDef = {
 
 export type RosterItem = {
   uid: string;
+  /** Element this gun was infused with this run. */
+  infuse?: "heat" | "cold" | "spark" | null;
   card: RolledCard;
   placedPad: string | null;
   level: number;

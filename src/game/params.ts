@@ -102,6 +102,26 @@ export const PARAMS = {
    */
   enemyHpPerWave: 0.11,
   enemyHpPerWave2: 0.005,
+  /** Credit to infuse a gun with an element. One element per gun. */
+  infuseCost: 500,
+  /** Plasma infusion: burn per second as a share of the gun's hit damage. */
+  infuseBurn: 0.3,
+  /** Cryo infusion: chill length and speed multiplier. */
+  infuseSlowT: 0.9,
+  infuseSlowMul: 0.72,
+  /** How long an element stays on an enemy after a hit, in seconds. */
+  elementLinger: 2,
+  /** Reaction cooldown per enemy, in seconds. */
+  reactCd: 0.8,
+  /** Shatter: burst as a share of max HP (bosses take the smaller number). */
+  shatterHp: 0.1,
+  shatterBossHp: 0.035,
+  /** Brittle: armor strip length, in seconds. */
+  brittleT: 4,
+  /** Overload: blast radius and damage as a share of each enemy's max HP. */
+  overloadRadius: 56,
+  overloadHp: 0.06,
+  overloadBossHp: 0.025,
   /** Empty moon radius. Occupied moons use moonRHot. */
   moonR: 24,
   moonRHot: 32,

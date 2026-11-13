@@ -34,6 +34,7 @@ import {
   unstickWorld,
   upgradeTower,
   upgradeCraft,
+  infuseGun,
   tryFuseGuns,
   pickTrick,
   pickSpecial,
@@ -77,6 +78,7 @@ export type Action =
   | { type: "buyPick" }
   | { type: "upgrade"; uid?: string; mod?: OpId; tune?: string }
   | { type: "upgradeCraft"; uid: string; node: string }
+  | { type: "infuse"; uid: string; el: "heat" | "cold" | "spark" }
   | { type: "trick"; uid: string; id: string }
   | { type: "special"; uid: string; id: string }
   | { type: "fuse"; keep: string; eat: string }
@@ -1122,6 +1124,12 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
           audio.play(ok ? "place" : "ui");
           pushHud(true);
         }
+        break;
+      }
+      case "infuse": {
+        const ok = infuseGun(world, action.uid, action.el);
+        audio.play(ok ? "place" : "ui");
+        pushHud(true);
         break;
       }
       case "upgradeCraft": {

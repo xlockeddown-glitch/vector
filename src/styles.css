@@ -3480,3 +3480,32 @@ img.card-paint,
   border-color: color-mix(in oklab, var(--color-ember) 55%, transparent);
   color: var(--color-ember);
 }
+.tree-elements {
+  border-top: 1px solid color-mix(in oklab, var(--color-frost) 14%, transparent);
+  padding: 0.45rem 0.55rem 0.6rem;
+}
+.tree-elements-sub {
+  margin-left: 0.35rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  text-transform: none;
+}
+.tree-elements-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+.tree-element {
+  border-color: color-mix(in oklab, var(--el) 45%, transparent);
+}
+.tree-element.is-open:not(:disabled):hover,
+.tree-element.is-on {
+  border-color: var(--el);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--el) 45%, transparent);
+}
+.tree-element .tree-node-name { color: var(--el); }
+@media (max-width: 640px) {
+  .tree-elements-row { grid-template-columns: minmax(0, 1fr); }
+}

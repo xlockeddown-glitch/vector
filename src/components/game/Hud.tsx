@@ -140,6 +140,7 @@ export function HudOverlays({
           gun={hud.selectedItem}
           credit={hud.points}
           onBuy={(id) => onAction({ type: "upgrade", uid: hud.selectedItem!.uid, tune: id })}
+          onInfuse={(el) => onAction({ type: "infuse", uid: hud.selectedItem!.uid, el })}
           onClose={() => onAction({ type: "selectCard", uid: null })}
         />
       )}

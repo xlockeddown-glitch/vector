@@ -23,7 +23,7 @@ VECTOR combines three things:
 |---|---|
 | 🃏 **Card drafting** | Before the fight you draft a small hand: guns, then Signals. That hand is your whole plan. The waves don't stop so you can draw more. |
 | 🌑 **Tower defense** | Plant guns on lit moons and hold the lane for 12 waves. |
-| 🌳 **Leveling and skill trees** | Kills pay Credit. Spend it to walk a planted gun up its skill tree in the middle of a run, and climb ranks that make later drafts stronger. |
+| 🌳 **Leveling and skill trees** | Kills pay Credit and fill your Level. Spend Credit on gun and craft skill trees and element infusions in the middle of a run. |
 
 ---
 
@@ -42,14 +42,22 @@ VECTOR combines three things:
 ### Gun skill trees: during the run
 Every gun has its own tree with **3 branches × 3 nodes**. Each pick costs Credit, and the cost goes up as the gun learns more jobs. Commit to a branch to give the gun a role, like deeper pierce or armor crack.
 
-### Climb: rank up
-Climb picks raise your ranks in three branches:
+### Craft skill trees: during the run
+Crafts get trees too: 3 picks across at most 2 branches. Auger, Torch and Boost have their own; every other craft gets Bite / Reach / Hull. Tap a flying craft to open its tree.
 
-| Branch | What it improves |
+### Elements
+Infuse any gun with one element it isn't already: **Plasma** (fire, shots burn), **Cryo** (ice, shots chill) or **Volt** (shock, shots jump once). An infused gun counts toward that element's combo.
+
+Two elements on one enemy **react**:
+
+| Pair | Reaction |
 |---|---|
-| **Bay** | Moons and home |
-| **Pack** | Richer drafts |
-| **Crew** | Crafts in the air |
+| Plasma + Cryo | **Shatter** — a burst of damage |
+| Cryo + Volt | **Brittle** — armor stripped |
+| Plasma + Volt | **Overload** — a blast hits enemies nearby |
+
+### Level
+Kills fill the Level bar. Each Level pays Credit, and Levels 4, 5 and 8 unlock a better draft, an extra pick and an extra moon.
 
 ### Vault: between runs
 Spend leftover Credit in the Vault. The first Vault purchases unlock after a few wins.
