@@ -1114,7 +1114,7 @@ export function inspectGun(w, item) {
 
 function spawnEnemy(w, type, route = 0) {
   const def = ENEMIES[type];
-  const waveScale = 1 + w.wave * 0.11;
+  const waveScale = 1 + w.wave * PARAMS.enemyHpPerWave + w.wave * w.wave * PARAMS.enemyHpPerWave2;
   const e = allocEnemy(w);
   e.alive = true;
   e.type = type;

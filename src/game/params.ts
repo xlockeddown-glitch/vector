@@ -93,8 +93,15 @@ export const PARAMS = {
   raidLoopSpeed: 0.12,
   /** After a loop. Plates gain this much armor per loop. */
   raidLoopArmor: 0.08,
-  /** Grenades wait until this far along the path. */
-  nadeLate: 0.58,
+  /** Grenades wait until this far along the path. Later = a tank that gets deep costs a few lives, not all ten. */
+  nadeLate: 0.7,
+  /**
+   * Enemy HP growth per wave: 1 + a·wave + b·wave².
+   * Old curve was linear 0.11. The square term keeps waves 1–5 close to before
+   * and makes 8–12 ask for a built-up team (wave 12 ≈ 2.8× wave 1, was 2.2×).
+   */
+  enemyHpPerWave: 0.11,
+  enemyHpPerWave2: 0.005,
   /** Empty moon radius. Occupied moons use moonRHot. */
   moonR: 24,
   moonRHot: 32,
