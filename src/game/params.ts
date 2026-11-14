@@ -41,7 +41,7 @@ export const PARAMS = {
   fluxClean: 5,
   goldPerFlux: 25,
   keepCost: { life: 220, gold: 200, luck: 380, pad: 320 },
-  skinCost: { chrome: 1800, ember: 3200, ion: 4200, gold: 5600, void: 7200 },
+  skinCost: { chrome: 1800, ember: 3200, ion: 4200, gold: 5600, void: 7200, synthwave: 2400, circuit: 2800 },
   /** Main craft. 50 levels. 1→36 takes as long as 36→50. ~15% longer grind. */
   bondMax: 50,
   bondSplit: 36,

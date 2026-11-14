@@ -9,6 +9,7 @@ import { type CompanionState } from "./data/companion";
 import { scrapPaint } from "./data/enemies";
 import { themeAt } from "./data/themes";
 import { skinById } from "./data/skins";
+import { paintGunSkin } from "./neon-skins";
 import type { CardDef, CoverShape, PadLook, RosterItem, ThemeId } from "./types";
 import type { Enemy, World } from "./sim";
 import { towerPoint, worldSets, bayMoon, BAY_ORBIT, livePads, fusePartnerOf } from "./sim";
@@ -1244,6 +1245,7 @@ function drawTowerShape(
     ctx.stroke();
     ctx.shadowBlur = 0;
   }
+  if (NEON_LOOK) paintGunSkin(ctx, skin.id, c, t);
 
   ctx.restore();
 }

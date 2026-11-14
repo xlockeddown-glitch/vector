@@ -1,1 +1,63 @@
-/* skins slice styles */
+/* skins slice styles: gun-finish swatches in the hangar picker */
+.skin-swatch {
+  background: var(--swatch);
+}
+
+.skin-swatch--synthwave {
+  background: linear-gradient(180deg, #ff3dd0 0%, #ff3dd0 40%, #ff9a3c 60%, #ff9a3c 100%);
+}
+
+.skin-swatch--circuit {
+  background-color: #04140a;
+  background-image:
+    linear-gradient(90deg, rgba(92, 255, 122, 0.5) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(92, 255, 122, 0.5) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+.skin-swatch--prism {
+  background: linear-gradient(135deg, #ff5c8a, #ffd166, #6bff9e, #6bd3ff, #b86bff, #ff5c8a);
+  background-size: 300% 300%;
+  animation: skin-prism 6s linear infinite;
+}
+
+.skin-swatch--ghost {
+  background: linear-gradient(135deg, rgba(223, 232, 245, 0.05), rgba(223, 232, 245, 0.35));
+  animation: skin-ghost 2.4s ease-in-out infinite;
+}
+
+.skin-swatch--holo {
+  background: linear-gradient(115deg, #7ff5ff 0%, #ff78e6 35%, #7ff5ff 50%, #ff78e6 70%, #7ff5ff 100%);
+  background-size: 250% 250%;
+  animation: skin-holo 4s ease-in-out infinite;
+}
+
+.skin-swatch--nova {
+  background: radial-gradient(circle, #fff3c4 0%, #ffd46b 35%, rgba(255, 212, 107, 0) 70%),
+    repeating-conic-gradient(from 0deg, rgba(255, 212, 107, 0.7) 0deg 8deg, transparent 8deg 45deg);
+}
+
+@keyframes skin-prism {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+@keyframes skin-ghost {
+  0%, 100% { opacity: 0.55; }
+  45% { opacity: 0.9; }
+  50% { opacity: 0.35; }
+  55% { opacity: 0.85; }
+}
+
+@keyframes skin-holo {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skin-swatch--prism,
+  .skin-swatch--ghost,
+  .skin-swatch--holo {
+    animation: none;
+  }
+}
