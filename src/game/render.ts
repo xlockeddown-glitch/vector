@@ -1,6 +1,7 @@
 import type { Assets } from "./assets";
+import { NEON, NEON_LOOK, neonCraft, neonEnemy, neonHome, neonMoon, rgba } from "./neon";
 import { ENEMIES, HOME_PAD, PALETTE, SKY_PAD, WORLD, PARAMS } from "./constants";
-import { combatStats } from "./data/cards";
+import { combatStats, getCard } from "./data/cards";
 import { glowColor, glowRadius } from "./data/glow";
 import { OPERATORS, SETS } from "./data/sets";
 import { BASE, PATHS, GATES, padById, nearestPathMeta, PATH_CORNER, PAD_HUG, padReachMul } from "./data/map";
@@ -8,7 +9,7 @@ import { type CompanionState } from "./data/companion";
 import { scrapPaint } from "./data/enemies";
 import { themeAt } from "./data/themes";
 import { skinById } from "./data/skins";
-import type { CoverShape, PadLook, RosterItem, ThemeId } from "./types";
+import type { CardDef, CoverShape, PadLook, RosterItem, ThemeId } from "./types";
 import type { Enemy, World } from "./sim";
 import { towerPoint, worldSets, bayMoon, BAY_ORBIT, livePads, fusePartnerOf } from "./sim";
 import { COVER } from "./cover";
@@ -42,8 +43,33 @@ function drawGround(
   theme: ReturnType<typeof themeAt>,
   _assets: Assets | null,
 ) {
-  ctx.fillStyle = "#05060b";
+  ctx.fillStyle = NEON_LOOK ? NEON.bg : "#05060b";
   ctx.fillRect(0, 0, WORLD.w, WORLD.h);
+  if (NEON_LOOK) {
+    // Tron floor: faint cyan grid, brighter every 4th line, a few stars.
+    ctx.save();
+    for (let x = 0, i = 0; x <= WORLD.w; x += 40, i++) {
+      ctx.strokeStyle = rgba(NEON.friend, i % 4 === 0 ? 0.08 : 0.035);
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, 0);
+      ctx.lineTo(x + 0.5, WORLD.h);
+      ctx.stroke();
+    }
+    for (let y = 0, i = 0; y <= WORLD.h; y += 40, i++) {
+      ctx.strokeStyle = rgba(NEON.friend, i % 4 === 0 ? 0.08 : 0.035);
+      ctx.beginPath();
+      ctx.moveTo(0, y + 0.5);
+      ctx.lineTo(WORLD.w, y + 0.5);
+      ctx.stroke();
+    }
+    for (let i = 0; i < 40; i++) {
+      const seed = i * 97.13;
+      ctx.fillStyle = rgba(NEON.white, 0.12 + (i % 5 === 0 ? 0.2 : 0));
+      ctx.fillRect((seed * 19) % WORLD.w, (seed * 29) % WORLD.h, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
+    }
+    ctx.restore();
+    return;
+  }
   const wash = ctx.createRadialGradient(WORLD.w * 0.5, WORLD.h * 0.48, 40, WORLD.w * 0.5, WORLD.h * 0.5, 620);
   wash.addColorStop(0, "rgba(18, 24, 36, 0.55)");
   wash.addColorStop(1, "rgba(5, 6, 11, 0)");
@@ -129,7 +155,9 @@ function drawPath(ctx: CanvasRenderingContext2D, theme: ReturnType<typeof themeA
           ? PALETTE.frost
           : ion || pathStyle === "ion"
             ? "#7ec8ff"
-            : theme.pathLine || "#5eebff";
+            : NEON_LOOK
+              ? NEON.foe
+              : theme.pathLine || "#5eebff";
     ctx.save();
     strokeLane(ctx, path);
     ctx.strokeStyle = hexA(rim, 0.38);
@@ -153,7 +181,7 @@ function drawPath(ctx: CanvasRenderingContext2D, theme: ReturnType<typeof themeA
   ctx.setLineDash([10, 22]);
   ctx.lineDashOffset = -t * 38;
   drawAllPaths(ctx, () => {
-    ctx.strokeStyle = ion ? "rgba(126,200,255,0.4)" : hexA(theme.pathLine || "#5eebff", 0.22);
+    ctx.strokeStyle = ion ? "rgba(126,200,255,0.4)" : hexA(NEON_LOOK ? NEON.foe : theme.pathLine || "#5eebff", 0.22);
     ctx.lineWidth = 3;
     ctx.stroke();
   });
@@ -310,6 +338,10 @@ function paintMoonBody(
   t: number,
   plot?: string,
 ) {
+  if (NEON_LOOK) {
+    neonMoon(ctx, x, y, r, limb, lit, look === "ring");
+    return;
+  }
   ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.beginPath();
   ctx.ellipse(x, y + r * 0.72, r * 1.15, r * 0.32, 0, 0, Math.PI * 2);
@@ -486,6 +518,10 @@ function drawCore(
   stickers: { name: string }[] = [],
 ) {
   const { x, y } = BASE;
+  if (NEON_LOOK) {
+    neonHome(ctx, x, y, t, gold);
+    return;
+  }
   ctx.save();
   ctx.translate(x, y);
   ctx.translate(0, -26);
@@ -1395,6 +1431,8 @@ function drawGlowPuddles(ctx: CanvasRenderingContext2D, w: World) {
     const range = glowRadius(stats.range * padReachMul(item.placedPad), stats.role, stats.projectile);
     const color = glowColor(stats.role);
     const selected = w.selectedPad === item.placedPad || w.selectedCard === item.uid;
+    // Neon: no colored washes over the board; only the gun you picked shows its reach.
+    if (NEON_LOOK && !selected) continue;
     const a = (selected ? 0.16 : 0.07) * (0.62 + 0.38 * pulse);
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, range, 0, Math.PI * 2);
@@ -1410,7 +1448,7 @@ function drawGlowPuddles(ctx: CanvasRenderingContext2D, w: World) {
 function paintCover(ctx: CanvasRenderingContext2D, g: GunCover, pulse = 0) {
   const hot = g.home || g.selected;
   const ghost = !!g.ghost;
-  ctx.fillStyle = hexA(g.color, ghost ? (hot ? 0.1 + pulse * 0.5 : 0.045) : hot ? 0.07 : 0.025);
+  ctx.fillStyle = hexA(g.color, ghost ? (hot ? 0.1 + pulse * 0.5 : 0.045) : hot ? 0.07 : NEON_LOOK ? 0.008 : 0.025);
   ctx.strokeStyle = hexA(g.color, ghost ? (hot ? 0.55 : 0.22) : hot ? 0.36 : 0.12);
   ctx.lineWidth = ghost ? (hot ? 2 : 1.2) : hot ? 1.6 : 1;
   ctx.setLineDash(ghost && !hot ? [4, 6] : hot ? [] : [5, 7]);
@@ -1843,6 +1881,16 @@ function drawBay(ctx: CanvasRenderingContext2D, w: World, t: number) {
   ctx.stroke();
   ctx.translate(moon.x, moon.y);
   const r = BAY_ORBIT.r;
+  if (NEON_LOOK) {
+    neonMoon(ctx, 0, 0, r, occupied ? NEON.friend : rgba(NEON.friend, 0.55), occupied);
+    ctx.fillStyle = rgba(NEON.friend, occupied ? 0.9 : 0.5);
+    ctx.font = "700 10px 'D-DIN', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText("BAY", 0, r + 5);
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = "rgba(0,0,0,0.4)";
   ctx.beginPath();
   ctx.ellipse(0, r * 0.7, r * 1.05, r * 0.32, 0, 0, Math.PI * 2);
@@ -2605,7 +2653,9 @@ function drawCompanion(ctx: CanvasRenderingContext2D, c: CompanionState, visT: n
     ctx.restore();
   }
   const tid = c.card.templateId ?? c.card.id;
-  if (tid === "comp-kelvin") {
+  if (NEON_LOOK) {
+    neonCraft(ctx, c, role, visT);
+  } else if (tid === "comp-kelvin") {
     ctx.rotate(c.hdg * 0.18);
     ctx.shadowColor = "rgba(60,214,204,0.75)";
     ctx.shadowBlur = 14;
@@ -3026,6 +3076,10 @@ function paintGunFace(ctx: CanvasRenderingContext2D, card: RosterItem["card"], c
 }
 
 function drawEnemyShape(ctx: CanvasRenderingContext2D, e: Enemy, _assets: Assets | null, theme: ThemeId) {
+  if (NEON_LOOK) {
+    neonEnemy(ctx, e, e.anim ?? 0);
+    return;
+  }
   const r = Math.max(11, e.radius);
   const flash = e.flash > 0;
   const paint = scrapPaint(theme);
@@ -3488,7 +3542,6 @@ export function drawWorld(
 ) {
   const { scale, ox, oy, dpr, cssW, cssH } = viewTransform(canvas);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.imageSmoothingEnabled = false;
 
   const shake = w.trauma * w.trauma;
   const sx = (Math.random() * 2 - 1) * shake * 8;
@@ -3645,6 +3698,8 @@ export function drawWorld(
   for (const d of drawables) d.draw();
   drawFuseArrows(ctx, w);
 
+  // Neon: shots and effects add light instead of painting over.
+  if (NEON_LOOK) ctx.globalCompositeOperation = "lighter";
   for (const p of w.projectiles) {
     if (!p.alive) continue;
     const col = shotColor(p.style, p.kind);
@@ -3706,6 +3761,7 @@ export function drawWorld(
     ctx.restore();
   }
 
+  ctx.globalCompositeOperation = "source-over";
   drawNades(ctx, w);
 
   for (const fx of w.fx) {
@@ -3720,6 +3776,11 @@ export function drawWorld(
       if (fx.size >= 70) {
         ctx.beginPath();
         ctx.arc(fx.x, fx.y, fx.size * (1.35 - k * 0.55), 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (NEON_LOOK) {
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, fx.size * (1.25 - k * 0.45), 0, Math.PI * 2);
         ctx.stroke();
       } else {
         ctx.strokeRect(fx.x - fx.size * (1.2 - k * 0.4), fx.y - fx.size * (1.2 - k * 0.4), fx.size * 2, fx.size * 2);
@@ -3796,7 +3857,105 @@ export function drawWorld(
     ctx.restore();
   }
 
+  ctx.globalCompositeOperation = "source-over";
   ctx.restore();
   ctx.restore();
   drawPlacePrompt(ctx, w, { dpr, cssW, cssH, scale, oy });
+}
+
+
+/**
+ * Neon card portrait: the same vector glyphs the board uses, drawn into a card's art box.
+ * Guns get their role mark on a neon moon, crafts their delta-wing, gun pairs both marks,
+ * signals and everything else a simple badge in the card's color.
+ */
+export function drawCardGlyph(canvas: HTMLCanvasElement, card: CardDef) {
+  const dpr = Math.min(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1);
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round(rect.width * dpr));
+  const h = Math.max(1, Math.round(rect.height * dpr));
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  // Grid backdrop.
+  ctx.fillStyle = NEON.bg;
+  ctx.fillRect(0, 0, w, h);
+  const step = Math.max(8, Math.round(w / 9));
+  ctx.strokeStyle = rgba(NEON.friend, 0.07);
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= w; x += step) {
+    ctx.beginPath();
+    ctx.moveTo(x + 0.5, 0);
+    ctx.lineTo(x + 0.5, h);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= h; y += step) {
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(w, y + 0.5);
+    ctx.stroke();
+  }
+  const unit = Math.min(w, h) / 100;
+  const gunAt = (g: CardDef, cx: number, cy: number, k: number) => {
+    const family = g.set ? SETS[g.set] : null;
+    const c = family?.color ?? setColor(g.set ?? null, g.art);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(k, k);
+    neonMoon(ctx, 0, 10, 26, c, true);
+    paintGunMark(ctx, g.stats?.role ?? g.art, c);
+    ctx.restore();
+  };
+  if (card.kind === "tower" || card.kind === "defender") {
+    gunAt(card, w / 2, h * 0.4, unit * 1.2);
+    return;
+  }
+  if (card.kind === "set" && card.setGuns?.length) {
+    const gs = card.setGuns
+      .map((id) => {
+        try {
+          return getCard(id);
+        } catch {
+          return null;
+        }
+      })
+      .filter((g): g is CardDef => !!g);
+    gs.forEach((g, i) => gunAt(g, (w * (i + 1)) / (gs.length + 1), h * 0.4, unit * 0.72));
+    return;
+  }
+  if (card.kind === "companion" || card.kind === "kit") {
+    ctx.save();
+    ctx.translate(w / 2, h * 0.42);
+    ctx.scale(unit * 2.2, unit * 2.2);
+    const fake = { hdg: -Math.PI / 2 } as unknown as CompanionState;
+    neonCraft(ctx, fake, card.companion?.role ?? "hunter", 0);
+    ctx.restore();
+    return;
+  }
+  // Signals and the rest: a nested diamond badge.
+  const c = card.kind === "signal" ? NEON.gold : NEON.friend;
+  ctx.save();
+  ctx.translate(w / 2, h * 0.42);
+  for (const [r, a] of [
+    [unit * 30, 1],
+    [unit * 18, 0.55],
+  ] as const) {
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r, 0);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-r, 0);
+    ctx.closePath();
+    ctx.strokeStyle = rgba(c, a);
+    ctx.lineWidth = unit * 1.6;
+    ctx.shadowColor = c;
+    ctx.shadowBlur = unit * 6;
+    ctx.stroke();
+  }
+  ctx.restore();
 }

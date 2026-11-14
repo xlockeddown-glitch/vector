@@ -109,7 +109,7 @@ Saves stay in the browser.
 
 ## Look
 
-Pixel · Neon · Space. The board renders at a third of screen resolution and scales up with hard pixels (`PARAMS.pixelRes`). Headings and buttons use the Pixelify Sans pixel font with a neon glow; corners are square. Card paintings are pixelated from the originals in `art-src/cards` with `art-src/pixelate-cards.mjs`.
+Neon vector. Everything on the board is a glowing outline on near-black with a faint grid: cyan for your side (guns, crafts, Home), magenta for enemies and their lane, element colors only where they mean something. Enemy shape tells you the type (triangle grunt, chevron striker, square plate, hexagon colossus, octagon titan). Cards show the same vector glyphs. Drawing lives in `src/game/neon.ts`; set `NEON_LOOK = false` there to get the old painted look back. The old painted card art is kept in `art-src/cards`.
 
 ## Where things are
 

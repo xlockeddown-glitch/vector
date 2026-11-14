@@ -96,7 +96,7 @@ export function GameApp() {
       {hud && phase !== "title" && <CraftBanner hud={hud} onAction={act} />}
       <canvas
         ref={canvasRef}
-        className="pixel-board absolute inset-0 h-full w-full touch-none"
+        className="absolute inset-0 h-full w-full touch-none"
         onPointerDown={onCanvas}
         onPointerMove={onHover}
       />

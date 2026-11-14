@@ -1,11 +1,13 @@
 import type { CardDef, Rarity, RolledCard } from "@/game/types";
+import { drawCardGlyph } from "@/game/render";
+import { NEON_LOOK } from "@/game/neon";
 import { KIND_LABEL, cardReadout } from "@/game/data/glossary";
 import { RARITY_GEM, rarityFoil } from "@/game/data/rarity";
 import { abilityOf, getCard } from "@/game/data/cards";
 import { gunSheet, setSheets } from "@/game/data/card-stats";
 import { cardPortraitSrc } from "@/game/data/card-art";
 import { cn } from "@/lib/utils";
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { BoostRocket } from "./BoostRocket";
 import { ShrikeJet } from "./ShrikeJet";
 import { BoreAuger } from "./BoreAuger";
@@ -143,9 +145,12 @@ function portraitKeys(card: CardDef): string[] {
 }
 
 function CardArt({ card, className }: { card: CardDef; className?: string }) {
-  const src = portraitKeys(card)
-    .map((key) => cardPortraitSrc(key))
-    .find((s): s is string => !!s);
+  if (NEON_LOOK) return <NeonArt card={card} className={className} />;
+  const src = NEON_LOOK
+    ? null
+    : portraitKeys(card)
+        .map((key) => cardPortraitSrc(key))
+        .find((s): s is string => !!s);
   if (src) return <img src={src} alt="" draggable={false} className={cn("card-paint", className)} />;
   const tid = "templateId" in card ? (card as RolledCard).templateId : card.id;
   const craftId = card.kind === "kit" ? (card.kit?.craftId ?? card.art) : tid;
@@ -420,4 +425,19 @@ export function CardBack({
       </button>
     </div>
   );
+}
+
+/** Neon look: draws the card's vector glyph into a canvas sized to the art box. */
+function NeonArt({ card, className }: { card: CardDef; className?: string }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const draw = () => drawCardGlyph(el, card);
+    draw();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(draw) : null;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [card]);
+  return <canvas ref={ref} aria-hidden className={cn("block h-full w-full", className)} />;
 }
