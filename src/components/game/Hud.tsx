@@ -7,7 +7,7 @@ import type { Rarity } from "@/game/types";
 import { HOME_PAD, WIN_WAVES } from "@/game/constants";
 import { Pause, Play, Volume2, VolumeX, ChartNoAxesColumn } from "lucide-react";
 import { CraftPortrait } from "./CardView";
-import { GunTree } from "./GunTree";
+import { CraftTree, GunTree } from "./GunTree";
 
 export function HudBar({
   hud,
@@ -36,13 +36,10 @@ export function HudBar({
           {hud.endless ? fmtCount(hud.wavesCleared) : `${fmtCount(hud.wavesCleared)}/${WIN_WAVES}`}
         </p>
         {playing && (
-          <ClimbMeter
+          <LevelMeter
+            level={hud.runLevel}
             xp={hud.xp}
             xpNext={hud.xpNext}
-            pending={hud.pendingLevels > 0}
-            bay={hud.climbRanks.bay}
-            pack={hud.climbRanks.pack}
-            crew={hud.climbRanks.crew}
             say={hud.bonusSay}
           />
         )}
@@ -143,10 +140,19 @@ export function HudOverlays({
           gun={hud.selectedItem}
           credit={hud.points}
           onBuy={(id) => onAction({ type: "upgrade", uid: hud.selectedItem!.uid, tune: id })}
+          onInfuse={(el) => onAction({ type: "infuse", uid: hud.selectedItem!.uid, el })}
           onClose={() => onAction({ type: "selectCard", uid: null })}
         />
       )}
-      {!plantedGun && hud.inspect && hud.inspect.kind === "craft" && (
+      {!plantedGun && hud.selectedCraft && (
+        <CraftTree
+          craft={hud.selectedCraft}
+          credit={hud.points}
+          onBuy={(id) => onAction({ type: "upgradeCraft", uid: hud.selectedCraft!.uid, node: id })}
+          onClose={() => onAction({ type: "selectCard", uid: null })}
+        />
+      )}
+      {!plantedGun && !hud.selectedCraft && hud.inspect && hud.inspect.kind === "craft" && (
         <InspectPanel info={hud.inspect} onAction={onAction} />
       )}
       {showPlay && hud.announce && (
@@ -212,34 +218,23 @@ export function HudOverlays({
   );
 }
 
-function ClimbMeter({
+function LevelMeter({
+  level,
   xp,
   xpNext,
-  pending,
-  bay,
-  pack,
-  crew,
   say,
 }: {
+  level: number;
   xp: number;
   xpNext: number;
-  pending: boolean;
-  bay: number;
-  pack: number;
-  crew: number;
   say: string | null;
 }) {
   const pct = xpNext > 0 ? Math.max(0, Math.min(1, xp / xpNext)) : 0;
   return (
-    <div className={cn("hud-bonus min-w-0", pending && "climb-ready")}>
-      <p className="text-[9px] font-medium tracking-[0.16em] text-frost">Bonus</p>
-      <div className="climb-bar-live mt-0.5">
+    <div className="hud-bonus min-w-0" title="Kills fill this bar. Each level pays Credit.">
+      <p className="text-[9px] font-medium tracking-[0.16em] text-frost">Level {fmtCount(level)}</p>
+      <div className="level-bar-live mt-0.5">
         <span style={{ width: `${Math.round(pct * 100)}%` }} />
-      </div>
-      <div className="rank-pipe mt-0.5" aria-hidden>
-        <i className={cn("rank-tick", bay > 0 && "on")} />
-        <i className={cn("rank-tick", pack > 0 && "on")} />
-        <i className={cn("rank-tick", crew > 0 && "on")} />
       </div>
       {say ? <p className="bonus-say">{say}</p> : null}
     </div>

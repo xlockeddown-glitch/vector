@@ -1,4 +1,5 @@
 import { MEGA_EVERY } from "../constants";
+import { PARAMS } from "../params";
 import type { EnemyType, WaveDef, WaveGroup } from "../types";
 import { THEME_LEN, THEME_ORDER, themeAt } from "./themes";
 
@@ -116,9 +117,10 @@ function withMega(groups: WaveGroup[], mega: boolean, act: number): WaveGroup[] 
   if (!mega) return groups;
   const scaled = groups.map((grp) => ({
     ...grp,
-    count: grp.type === "cache" ? grp.count : Math.max(1, Math.round(grp.count * 1.45)),
+    count: grp.type === "cache" ? grp.count : Math.max(1, Math.round(grp.count * PARAMS.megaCountMul)),
   }));
-  scaled.push(g("titan", 1, 1, 2.1));
+  // One titan per mega wave: only add one if the wave doesn't already bring its own.
+  if (!groups.some((grp) => grp.type === "titan")) scaled.push(g("titan", 1, 1, 2.1));
   scaled.push(g("cache", 1 + Math.min(2, act), 1.8, 3.6));
   return scaled;
 }

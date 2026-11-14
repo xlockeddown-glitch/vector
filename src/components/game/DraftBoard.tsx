@@ -14,6 +14,7 @@ export function DraftBoard({
   onPick,
   packMode = "show",
   cutId = null,
+  copyTags,
 }: {
   title: string;
   sub: string;
@@ -26,11 +27,11 @@ export function DraftBoard({
   setCounts: Record<SetId, number>;
   onPick: (id: string) => void;
   loot?: boolean;
-  climb?: boolean;
   stamp?: boolean;
   heat?: PackHeat | null;
   packMode?: PackMode;
   cutId?: string | null;
+  copyTags?: Record<string, string>;
   picksLeft?: number;
   skipCharge?: number;
   canSkipPack?: boolean;
@@ -133,7 +134,7 @@ export function DraftBoard({
               }}
               delay={i * 70}
               banned={packMode === "cut" && cutId === c.id}
-              tag={packMode === "cut" && cutId === c.id ? "cut" : undefined}
+              tag={packMode === "cut" && cutId === c.id ? "cut" : copyTags?.[c.id]}
               picked={locking === c.id}
               dimmed={!!locking && locking !== c.id}
               dealAnim

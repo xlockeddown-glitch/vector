@@ -1,48 +1,122 @@
+<div align="center">
+
 # VECTOR
 
-Draft once. Plant guns on moons. Hold 12.
+**Draft once. Plant guns on moons. Hold 12.**
 
 ![VECTOR](public/og.jpg)
 
-Browser tower defense. You draft a small hand before the fight. The waves do not stop for more cards.
+A browser tower defense game built on a card draft.
+Build your hand before the fight, then level it up while the waves keep coming.
 
-## A run
+`v0.9.1` · No account needed · Plays on desktop and phone
 
-1. Pick a bound craft. It is already flying.
-2. Draft. First pick is two guns that work together. Then fill the empty moons. Last two picks are Signals.
-3. Plant on lit moons. Hit Defend.
-4. Hold 12. That is a win.
-5. Keep flying for score, or return and draft again.
+</div>
 
-Kills pay Credit. Spend it on a planted gun during the run, or in the Vault between runs. First Vault buys take a few wins.
+---
 
-A Signal is a rule for this run. Not a gun. You pick two. They stay on.
+## The idea
 
-On a phone the draft is one card. Swipe for the next. Tap the card to flip it. Take is its own button.
+VECTOR combines three things:
+
+| | |
+|---|---|
+| 🃏 **Card drafting** | Before the fight you draft a small hand: guns, then Signals. That hand is your whole plan. The waves don't stop so you can draw more. |
+| 🌑 **Tower defense** | Plant guns on lit moons and hold the lane for 12 waves. |
+| 🌳 **Leveling and skill trees** | Kills pay Credit and fill your Level. Spend Credit on gun and craft skill trees and element infusions in the middle of a run. |
+
+---
+
+## Modes
+
+| Mode | How it plays |
+|---|---|
+| **Arena** | Draft your whole hand up front, then hold 12 waves. |
+| **Build** | Start with two guns. Draft one gun after every wave. Copies of a gun you own merge: **3 copies = ★2, 9 = ★3**. Each star multiplies the gun's damage and opens another tree pick. Hold 12. |
+
+## How a run works
+
+1. **Pick a craft.** It's already flying.
+2. **Draft.** Your first pick is two guns that work together. Then fill the empty moons. Your last two picks are **Signals**.
+3. **Plant and defend.** Put guns on lit moons and hit **Defend**.
+4. **Level up.** Spend Credit from kills on a gun's skill tree while the run is going.
+5. **Hold 12.** Survive 12 waves to win. Then keep flying for score, or go back and draft again.
+
+---
+
+## Progression
+
+### Gun skill trees: during the run
+Every gun has its own tree with **3 branches × 3 nodes**. Each pick costs Credit, and the cost goes up as the gun learns more jobs. Commit to a branch to give the gun a role, like deeper pierce or armor crack.
+
+### Craft skill trees: during the run
+Crafts get trees too: 3 picks across at most 2 branches. Auger, Torch and Boost have their own; every other craft gets Bite / Reach / Hull. Tap a flying craft to open its tree.
+
+### Elements
+Infuse any gun with one element it isn't already: **Plasma** (fire, shots burn), **Cryo** (ice, shots chill) or **Volt** (shock, shots jump once). An infused gun counts toward that element's combo.
+
+Two elements on one enemy **react**:
+
+| Pair | Reaction |
+|---|---|
+| Plasma + Cryo | **Shatter** — a burst of damage |
+| Cryo + Volt | **Brittle** — armor stripped |
+| Plasma + Volt | **Overload** — a blast hits enemies nearby |
+
+### Level
+Kills fill the Level bar. Each Level pays Credit, and Levels 4, 5 and 8 unlock a better draft, an extra pick and an extra moon.
+
+### Vault: between runs
+Spend leftover Credit in the Vault. The first Vault purchases unlock after a few wins.
+
+---
+
+### Season pass: across runs
+A free 30-tier season track (**Season 1 · Neon Drift**). Every run earns Pass XP: 10 per wave cleared, +50 for holding 12, +5 per ★ made in Build. Each tier pays out when the run ends: Vault Credit, Vault looks (paths, trails, frames, stars, sun), craft skins and badges. Looks only — nothing on the pass makes guns stronger. Open it from **Pass** on the title screen.
+
+## Signals
+
+A Signal is a rule for this run, not a gun. You pick two, and they stay on for the whole run.
+
+> "+6% damage" is not a Signal. "Ion jumps one extra time" is.
+
+Same guns + different Signals = a different run.
+
+---
+
+## On a phone
+
+The draft shows one card at a time. **Swipe** to see the next card. **Tap** the card to flip it. **Take** is its own button.
+
+---
 
 ## Run it
 
-```
+```bash
 npm install
-npm run dev
+npm run dev        # dev server on port 8080
 ```
 
-Dev server is port 8080.
-
-```
+```bash
 npm run typecheck
 npm run build
 ```
 
-Version lives in `src/game/version.ts` and shows on the title. Current: **0.9.1**.
+The version lives in `src/game/version.ts` and shows on the title screen.
+Saves stay in the browser.
 
-Saves stay in the browser. You do not need an account to play.
+---
+
+## Look
+
+Pixel · Neon · Space. The board renders at a third of screen resolution and scales up with hard pixels (`PARAMS.pixelRes`). Headings and buttons use the Pixelify Sans pixel font with a neon glow; corners are square. Card paintings are pixelated from the originals in `art-src/cards` with `art-src/pixelate-cards.mjs`.
 
 ## Where things are
 
-| | |
+| What | Where |
 |---|---|
 | Rules and sim | `src/game/` |
+| Card, Signal and tree data | `src/game/data/` |
 | Screens | `src/components/game/` |
-| Card and enemy art | `public/game/` |
-| Design notes | `PLAN.md` |
+| Card and enemy art | `public/game/` (original card paintings in `art-src/cards`) |
+| Design notes | `PLAN.md`, `FUN-PLAN.md` |

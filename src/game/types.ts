@@ -14,15 +14,14 @@ export type CardKind =
   | "sticker"
   | "companion"
   | "kit"
-  | "climb"
   | "set"
   | "signal";
 export type ThemeId = "water" | "earth" | "space";
-export type PlayMode = "story" | "arcade";
+export type PlayMode = "story" | "arcade" | "build";
 export type SetId = "heat" | "cold" | "spark" | "iron";
 export type OpId = "mul" | "add" | "raise" | "take";
 export type PackMode = "show" | "mystery" | "cut";
-export type DraftLane = "open" | "level" | "round" | "part" | "loot" | "stamp";
+export type DraftLane = "open" | "round" | "part" | "loot" | "stamp";
 export type PackHeat = "quiet" | "live" | "peak" | "nova";
 export type PackGift = "road" | "freeze" | "jump" | "peel";
 export type GemId = "ruby" | "emerald" | "sapphire" | "diamond";
@@ -116,6 +115,8 @@ export type TowerStats = {
   role?: TowerRole;
   hull?: TowerHull;
   tribe?: SetId;
+  /** Element added by infusion (Plasma/Cryo/Volt). */
+  infuse?: "heat" | "cold" | "spark" | null;
   knock?: number;
   nova?: number;
   mines?: boolean;
@@ -269,7 +270,6 @@ export type CardDef = {
   companion?: CompanionEffect;
   kit?: KitEffect;
   sticker?: StickerEffect;
-  climb?: { branch: "bay" | "pack" | "crew"; rank: number };
   /** Two gun template ids. Set cards only. */
   setGuns?: string[];
   /** MUT position: Credit Guns Crafts Path Bonus Lives. Never an overall number. */
@@ -326,6 +326,10 @@ export type EnemyDef = {
 
 export type RosterItem = {
   uid: string;
+  /** Element this gun was infused with this run. */
+  infuse?: "heat" | "cold" | "spark" | null;
+  /** Build mode: copies merged into this gun (1 = just itself). 3 = ★2, 9 = ★3. */
+  copies?: number;
   card: RolledCard;
   placedPad: string | null;
   level: number;
@@ -392,6 +396,10 @@ export type MetaSave = {
   hangar: HangarRanks;
   boughtSkins: SkinId[];
   orbitXp?: number;
+  /** Battle pass progress for the current season. */
+  pass?: { season: string; xp: number; claimed: number; badges: string[] };
+  /** What the last finished run added to the pass (for the end screen). */
+  lastPass?: { xp: number; rewards: string[]; tier: number } | null;
   vault?: { outfit: number; bay: number; armory: number; sky?: number; myth?: number; ownedIds: string[] };
   tutorialDone?: boolean;
   tutorialSkipped?: boolean;
@@ -516,12 +524,15 @@ export type RunSave = {
     parts?: PartRoll[];
     partOffer?: PartRoll[];
     clone?: boolean;
+    jobs?: string[];
   }>;
   runKills?: number;
   runLeaks?: number;
   shotsFired?: number;
   upgradesMade?: number;
   wavesCleared?: number;
+  /** Build mode: star-ups made this run (Pass XP). */
+  starsMade?: number;
   swapTokens?: number;
   swapPity?: number;
   skipCharge?: number;
@@ -532,7 +543,6 @@ export type RunSave = {
   pendingCompensate?: "kit" | "companion" | null;
   bansThisRound?: number;
   runBanned?: string[];
-  climb?: { bay: number; pack: number; crew: number };
 };
 
 export type LiveOffer = {

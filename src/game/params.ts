@@ -24,6 +24,10 @@ export const PARAMS = {
   swapRate: 0.1,
   swapPity: 8,
   megaEvery: 6,
+  /** Mega waves bring this many times the usual enemies (was 1.45; wave 12 was a wall). */
+  megaCountMul: 1.25,
+  /** Build mode enemy HP multiplier: stars make Build teams stronger than Arena teams. */
+  buildHpMul: 1.3,
   extraPicksMax: 0,
   draftPickCost: 40,
   /** Craft mastery. Job points to unlock skill 1 / 2 / 3. */
@@ -75,6 +79,14 @@ export const PARAMS = {
   jobSlotsMax: 7,
   /** A gun walks this many job lines. */
   jobBranchesMax: 2,
+  /**
+   * Credit cost of each gun tree pick, by picks already taken.
+   * A 12-wave Arena win pays ~14k Credit (measured, no Credit Signals), ~1k per wave.
+   * A full gun is 4k, so a run maxes about 3 guns, or spreads thinner. Choose.
+   */
+  jobCost: [200, 400, 700, 1100, 1600],
+  /** Credit cost of each craft tree pick, by picks already taken. Full craft 1.6k. */
+  craftJobCost: [250, 500, 850],
   /** Engrave extra hurt per loop. Was 0.06. Level now carries the climb. */
   forgeDmg: 0.03,
   /** Friend crafts. Extra bite per round. */
@@ -85,8 +97,48 @@ export const PARAMS = {
   raidLoopSpeed: 0.12,
   /** After a loop. Plates gain this much armor per loop. */
   raidLoopArmor: 0.08,
-  /** Grenades wait until this far along the path. */
-  nadeLate: 0.58,
+  /** Grenades wait until this far along the path. Later = a tank that gets deep costs a few lives, not all ten. */
+  nadeLate: 0.7,
+  /**
+   * Enemy HP growth per wave: 1 + a·wave + b·wave².
+   * Old curve was linear 0.11. The square term keeps waves 1–5 close to before
+   * and makes 8–12 ask for a built-up team (wave 12 ≈ 2.8× wave 1, was 2.2×).
+   */
+  enemyHpPerWave: 0.11,
+  enemyHpPerWave2: 0.005,
+  /**
+   * Board pixel size: the board renders at this fraction of screen resolution and is
+   * scaled up with hard pixel edges. 0.34 ≈ one game pixel per 3×3 screen pixels.
+   */
+  pixelRes: 0.34,
+  /** Build mode: chance each card in a wave draft is a copy of a gun you own. */
+  buildCopyOdds: 0.5,
+  /** Build mode star multipliers, index 0 = ★1. */
+  starDamage: [1, 1.8, 3.2],
+  starRate: [1, 1.1, 1.2],
+  starRange: [1, 1.08, 1.16],
+  /** Extra tree picks each star adds (capped by jobSlotsMax). */
+  starSlots: 1,
+  /** Credit to infuse a gun with an element. One element per gun. */
+  infuseCost: 500,
+  /** Plasma infusion: burn per second as a share of the gun's hit damage. */
+  infuseBurn: 0.3,
+  /** Cryo infusion: chill length and speed multiplier. */
+  infuseSlowT: 0.9,
+  infuseSlowMul: 0.72,
+  /** How long an element stays on an enemy after a hit, in seconds. */
+  elementLinger: 2,
+  /** Reaction cooldown per enemy, in seconds. */
+  reactCd: 0.8,
+  /** Shatter: burst as a share of max HP (bosses take the smaller number). */
+  shatterHp: 0.1,
+  shatterBossHp: 0.035,
+  /** Brittle: armor strip length, in seconds. */
+  brittleT: 4,
+  /** Overload: blast radius and damage as a share of each enemy's max HP. */
+  overloadRadius: 56,
+  overloadHp: 0.06,
+  overloadBossHp: 0.025,
   /** Empty moon radius. Occupied moons use moonRHot. */
   moonR: 24,
   moonRHot: 32,

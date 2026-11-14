@@ -64,7 +64,6 @@ const KIND_WEIGHT: Record<CardKind, number> = {
   part: 0,
   stamp: 0,
   map: 0,
-  climb: 0,
   set: 0,
   signal: 0,
 };
@@ -89,7 +88,7 @@ export function rollPackKind(hints?: KindHints): CardKind {
   else w.companion = 0;
   if (hints?.lastKind && (w[hints.lastKind] ?? 0) > 0) w[hints.lastKind] *= 0.7;
   const total = DRAFT_KINDS.reduce((s, k) => s + (w[k] ?? 0), 0);
-  if (total <= 0) return "climb";
+  if (total <= 0) return "tower";
   let n = Math.random() * total;
   for (const k of DRAFT_KINDS) {
     n -= w[k] ?? 0;
@@ -149,7 +148,6 @@ export function packTitleFor(kind: CardKind | null | undefined, mode: PackMode =
   if (kind === "socket") return "Pick a pad boost";
   if (kind === "kit") return "Pick a skill";
   if (kind === "stamp") return "Stamp · pick one";
-  if (kind === "climb") return "Bonus perk · pick one";
   if (kind === "set") return "Pick two guns";
   if (kind === "signal") return "Pick a rule";
   if (kind === "defender") return "Pick home";

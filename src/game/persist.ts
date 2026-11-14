@@ -3,6 +3,7 @@ import { unlockedIds, type SkinProgress } from "./data/skins";
 import { emptyHangar, hangarCost, hangarItem, hangarOf, SKIN_FLUX } from "./data/hangar";
 import { emptyVault, vaultCanBuy, vaultNode, vaultOf, type VaultSave } from "./data/vault";
 import { orbitXpFromRun } from "./data/orbit";
+import { PASS_TIERS, passOf, passTier, passXpFromRun, rewardLabel } from "./data/pass";
 import { GAME_VERSION } from "./version";
 
 const META_KEY = "vector-meta-v4";
@@ -64,6 +65,7 @@ function withUnlocks(m: MetaSave): MetaSave {
     equipped: unlocked.includes(m.equipped) ? m.equipped : "stock",
     orbitXp: Math.max(0, Math.floor(m.orbitXp ?? 0)),
     vault: vaultOf(m.vault),
+    pass: passOf(m.pass),
     tutorialDone: !!m.tutorialDone,
     tutorialSkipped: !!m.tutorialSkipped,
     build: GAME_VERSION,
@@ -85,6 +87,7 @@ function coerceMeta(p: Partial<MetaSave> & { v?: number }): MetaSave {
     boughtSkins: p.boughtSkins ?? [],
     orbitXp: Math.max(0, Math.floor(p.orbitXp ?? 0)),
     vault: vaultOf(p.vault),
+    pass: passOf(p.pass),
     tutorialDone: !!p.tutorialDone,
     tutorialSkipped: !!p.tutorialSkipped,
   });
@@ -162,9 +165,18 @@ export function addStamp(id: string) {
   return saveMeta({ stamps: [...(meta.stamps ?? []), id] });
 }
 
-export function recordRun(opts: { wave: number; loops?: number; grade: Grade | null; level?: number }) {
+export function recordRun(opts: {
+  wave: number;
+  loops?: number;
+  grade: Grade | null;
+  level?: number;
+  wavesCleared?: number;
+  won?: boolean;
+  starsMade?: number;
+}) {
   const cur = loadMeta();
   const add = orbitXpFromRun(opts.wave, opts.grade);
+  const passed = grantPass(cur, passXpFromRun({ wavesCleared: opts.wavesCleared ?? opts.wave, won: !!opts.won, starsMade: opts.starsMade }));
   return saveMeta({
     runs: cur.runs + 1,
     bestWave: Math.max(cur.bestWave, opts.wave),
@@ -172,7 +184,47 @@ export function recordRun(opts: { wave: number; loops?: number; grade: Grade | n
     loops: opts.loops ?? cur.loops,
     bestLevel: Math.max(cur.bestLevel ?? 0, opts.level ?? 0),
     orbitXp: (cur.orbitXp ?? 0) + add,
+    ...passed,
   });
+}
+
+/** Adds Pass XP and pays out every tier reached. Returns the meta fields that change. */
+function grantPass(cur: MetaSave, xp: number): Partial<MetaSave> {
+  const pass = passOf(cur.pass);
+  const next = { ...pass, xp: pass.xp + xp, badges: [...pass.badges] };
+  let flux = cur.flux ?? 0;
+  const vault = vaultOf(cur.vault);
+  const ownedIds = [...vault.ownedIds];
+  const ranks: VaultSave = { ...vault };
+  const bought = [...(cur.boughtSkins ?? [])];
+  const rewards: string[] = [];
+  const reach = passTier(next.xp);
+  for (let t = pass.claimed + 1; t <= reach; t++) {
+    const r = PASS_TIERS[t - 1]?.reward;
+    if (!r) continue;
+    rewards.push(`Tier ${t}: ${rewardLabel(r)}`);
+    if (r.kind === "credit") flux += r.n;
+    else if (r.kind === "badge") next.badges.push(r.name);
+    else if (r.kind === "skin") {
+      if (bought.includes(r.id) || cur.unlocked.includes(r.id)) flux += 60;
+      else bought.push(r.id);
+    } else if (r.kind === "vault") {
+      const node = vaultNode(r.id);
+      if (!node?.branch || ownedIds.includes(r.id)) flux += 60;
+      else {
+        ownedIds.push(r.id);
+        ranks[node.branch] = Math.max(ranks[node.branch], node.rank);
+      }
+    }
+  }
+  next.claimed = Math.max(pass.claimed, reach);
+  return {
+    pass: next,
+    flux,
+    vault: { ...ranks, ownedIds },
+    boughtSkins: bought,
+    lastPass: { xp, rewards, tier: reach },
+  };
 }
 
 export function noteGunKills(add: Record<string, number>) {

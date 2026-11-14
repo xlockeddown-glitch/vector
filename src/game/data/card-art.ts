@@ -90,5 +90,5 @@ const SLUG: Record<string, string> = {
 export function cardPortraitSrc(id: string | undefined | null): string | null {
   if (!id) return null;
   const slug = SLUG[id] ?? SLUG[id.toLowerCase()];
-  return slug ? `/game/cards/${slug}.jpg?v=fun4` : null;
+  return slug ? `/game/cards/${slug}.jpg?v=px2` : null;
 }

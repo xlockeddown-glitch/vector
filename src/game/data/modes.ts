@@ -19,10 +19,16 @@ export const MODES: Record<
     kicker: "After 12",
     blurb: "You already won. Waves do not stop. Cash out whenever.",
   },
+  build: {
+    id: "build",
+    name: "Build",
+    kicker: "Draft every wave",
+    blurb: "Draft a gun after every wave. Copies merge: 3 of a gun make ★2, 9 make ★3. Hold 12.",
+  },
 };
 
 export function isPlayMode(v: unknown): v is PlayMode {
-  return v === "story" || v === "arcade";
+  return v === "story" || v === "arcade" || v === "build";
 }
 
 export function storyWatchName(wave: number) {

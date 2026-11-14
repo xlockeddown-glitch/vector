@@ -109,19 +109,19 @@ function drawPath(ctx: CanvasRenderingContext2D, theme: ReturnType<typeof themeA
   ctx.translate(0, 6);
   drawAllPaths(ctx, () => {
     ctx.strokeStyle = "rgba(0,0,0,0.55)";
-    ctx.lineWidth = 86;
+    ctx.lineWidth = 72;
     ctx.stroke();
   });
   ctx.restore();
 
   drawAllPaths(ctx, () => {
     ctx.strokeStyle = "#07090f";
-    ctx.lineWidth = 78;
+    ctx.lineWidth = 66;
     ctx.stroke();
   });
 
-  PATHS.forEach((path, i) => {
-    const tint = GATES[i]?.color ?? theme.pathLine;
+  // Lane: dark bed with thin neon edge rails in the backdrop's color. No bright center stripe.
+  PATHS.forEach((path) => {
     const rim =
       pathStyle === "ember"
         ? PALETTE.ember
@@ -129,31 +129,32 @@ function drawPath(ctx: CanvasRenderingContext2D, theme: ReturnType<typeof themeA
           ? PALETTE.frost
           : ion || pathStyle === "ion"
             ? "#7ec8ff"
-            : tint || "#5eebff";
+            : theme.pathLine || "#5eebff";
     ctx.save();
     strokeLane(ctx, path);
-    ctx.strokeStyle = hexA(rim, 0.9);
-    ctx.lineWidth = 52;
-    ctx.shadowColor = rim;
-    ctx.shadowBlur = 18;
+    ctx.strokeStyle = hexA(rim, 0.38);
+    ctx.lineWidth = 58;
+    ctx.shadowColor = hexA(rim, 0.3);
+    ctx.shadowBlur = 6;
     ctx.stroke();
     ctx.shadowBlur = 0;
     strokeLane(ctx, path);
-    ctx.strokeStyle = hexA("#062024", 0.72);
-    ctx.lineWidth = 30;
+    ctx.strokeStyle = "#0a0d16";
+    ctx.lineWidth = 50;
     ctx.stroke();
     strokeLane(ctx, path);
-    ctx.strokeStyle = "#f4fbff";
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = hexA(rim, 0.05);
+    ctx.lineWidth = 50;
     ctx.stroke();
     ctx.restore();
   });
 
-  ctx.setLineDash([7, 16]);
+  // Slow dashed flow line down the middle shows direction.
+  ctx.setLineDash([10, 22]);
   ctx.lineDashOffset = -t * 38;
   drawAllPaths(ctx, () => {
-    ctx.strokeStyle = ion ? "rgba(126,200,255,0.55)" : "rgba(240,241,244,0.28)";
-    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = ion ? "rgba(126,200,255,0.4)" : hexA(theme.pathLine || "#5eebff", 0.22);
+    ctx.lineWidth = 3;
     ctx.stroke();
   });
   ctx.setLineDash([]);
@@ -196,10 +197,10 @@ function drawDocks(ctx: CanvasRenderingContext2D, w: World) {
     ctx.strokeStyle = "#07090f";
     ctx.lineWidth = 18;
     ctx.stroke();
-    ctx.strokeStyle = hexA(PALETTE.frost, 0.72);
-    ctx.lineWidth = 9;
+    ctx.strokeStyle = hexA(PALETTE.frost, 0.32);
+    ctx.lineWidth = 7;
     ctx.stroke();
-    ctx.strokeStyle = hexA("#f4fbff", 0.75);
+    ctx.strokeStyle = hexA("#f4fbff", 0.22);
     ctx.lineWidth = 2.2;
     ctx.stroke();
   }
@@ -3487,6 +3488,7 @@ export function drawWorld(
 ) {
   const { scale, ox, oy, dpr, cssW, cssH } = viewTransform(canvas);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
 
   const shake = w.trauma * w.trauma;
   const sx = (Math.random() * 2 - 1) * shake * 8;

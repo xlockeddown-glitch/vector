@@ -1,6 +1,7 @@
 import type { CardDef, Rarity, RolledCard } from "../types";
 import { freshSeed } from "../rng";
-import type { PerkRole } from "./climb";
+/** Short tag for what a perk touches. */
+export type PerkRole = "Credit" | "Guns" | "Crafts" | "Path" | "Bonus" | "Lives";
 
 export type StampLook = "gold-core" | "ion-path" | "void-pads" | "drift-orbit";
 

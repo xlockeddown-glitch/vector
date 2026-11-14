@@ -13,7 +13,6 @@ export const KIND_LABEL: Record<CardKind, string> = {
   sticker: "Badge",
   companion: "Ship",
   kit: "Skill",
-  climb: "Bonus perk",
   set: "Two guns",
   signal: "This run",
 };
@@ -30,7 +29,6 @@ export const KIND_JOB: Record<CardKind, string> = {
   sticker: "A bonus on home",
   companion: "A ship that flies with you. You can fly three.",
   kit: "A skill for one ship you already have",
-  climb: "A run perk. This game only. Not a gun.",
   set: "Two guns that already work together",
   signal: "A rule for this run. Not a gun.",
 };
@@ -61,7 +59,6 @@ export const KIND_PLAIN: Record<CardKind, string> = {
   sticker: "Badge — a bonus on home.",
   companion: "Ship — flies with you. Hurt ships go home to heal.",
   kit: "Skill — only for that ship. Not a gun. Not a new ship.",
-  climb: "Bonus perk — a perk for this game. Not a gun. Not a ship.",
   set: "Two guns — they already work together.",
   signal: "This run — a rule that lasts the whole game. Not a gun.",
 };

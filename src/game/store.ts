@@ -2,13 +2,12 @@ import { create } from "zustand";
 import { HOME_PAD, LOOP_WAVES, SKY_PAD, TOTAL_ROUNDS, WAVES_PER_ROUND, xpToNext, levelDraftBump, levelExtraPicks } from "./constants";
 import { countSets, emptySets, setLines } from "./data/sets";
 import { lordFlags } from "./data/lords";
-import { climbFx, climbSummary, emptyClimb } from "./data/climb";
 import { emptyGems } from "./data/charms";
 import { themeAt } from "./data/themes";
 import { storyWatchLine } from "./data/modes";
 import { waveAt } from "./data/waves";
 import { loadMeta, loadRun, loadProfiles } from "./persist";
-import { fieldedTowers, padCap, scrapValue as scrapOf, socketOnPad, coverPct, bonusPct, inspectGun, type World } from "./sim";
+import { buildCopyTags, fieldedTowers, padCap, scrapValue as scrapOf, socketOnPad, coverPct, bonusPct, inspectGun, type World } from "./sim";
 import { displayName } from "./data/glossary";
 import { companionSpecialOf, companionFx } from "./data/companion";
 import { specialCards } from "./data/specials";
@@ -121,6 +120,8 @@ export type HudState = {
   roster: RosterItem[];
   relics: string[];
   draftCards: CardDef[];
+  /** Build mode: draft card id → "Copy · 2/3 to ★★". */
+  copyTags: Record<string, string>;
   draftTitle: string;
   draftSub: string;
   draftKind: CardKind | null;
@@ -166,12 +167,13 @@ export type HudState = {
   roundXp: number;
   pendingLevels: number;
   bonusSay: string | null;
-  climbRanks: { bay: number; pack: number; crew: number };
   fusePartnerUid: string | null;
   fuseNext: number;
   fuseTip: boolean;
   specialPick: SpecialPickHud | null;
   inspect: InspectHud | null;
+  /** Flying craft picked in combat. Opens its skill tree. */
+  selectedCraft: { uid: string; card: RolledCard; jobs: string[]; hull: number; hullMax: number } | null;
   tutorialActive: boolean;
   tutorialStep: number;
   tutorialDoneReady: boolean;
@@ -183,7 +185,6 @@ export type HudState = {
   packHeat: PackHeat | null;
   pendingStamp: boolean;
   scrapValue: number;
-  ability: string;
   gems: Record<GemId, number>;
   charms: ActiveCharm[];
   pendingMerchant: boolean;
@@ -283,7 +284,7 @@ function fromWorld(w: World): HudState {
     setCards.push(r.card);
   }
   const setCounts = countSets(setCards);
-  const lords = lordFlags(w.companions, setCounts, climbFx(w.climb).lordLimp);
+  const lords = lordFlags(w.companions, setCounts);
   const cap = padCap(w);
   const fielded = fieldedTowers(w).length;
   const scrapTarget =
@@ -324,6 +325,7 @@ function fromWorld(w: World): HudState {
     roster: w.roster,
     relics: w.relics,
     draftCards: w.draftCards,
+    copyTags: buildCopyTags(w),
     draftTitle: w.draftTitle,
     draftSub: w.draftSub,
     draftKind: w.draftKind,
@@ -339,6 +341,13 @@ function fromWorld(w: World): HudState {
     mega: !!waveAt(w.wave).mega,
     pendingPart: w.pendingPart,
     selectedItem: focus,
+    selectedCraft: (() => {
+      if (w.phase !== "combat") return null;
+      const c = (w.companions ?? []).find((x) => x.uid === w.selectedCard && x.placedPad === SKY_PAD);
+      if (!c) return null;
+      if ((c.specialOffer ?? []).length || (c.partOffer ?? []).length) return null;
+      return { uid: c.uid, card: c.card, jobs: c.jobs ?? [], hull: Math.ceil(c.hp), hullMax: Math.ceil(c.hpMax) };
+    })(),
     selectedCardDef: focus ? focus.card : selectedItem ? selectedItem.card : null,
     environmentName: env ? displayName(env) : null,
     defenderName: def ? displayName(def.card) : null,
@@ -394,7 +403,6 @@ function fromWorld(w: World): HudState {
     roundXp: w.roundXp ?? 0,
     pendingLevels: w.pendingLevels,
     bonusSay: (w.bonusSayT ?? 0) > 0 ? (w.bonusSay ?? null) : null,
-    climbRanks: w.climb ?? emptyClimb(),
     fusePartnerUid: null,
     fuseNext: 0,
     fuseTip: false,
@@ -506,7 +514,7 @@ function fromWorld(w: World): HudState {
       const craft = (w.companions ?? []).find((c) => c.uid === uid && c.placedPad === SKY_PAD);
       if (craft) {
         const base = craft.card.companion;
-        const nowFx = companionFx(craft.card, craft.kits ?? []);
+        const nowFx = companionFx(craft.card, craft.kits ?? [], craft.jobs);
         const parts = (craft.parts ?? []).map((p) => p.name);
         const specs = (craft.specials ?? []).map((id) => specialCards([id])[0]?.name).filter(Boolean) as string[];
         return {
@@ -539,7 +547,6 @@ function fromWorld(w: World): HudState {
     packHeat: w.packHeat,
     pendingStamp: w.pendingStamp,
     scrapValue: scrapTarget ? scrapOf(w, scrapTarget) : 0,
-    ability: climbSummary(w.climb),
     gems: w.gems ?? emptyGems(),
     charms: w.charms ?? [],
     pendingMerchant: w.pendingMerchant,

@@ -38,9 +38,10 @@ import { LOOP_WAVES, loopOf, themeAt } from "./data/themes";
 import { isPlayMode } from "./data/modes";
 import { waveAt, WAVES } from "./data/waves";
 import { countSets } from "./data/sets";
+import { ELEMENTS, REACTIONS, applyInfusion, hitElements, infuseChoices } from "./data/elements";
 import { OPERATORS } from "./data/sets";
 import { lordFlags } from "./data/lords";
-import { climbFx, climbMaxed, climbOf, dealClimbCards, emptyClimb } from "./data/climb";
+import { canTakeCraftJob, craftUpgradeCost, craftDockHealMul, craftHullMul, craftPicksLeft } from "./data/craft-tree";
 import { dealSpecials, maxSpecials, pickRoundForLevel, specialOf, type SpecialDef } from "./data/specials";
 import { dealParts, partOf, partOfferWeak, refreshPartOffer, type PartRoll } from "./data/parts";
 import { glowHasFx, glowRadius, hullGlow, isGlowHull } from "./data/glow";
@@ -54,11 +55,12 @@ import { audio } from "./audio";
 import { addStamp, bumpForge, clearRun, loadMeta, saveRun, noteGunKills, noteLeakless, addFlux, activeProfile, addBondXp, recordRun, markLive } from "./persist";
 import { CHARMS, emptyGems, canAfford, payGems } from "./data/charms";
 import { rollCard } from "./data/roll";
+import { copyTag, starLabel, starMul, starsOf } from "./data/merge";
 import { bondFill, bondJobCount, bondKits, bondLookCount, bondMul, xpFromCraft } from "./data/bond";
 import { inCover, COVER } from "./cover";
 import { companionFx, companionMaxHp, companionSpecialOf, pickTaunt, type CompanionState } from "./data/companion";
 import { skillsForCraft } from "./data/skills";
-import { BONUS_CREDIT, CREDIT_SPARE, fluxFromBank, fluxFromRound, hangarOf, hangarStartCredit } from "./data/hangar";
+import { BONUS_CREDIT, fluxFromBank, fluxFromRound, hangarOf, hangarStartCredit } from "./data/hangar";
 import { vaultHas, vaultOf } from "./data/vault";
 import type {
   ActiveCharm,
@@ -310,6 +312,8 @@ export type World = {
   upgradesMade: number;
   fuseTip: boolean;
   wavesCleared: number;
+  /** Build mode: star-ups made this run (Pass XP). */
+  starsMade?: number;
   live: LiveOffer | null;
   liveQueue: number;
   liveMark: number;
@@ -336,7 +340,6 @@ export type World = {
   tutorialPendingGate?: boolean;
   wantTutorial?: boolean;
   parked?: boolean;
-  climb: { bay: number; pack: number; crew: number };
   swapTokens: number;
   swapPity: number;
   swapToast: boolean;
@@ -514,7 +517,6 @@ export function createWorld(): World {
     tutorialDoneReady: false,
     tutorialPendingGate: false,
     parked: false,
-    climb: emptyClimb(),
     swapTokens: START_SWAP,
     swapPity: 0,
     swapToast: false,
@@ -549,7 +551,7 @@ function applyStamps(w) {
 }
 
 export function padCap(w) {
-  return Math.min(MAX_TOWERS, BASE_PADS + levelPadBonus(w.runLevel) + w.stampPads + (w.mapPads ?? 0) + (w.hangarPads ?? 0) + climbFx(w.climb).pads);
+  return Math.min(MAX_TOWERS, BASE_PADS + levelPadBonus(w.runLevel) + w.stampPads + (w.mapPads ?? 0) + (w.hangarPads ?? 0));
 }
 
 export function livePads(w) {
@@ -690,6 +692,18 @@ function itemStats(w, item, sets, amp) {
   if (!stats) return stats;
   applyGunSpecials(stats, item, w);
   applyGunParts(stats, item);
+  if ((item.copies ?? 1) > 1) {
+    const m = starMul(item.copies);
+    stats.damage *= m.damage;
+    stats.rate *= m.rate;
+    stats.range *= m.range;
+    if (stats.auraDps) stats.auraDps *= m.damage;
+    if (stats.burnDps) stats.burnDps *= m.damage;
+  }
+  if (item.infuse) {
+    applyInfusion(stats, item.infuse);
+    stats.infuse = item.infuse;
+  }
   if (hasSig(w.signals, "sig-shade")) stats.range *= 1.12;
   if (hasSig(w.signals, "sig-hot")) stats.rate *= 1.18;
   if (stats.role === "cascade" && hasSig(w.signals, "sig-twin")) stats.chain = (stats.chain ?? 0) + 1;
@@ -1116,7 +1130,7 @@ export function inspectGun(w, item) {
 
 function spawnEnemy(w, type, route = 0) {
   const def = ENEMIES[type];
-  const waveScale = 1 + w.wave * 0.11;
+  const waveScale = (1 + w.wave * PARAMS.enemyHpPerWave + w.wave * w.wave * PARAMS.enemyHpPerWave2) * (w.playMode === "build" ? PARAMS.buildHpMul : 1);
   const e = allocEnemy(w);
   e.alive = true;
   e.type = type;
@@ -1139,6 +1153,8 @@ function spawnEnemy(w, type, route = 0) {
   e.freezeT = 0;
   e.iced = false;
   e.marked = false;
+  e.elUntil = null;
+  e.reactAt = 0;
   e.anim = Math.random() * 4;
   e.facing = 1;
   e.flash = 0;
@@ -1248,7 +1264,7 @@ function killEnemy(w, e, from = null) {
   let goldMul = 1;
   for (const c of skyCrafts(w)) {
     if (c.home) continue;
-    const fx = companionFx(c.card, c.kits);
+    const fx = companionFx(c.card, c.kits, c.jobs);
     if (fx.goldMul && dist2(c.x, c.y, e.x, e.y) <= fx.radius * fx.radius) goldMul *= fx.goldMul;
   }
   pay *= Math.min(1.45, goldMul);
@@ -1325,7 +1341,7 @@ function failRun(w) {
   w.waveActive = false;
   payoutBond(w, w.grade?.grade ?? w.lastGrade ?? "F");
   if ((w.points ?? 0) > 0) {
-    bankFlux(w, w.points);
+    bankFlux(w, fluxFromBank(w.points));
     w.points = 0;
   }
   if (!w.recorded) {
@@ -1334,6 +1350,9 @@ function failRun(w) {
       grade: w.grade?.grade ?? w.lastGrade ?? "F",
       level: w.runLevel,
       loops: Math.floor(w.wave / LOOP_WAVES),
+      wavesCleared: w.wavesCleared ?? 0,
+      won: (w.wavesCleared ?? 0) >= WIN_WAVES,
+      starsMade: w.starsMade ?? 0,
     });
     w.recorded = true;
   }
@@ -1352,7 +1371,7 @@ function lerpAng(a, b, t) {
 function hopBurn(w, e) {
   if ((e.burnT ?? 0) <= 0 && (e.burnDps ?? 0) <= 0) return;
   const sets = liveSets(w);
-  const lords = lordFlags(w.companions, sets, climbFx(w.climb).lordLimp);
+  const lords = lordFlags(w.companions, sets);
   if (!lords.wildfire) return;
   const r2 = 92 * 92;
   for (const o of w.enemies) {
@@ -1443,6 +1462,7 @@ function liveSets(w) {
   for (const r of w.roster) {
     if (r.card.kind === "companion") continue;
     cards.push(r.card);
+    if (r.infuse && r.placedPad) cards.push({ set: r.infuse });
   }
   for (const s of w.stickers ?? []) cards.push(s);
   return countSets(cards);
@@ -1480,13 +1500,81 @@ function applyHitFx(w, e, stats) {
     addFx(w, { kind: "float", x: e.x, y: e.y - 16, life: 0.7, text: "Back.", color: "#7ef0ea", size: 11 });
   }
   tribeOnHit(w, e, stats);
+  elementOnHit(w, e, stats);
+}
+
+const isBossType = (t) => t === "titan" || t === "colossus";
+
+/** Marks the enemy with the hit's elements; two different live elements react. */
+function elementOnHit(w, e, stats) {
+  if (!e?.alive || !stats) return;
+  const els = hitElements(stats);
+  if (!els.length) return;
+  const now = w.visT ?? 0;
+  if (!e.elUntil) e.elUntil = {};
+  for (const el of els) {
+    if ((e.reactAt ?? 0) <= now) {
+      for (const id of Object.keys(REACTIONS)) {
+        const r = REACTIONS[id];
+        if (!r.pair.includes(el)) continue;
+        const other = r.pair[0] === el ? r.pair[1] : r.pair[0];
+        if ((e.elUntil[other] ?? 0) > now) {
+          react(w, e, id);
+          e.elUntil[other] = 0;
+          e.reactAt = now + PARAMS.reactCd;
+          break;
+        }
+      }
+    }
+    if (e.alive) e.elUntil[el] = now + PARAMS.elementLinger;
+  }
+}
+
+function react(w, e, id) {
+  const r = REACTIONS[id];
+  w.reactions = (w.reactions ?? 0) + 1;
+  addFx(w, { kind: "float", x: e.x, y: e.y - 24, life: 0.8, text: r.name.toUpperCase(), color: r.color, size: 13 });
+  addFx(w, { kind: "ring", x: e.x, y: e.y, life: 0.3, color: r.color, size: id === "overload" ? PARAMS.overloadRadius : 22 });
+  if (id === "shatter") {
+    const share = isBossType(e.type) ? PARAMS.shatterBossHp : PARAMS.shatterHp;
+    e.burnT = 0;
+    e.slowT = 0;
+    applyDamage(w, e, e.maxHp * share, true);
+  } else if (id === "brittle") {
+    e.shredT = Math.max(e.shredT ?? 0, PARAMS.brittleT);
+  } else if (id === "overload") {
+    const r2 = PARAMS.overloadRadius * PARAMS.overloadRadius;
+    for (const o of w.enemies) {
+      if (!o.alive) continue;
+      const dx = o.x - e.x;
+      const dy = o.y - e.y;
+      if (dx * dx + dy * dy > r2) continue;
+      const share = isBossType(o.type) ? PARAMS.overloadBossHp : PARAMS.overloadHp;
+      applyDamage(w, o, o.maxHp * share, true);
+    }
+  }
+}
+
+export function infuseGun(w, uid, el) {
+  const r = (w.roster ?? []).find((x) => x.uid === uid);
+  if (!r || r.infuse || !ELEMENTS[el]) return false;
+  if (!infuseChoices(r.card.set).includes(el)) return false;
+  const cost = PARAMS.infuseCost;
+  if (w.points < cost) return false;
+  w.points -= cost;
+  r.infuse = el;
+  w.upgradesMade = (w.upgradesMade ?? 0) + 1;
+  w.uiDirty = true;
+  const pos = r.placedPad ? towerPoint(r) : null;
+  if (pos) addFx(w, { kind: "ring", x: pos.x, y: pos.y, life: 0.4, color: ELEMENTS[el].color, size: 30 });
+  return true;
 }
 
 function tribeOnHit(w, e, stats) {
   const tribe = stats?.tribe;
   if (!tribe || !e?.alive) return;
   const sets = liveSets(w);
-  const lords = lordFlags(w.companions, sets, climbFx(w.climb).lordLimp);
+  const lords = lordFlags(w.companions, sets);
   if (tribe === "heat" && (sets.heat ?? 0) >= 2) {
     dropPatch(w, e.x, e.y, "fire", {
       radius: lords.wildfire ? 28 : 22,
@@ -1640,7 +1728,7 @@ function chainHit(w, x, y, start, dmg, hops, stats) {
 
 function voltPoles(w) {
   const sets = liveSets(w);
-  const lords = lordFlags(w.companions, sets, climbFx(w.climb).lordLimp);
+  const lords = lordFlags(w.companions, sets);
   if (!lords.liveRail) return [];
   const pts = [];
   for (const item of placedGuns(w)) {
@@ -1825,7 +1913,7 @@ function tickGunGlow(w, item, stats, pos, dt, hot) {
 function stepTowers(w, dt) {
   const sets = liveSets(w);
   const shared = sharedCurrentRange(w, sets);
-  const lords = lordFlags(w.companions, sets, climbFx(w.climb).lordLimp);
+  const lords = lordFlags(w.companions, sets);
   for (const item of placedGuns(w)) {
     const card = item.card;
     let stats = itemStats(w, item, sets);
@@ -1870,7 +1958,7 @@ function stepTowers(w, dt) {
     let halo = 0;
     for (const c of skyCrafts(w)) {
       if (c.home) continue;
-      halo = Math.max(halo, companionFx(c.card, c.kits).buffRate || 0);
+      halo = Math.max(halo, companionFx(c.card, c.kits, c.jobs).buffRate || 0);
     }
     const buff = item.placedPad && w.padBuff?.[item.placedPad] > 0 ? 1 + (halo || 0.22) : 1;
     const oc = hot ? PARAMS.overclockMul * (hasSig(w.signals, "sig-slam") ? 1.55 : 1) : 1;
@@ -1885,7 +1973,7 @@ function stepTowers(w, dt) {
     if (home && e) w.defenderAim = Math.atan2(e.y - pos.y, e.x - pos.x);
     const cap = PATH_ALONG[e?.route ?? 0] ?? 1;
     const late = e && (e.along ?? 0) / cap > 0.7;
-    const dmg = stats.damage * (home ? 1.28 * climbFx(w.climb).coreDmg : 1) * (home && late ? 1.22 : 1) * oc;
+    const dmg = stats.damage * (home ? 1.28 : 1) * (home && late ? 1.22 : 1) * oc;
     const role = stats.role;
     const aim = item.aim ?? 0;
     if (item.trick === "drones") dronePeck(w, pos, stats, dmg, item.aim ?? 0);
@@ -2236,7 +2324,7 @@ function grantXp(w, t, quiet = false) {
 }
 
 function luckOf(w) {
-  return w.draftBump + levelDraftBump(w.runLevel) + (w.stampLuck || 0) + (w.hangarLuck || 0) + climbFx(w.climb).luck;
+  return w.draftBump + levelDraftBump(w.runLevel) + (w.stampLuck || 0) + (w.hangarLuck || 0);
 }
 
 export function startWave(w) {
@@ -2284,6 +2372,12 @@ function finishWave(w) {
   const t = w.wave % WAVES_PER_ROUND === WAVES_PER_ROUND - 1;
   const n = WAVE_XP + (waveAt(w.wave).mega ? MEGA_XP : 0);
   if (!t) {
+    if (w.playMode === "build") {
+      grantXp(w, n);
+      sayWave(w);
+      beginBuildDraft(w);
+      return;
+    }
     w.wave += 1;
     w.holdT = 1.35;
     grantXp(w, n);
@@ -2323,6 +2417,11 @@ function finishWave(w) {
   }
   if ((w.wavesCleared ?? 0) >= WIN_WAVES && !w.endless) {
     beginLoopGate(w);
+    return;
+  }
+  if (w.playMode === "build") {
+    audio.play("grade");
+    beginBuildDraft(w);
     return;
   }
   w.wave += 1;
@@ -2597,14 +2696,14 @@ function homeSlot(w, c) {
 }
 
 function dockHealRate(w, c) {
-  let rate = DOCK_HEAL * climbFx(w.climb).healMul * (w.vaultHealMul || 1);
+  let rate = DOCK_HEAL * craftDockHealMul(c) * (w.vaultHealMul || 1);
   if (hasSig(w.signals, "sig-dock")) rate *= 1.55;
   for (const k of c.kits ?? []) {
     if (k.kit?.healMul) rate *= k.kit.healMul;
   }
   for (const m of skyCrafts(w)) {
     if (m.uid === c.uid || m.home) continue;
-    const fx = companionFx(m.card, m.kits);
+    const fx = companionFx(m.card, m.kits, m.jobs);
     if (!fx.heal) continue;
     if (dist2(m.x, m.y, c.x, c.y) > fx.radius * fx.radius) continue;
     rate += fx.heal * 0.85;
@@ -2717,7 +2816,7 @@ function autoPlaceSocket(w, card) {
 
 function spawnCompanion(w, card) {
   const role = card.companion?.role ?? "hunter";
-  const hpMax = Math.round(companionMaxHp(role) * climbFx(w.climb).hpMul);
+  const hpMax = companionMaxHp(role);
   const flying = skyCrafts(w).length < MAX_COMPANIONS;
   const id = uid(w);
   const offset = skyCrafts(w).length;
@@ -3114,7 +3213,7 @@ function stepOneCraft(w, c, dt) {
     if (c.bubbleT <= 0) c.bubble = null;
   }
   if (c.placedPad !== SKY_PAD) return;
-  const fx = companionFx(c.card, c.kits);
+  const fx = companionFx(c.card, c.kits, c.jobs);
   if (c.trick === "catch") fx.intercept = Math.max(fx.intercept || 0, 36) * 1.45;
   if (c.trick === "hunt") fx.radius *= 1.12;
   if (c.trick === "trail") fx.burnDps = (fx.burnDps || 5) * 1.35;
@@ -3438,7 +3537,7 @@ function stepOneCraft(w, c, dt) {
         if (fx.slowMul) {
           e.slowT = Math.max(e.slowT, 1.1);
           e.slowMul = Math.min(e.slowMul || 1, fx.slowMul);
-          const ice = lordFlags(w.companions, liveSets(w), climbFx(w.climb).lordLimp).icebox;
+          const ice = lordFlags(w.companions, liveSets(w)).icebox;
           if (ice && !e.iced) {
             e.iced = true;
             e.freezeT = 0.55;
@@ -3770,7 +3869,7 @@ function stepNades(w, dt) {
       if (c.home) continue;
       const role = c.card.companion?.role;
       if (role !== "lens") continue;
-      const fx = companionFx(c.card, c.kits);
+      const fx = companionFx(c.card, c.kits, c.jobs);
       const d = Math.hypot(n.x - c.x, n.y - c.y);
       if (d > fx.radius) continue;
       let prey = null;
@@ -4081,6 +4180,12 @@ function finishDraftStep(w) {
 }
 
 function dealOpeningRound(w) {
+  // Build mode starts small: the gun pair and the rules only. More guns come from wave drafts.
+  while (w.playMode === "build" && OPENING_ROUNDS[w.openingStep]?.kind === "tower") w.openingStep += 1;
+  if (w.openingStep >= OPENING_PICKS) {
+    beginPlacement(w, true);
+    return;
+  }
   const round = OPENING_ROUNDS[w.openingStep];
   if (!round) return;
   const owned = ownedTemplates(w);
@@ -4270,6 +4375,103 @@ function beginRoundDrafts(w) {
   beginPlacement(w, false);
 }
 
+/** Build mode: one gun pick after every wave. Copies of guns you own show up often and merge. */
+function beginBuildDraft(w) {
+  w.grade = null;
+  w.phase = "draft";
+  w.draftLane = "round";
+  w.draftKind = "tower";
+  w.draftPicksLeft = 1;
+  w.draftTotal = 1;
+  w.draftTitle = `Wave ${w.wave + 2} draft · pick one`;
+  w.draftSub = "Copies merge: 3 of a gun make ★2, 9 make ★3.";
+  w.packHeat = null;
+  w.packMode = "show";
+  w.cutId = null;
+  w.draftCards = dealBuildPack(w);
+  stampDealtPack(w);
+  if (!w.draftCards.length) {
+    finishDraftStep(w);
+    return;
+  }
+  w.uiDirty = true;
+  checkpoint(w);
+}
+
+function ownedGunTemplates(w) {
+  const out = [];
+  for (const r of w.roster ?? []) {
+    if (r.card.kind !== "tower") continue;
+    if (starsOf(r.copies) >= 3) continue;
+    const tid = r.card.templateId ?? r.card.id;
+    if (!out.includes(tid)) out.push(tid);
+  }
+  return out;
+}
+
+function dealBuildPack(w) {
+  const n = PARAMS.packSize;
+  const owned = ownedGunTemplates(w);
+  const skip = ownedTemplates(w, true);
+  const fresh = dealTowerOpening(n, w.forge, skip, rollPackRarity(oddsForGrade(w.lastGrade ?? "C")));
+  const out = [];
+  const used = new Set();
+  for (let i = 0; i < n; i++) {
+    // First card is always a new gun (when one is left), so the team can still grow.
+    const wantCopy = owned.length > 0 && i > 0 && Math.random() < PARAMS.buildCopyOdds;
+    const pickable = owned.filter((t) => !used.has(t));
+    if ((wantCopy || !fresh.length) && pickable.length) {
+      const tid = pickable[Math.floor(Math.random() * pickable.length)];
+      used.add(tid);
+      try {
+        const def = getCard(tid);
+        out.push(rollCard(def, def.rarity, undefined, w.forge[tid] ?? 0));
+        continue;
+      } catch {
+        /* missing gun */
+      }
+    }
+    const f = fresh.shift();
+    if (f) out.push(f);
+  }
+  return out;
+}
+
+/** Build mode: fold a drafted copy into the gun you already own. */
+function mergeCopy(w, r, card) {
+  const before = starsOf(r.copies);
+  r.copies = (r.copies ?? 1) + 1;
+  const after = starsOf(r.copies);
+  if (after > before) {
+    w.starsMade = (w.starsMade ?? 0) + 1;
+    r.jobSlots = Math.min(PARAMS.jobSlotsMax, (r.jobSlots ?? PARAMS.jobSlotsStart) + PARAMS.starSlots);
+    r.levelPop = 1;
+    w.message = `${card.name} ${starLabel(r.copies)}!`;
+    const pos = r.placedPad ? towerPoint(r) : null;
+    if (pos) {
+      addFx(w, { kind: "ring", x: pos.x, y: pos.y, life: 0.6, color: "#ffd46b", size: 46 });
+      addFx(w, { kind: "float", x: pos.x, y: pos.y - 30, life: 1.2, text: starLabel(r.copies), color: "#ffd46b", size: 18 });
+    }
+    audio.play("place");
+  } else {
+    w.message = `${card.name} copy in. ${copyTag(r.copies - 1).replace("Copy · ", "")}`;
+  }
+  w.uiDirty = true;
+}
+
+/** Draft tags for Build mode: which cards are copies of guns you own. */
+export function buildCopyTags(w) {
+  const out = {};
+  if (w.playMode !== "build") return out;
+  for (const c of w.draftCards ?? []) {
+    if (c.kind !== "tower") continue;
+    const tid = c.templateId ?? c.id;
+    const r = (w.roster ?? []).find((x) => x.card.kind === "tower" && (x.card.templateId ?? x.card.id) === tid);
+    if (r) out[c.id] = copyTag(r.copies);
+  }
+  return out;
+}
+
 function beginMysteryPack(w) {
   w.points += BONUS_CREDIT;
   w.message = `+${BONUS_CREDIT} Credit`;
@@ -4404,17 +4606,23 @@ export function pickDraft(w, id) {
     checkpoint(w);
     return;
   }
-  if (n.kind === "climb" || w.draftLane === "level") {
-    applyClimbPick(w, n.templateId ?? n.id);
-    w.draftPicksLeft = 0;
-    w.draftCards = [];
-    finishDraftStep(w);
-    return;
-  }
   if (n.kind !== "tower" && ownedTemplates(w).has(n.templateId)) {
     w.message = "You already have that. Pick a different one.";
     w.uiDirty = true;
     return;
+  }
+  if (n.kind === "tower" && w.playMode === "build") {
+    const tid = n.templateId ?? n.id;
+    const mine = (w.roster ?? []).find((r) => r.card.kind === "tower" && (r.card.templateId ?? r.card.id) === tid);
+    if (mine) {
+      mergeCopy(w, mine, n);
+      w.draftPicksLeft = 0;
+      w.draftCards = [];
+      w.packMode = "show";
+      w.cutId = null;
+      finishDraftStep(w);
+      return;
+    }
   }
   if (n.kind === "tower") {
     const tid = n.templateId ?? n.id;
@@ -4612,32 +4820,6 @@ export function scrapTower(w, t) {
   return true;
 }
 
-function applyClimbPick(w, id) {
-  if (!w.climb) w.climb = emptyClimb();
-  if (id === "climb-gold") {
-    bankFlux(w, CREDIT_SPARE);
-    w.message = `Spare credit. +${CREDIT_SPARE}.`;
-    return;
-  }
-  const perk = climbOf(id);
-  if (!perk) return;
-  w.climb[perk.branch] = Math.max(w.climb[perk.branch] ?? 0, perk.rank);
-  const fx = climbFx(w.climb);
-  if (perk.id === "climb-bay-2") w.swapTokens = Math.min(MAX_SWAP, (w.swapTokens ?? 0) + 1);
-  if (perk.id === "climb-pack-2") w.skipCharge = Math.max(w.skipCharge ?? 0, 1);
-  if (perk.id === "climb-crew-3") {
-    for (const c of w.companions ?? []) {
-      const next = Math.round(c.hpMax * fx.hpMul);
-      if (next > c.hpMax) {
-        const ratio = c.hp / Math.max(1, c.hpMax);
-        c.hpMax = next;
-        c.hp = Math.min(c.hpMax, Math.round(c.hpMax * ratio));
-      }
-    }
-  }
-  w.message = `${perk.name}. ${perk.blurb}`;
-}
-
 export function upgradeTower(w, t, n, tuneId) {
   const r = w.roster.find((x) => x.uid === t);
   if (!r?.placedPad) return false;
@@ -4655,6 +4837,28 @@ export function upgradeTower(w, t, n, tuneId) {
   w.uiDirty = true;
   const a = towerPoint(r);
   if (a) addFx(w, { kind: "ring", x: a.x, y: a.y, life: 0.3, color: "#f0f1f4", size: 28 });
+  return true;
+}
+
+export function upgradeCraft(w, craftUid, nodeId) {
+  const c = (w.companions ?? []).find((x) => x.uid === craftUid);
+  if (!c || !nodeId) return false;
+  if (craftPicksLeft(c) <= 0) return false;
+  const cost = craftUpgradeCost((c.jobs ?? []).length);
+  if (cost <= 0 || w.points < cost) return false;
+  if (!canTakeCraftJob(c, nodeId)) return false;
+  const before = craftHullMul(c);
+  c.jobs = [...(c.jobs ?? []), nodeId];
+  const grow = craftHullMul(c) / before;
+  if (grow > 1) {
+    const ratio = c.hp / Math.max(1, c.hpMax);
+    c.hpMax = Math.round(c.hpMax * grow);
+    c.hp = Math.min(c.hpMax, Math.round(c.hpMax * ratio));
+  }
+  w.points -= cost;
+  w.upgradesMade = (w.upgradesMade ?? 0) + 1;
+  w.uiDirty = true;
+  addFx(w, { kind: "ring", x: c.x, y: c.y, life: 0.3, color: "#3cd6cc", size: 28 });
   return true;
 }
 
@@ -4948,7 +5152,6 @@ function resetWatchRank(w) {
   w.xp = 0;
   w.pendingLevels = 0;
   w.roundXp = 0;
-  w.climb = emptyClimb();
 }
 
 export function beginNextWatch(w) {
@@ -4986,7 +5189,7 @@ export function goTitle(w, keep: boolean): boolean {
   w.waveActive = false;
   if (!keep) {
     if ((w.points ?? 0) > 0) {
-      bankFlux(w, w.points);
+      bankFlux(w, fluxFromBank(w.points));
       w.points = 0;
     }
     if (!w.recorded) {
@@ -4995,6 +5198,9 @@ export function goTitle(w, keep: boolean): boolean {
         grade: w.grade?.grade ?? w.lastGrade ?? "F",
         level: w.runLevel,
         loops: Math.floor(w.wave / LOOP_WAVES),
+        wavesCleared: w.wavesCleared ?? 0,
+        won: (w.wavesCleared ?? 0) >= WIN_WAVES,
+        starsMade: w.starsMade ?? 0,
       });
       w.recorded = true;
     }
@@ -5038,7 +5244,7 @@ function snapshotRun(w) {
     lives: w.lives,
     maxLives: w.maxLives,
     phase: w.phase,
-    playMode: w.playMode === "arcade" ? "arcade" : "story",
+    playMode: w.playMode === "arcade" || w.playMode === "build" ? w.playMode : "story",
     parked: !!w.parked,
     roster: w.roster.map((r) => ({
       uid: r.uid,
@@ -5051,6 +5257,8 @@ function snapshotRun(w) {
       tuneJob: r.tuneJob ?? null,
       tuneCap: r.tuneCap ?? null,
       jobs: r.jobs ?? [],
+      infuse: r.infuse ?? null,
+      copies: r.copies ?? 1,
       jobSlots: r.jobSlots ?? PARAMS.jobSlotsStart,
       heatXp: r.heatXp ?? 0,
       trick: r.trick ?? null,
@@ -5132,6 +5340,7 @@ function snapshotRun(w) {
       parts: c.parts ?? [],
       partOffer: c.partOffer ?? [],
       clone: !!c.clone,
+      jobs: c.jobs ?? [],
     })),
     runKills: w.runKills ?? 0,
     runLeaks: w.runLeaks ?? 0,
@@ -5148,7 +5357,6 @@ function snapshotRun(w) {
     pendingCompensate: w.pendingCompensate ?? null,
     bansThisRound: w.bansThisRound ?? 0,
     runBanned: w.runBanned ?? [],
-    climb: w.climb ?? emptyClimb(),
   };
 }
 
@@ -5314,7 +5522,6 @@ export function applyRun(w, run) {
   w.draftCompensate = false;
   w.bansThisRound = run.bansThisRound ?? 0;
   w.runBanned = run.runBanned ?? [];
-  w.climb = run.climb ?? emptyClimb();
   w.parked = false;
   {
     const meta = loadMeta();
@@ -5373,7 +5580,11 @@ export function applyRun(w, run) {
         parts: match?.parts ?? [],
         partOffer: match?.partOffer ?? [],
         clone: !!match?.clone,
+        jobs: match?.jobs ?? [],
       });
+      const restored = w.companions[w.companions.length - 1];
+      restored.hpMax = Math.round(restored.hpMax * craftHullMul(restored));
+      restored.hp = restored.hpMax;
     }
   } else {
     for (const s of savedCrafts) {
@@ -5388,6 +5599,9 @@ export function applyRun(w, run) {
       c.parts = s.parts ?? [];
       c.partOffer = s.partOffer ?? [];
       c.clone = !!s.clone;
+      c.jobs = s.jobs ?? [];
+      c.hpMax = Math.round(c.hpMax * craftHullMul(c));
+      c.hp = c.hpMax;
     }
   }
   applyStamps(w);

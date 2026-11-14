@@ -57,7 +57,8 @@ export const GOLD_PER_FLUX = PARAMS.goldPerFlux;
 export const GOLD_PER_RANK = 15;
 export const CREDIT_SPARE = 5;
 /** Credit paid when a bonus would have opened a pack. Spend it on the gun tree. */
-export const BONUS_CREDIT = 20;
+/** Credit paid per run Level. About one cheap tree pick. */
+export const BONUS_CREDIT = 100;
 
 export function emptyHangar(): HangarRanks {
   return { life: 0, gold: 0, luck: 0, pad: 0 };

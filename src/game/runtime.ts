@@ -1,7 +1,9 @@
 import { audio, resumeAudioOnVisible, type Sfx } from "./audio";
+import { drawCapturedText, labelCanvasFor, withCapturedText } from "./labels";
+import { PARAMS } from "./params";
 import { loadAssets, type Assets } from "./assets";
 import { hitPad, PATHS, BASE, nearestPathMeta } from "./data/map";
-import { HOME_PAD, LOOP_WAVES, WORLD } from "./constants";
+import { HOME_PAD, LOOP_WAVES, WIN_WAVES, WORLD } from "./constants";
 import { clearRun, loadMeta, loadRun, recordRun, equipSkin, buyHangar, buyVault, buySkin, addFlux, selectSlot, bindCraft, slotHasRun, loadProfiles, markTutorial, isLive, markLive } from "./persist";
 import { drawWorld, screenToWorld, viewTransform, placeDefendHit } from "./render";
 import {
@@ -33,6 +35,8 @@ import {
   stepWorld,
   unstickWorld,
   upgradeTower,
+  upgradeCraft,
+  infuseGun,
   tryFuseGuns,
   pickTrick,
   pickSpecial,
@@ -64,7 +68,7 @@ export type Runtime = {
 export type HudSink = (w: World) => void;
 
 export type Action =
-  | { type: "play"; continue?: boolean; tutorial?: boolean; mode?: "story" | "arcade" }
+  | { type: "play"; continue?: boolean; tutorial?: boolean; mode?: "story" | "arcade" | "build" }
   | { type: "help" }
   | { type: "closeHelp" }
   | { type: "pick"; id: string }
@@ -75,6 +79,8 @@ export type Action =
   | { type: "shopContinue" }
   | { type: "buyPick" }
   | { type: "upgrade"; uid?: string; mod?: OpId; tune?: string }
+  | { type: "upgradeCraft"; uid: string; node: string }
+  | { type: "infuse"; uid: string; el: "heat" | "cold" | "spark" }
   | { type: "trick"; uid: string; id: string }
   | { type: "special"; uid: string; id: string }
   | { type: "fuse"; keep: string; eat: string }
@@ -146,7 +152,6 @@ type QaSnap = {
   giftLean: number;
   message: string | null;
   announce: string | null;
-  climb: { bay: number; pack: number; crew: number } | null;
   speed: number;
   selectedCard: string | null;
   remainingPads: number;
@@ -205,7 +210,8 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
   if (!ctx) throw new Error("Canvas 2D unavailable");
 
   const resize = () => {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // Pixel look: render below screen resolution and let CSS scale it up pixelated.
+    const dpr = PARAMS.pixelRes;
     const rect = canvas.getBoundingClientRect();
     canvas.width = Math.max(1, Math.floor(rect.width * dpr));
     canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -270,7 +276,6 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
       : 0,
     message: world.message ?? null,
     announce: world.announce ?? null,
-    climb: world.climb ?? null,
     speed: world.speed ?? 1,
     selectedCard: world.selectedCard ?? null,
     remainingPads: livePads(world).filter((p) => !world.roster.some((r) => r.placedPad === p.id && r.card.kind === "tower")).length,
@@ -306,7 +311,9 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
         audio.play(world.wantSfx as Sfx);
         world.wantSfx = null;
       }
-      drawWorld(ctx!, canvas, world, assets);
+      withCapturedText(ctx!, () => drawWorld(ctx!, canvas, world, assets));
+      const labels = labelCanvasFor(canvas);
+      if (labels) drawCapturedText(canvas, labels);
     } catch (err) {
       console.warn("vector tick", err);
     }
@@ -758,7 +765,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
     pushHud(true);
   };
 
-  const play = (resume = false, wantTutorial = false, mode: "story" | "arcade" = "story") => {
+  const play = (resume = false, wantTutorial = false, mode: "story" | "arcade" | "build" = "story") => {
     audio.unlock();
     audio.play("ui");
     markLive(true);
@@ -780,7 +787,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
     world.enemies = [];
     world.projectiles = [];
     world.fx = [];
-    world.playMode = mode === "arcade" ? "arcade" : "story";
+    world.playMode = mode;
     world.wantTutorial = !!wantTutorial;
     beginOpening(world);
     pushHud(true);
@@ -934,7 +941,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
           const p = loadProfiles();
           if (!p.slots[p.active]?.boundId) bindCraft("comp-auger");
         }
-        play(!!action.continue, !!action.tutorial, action.mode === "arcade" ? "arcade" : "story");
+        play(!!action.continue, !!action.tutorial, action.mode === "arcade" || action.mode === "build" ? action.mode : "story");
         break;
       case "help":
         useGame.getState().setHelp(true);
@@ -1124,6 +1131,18 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
         }
         break;
       }
+      case "infuse": {
+        const ok = infuseGun(world, action.uid, action.el);
+        audio.play(ok ? "place" : "ui");
+        pushHud(true);
+        break;
+      }
+      case "upgradeCraft": {
+        const ok = upgradeCraft(world, action.uid, action.node);
+        audio.play(ok ? "place" : "ui");
+        pushHud(true);
+        break;
+      }
       case "trick": {
         const ok = pickTrick(world, action.uid, action.id);
         audio.play(ok ? "place" : "ui");
@@ -1198,6 +1217,9 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
             grade,
             level: world.runLevel,
             loops: Math.floor(world.wave / LOOP_WAVES),
+            wavesCleared: world.wavesCleared ?? 0,
+            won: (world.wavesCleared ?? 0) >= WIN_WAVES,
+            starsMade: world.starsMade ?? 0,
           });
           if (best) useGame.getState().setBest(best);
           world.recorded = true;
