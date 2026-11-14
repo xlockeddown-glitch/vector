@@ -330,6 +330,7 @@ export type World = {
   wavesCleared: number;
   /** Build mode: star-ups made this run (Pass XP). */
   starsMade?: number;
+  reactions?: number;
   live: LiveOffer | null;
   liveQueue: number;
   liveMark: number;
@@ -1464,6 +1465,11 @@ function failRun(w) {
       won: (w.wavesCleared ?? 0) >= WIN_WAVES,
       starsMade: w.starsMade ?? 0,
       threat: threatPoints(w.threat),
+      upgradesMade: w.upgradesMade ?? 0,
+      runKills: w.runKills ?? 0,
+      runLeaks: w.runLeaks ?? 0,
+      reactions: w.reactions ?? 0,
+      playMode: w.playMode,
     });
     w.recorded = true;
   }
@@ -5360,6 +5366,11 @@ export function goTitle(w, keep: boolean): boolean {
         won: (w.wavesCleared ?? 0) >= WIN_WAVES,
         starsMade: w.starsMade ?? 0,
         threat: threatPoints(w.threat),
+      upgradesMade: w.upgradesMade ?? 0,
+      runKills: w.runKills ?? 0,
+      runLeaks: w.runLeaks ?? 0,
+      reactions: w.reactions ?? 0,
+      playMode: w.playMode,
       });
       w.recorded = true;
     }

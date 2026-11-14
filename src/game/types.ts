@@ -423,7 +423,7 @@ export type MetaSave = {
   /** Season pass challenges: refreshed daily, progress counted at the end of each run. */
   quests?: { day: string; list: { id: string; progress: number; done: boolean }[] };
   /** What the last finished run added to the pass (for the end screen). */
-  lastPass?: { xp: number; rewards: string[]; tier: number } | null;
+  lastPass?: { xp: number; rewards: string[]; tier: number; quests?: string[]; questXp?: number } | null;
   vault?: { outfit: number; bay: number; armory: number; sky?: number; myth?: number; ownedIds: string[] };
   tutorialDone?: boolean;
   tutorialSkipped?: boolean;
