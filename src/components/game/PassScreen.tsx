@@ -18,7 +18,7 @@ export function PassScreen({ best, onClose }: { best: MetaSave; onClose: () => v
 
   return (
     <div className="pass-scrim" role="presentation" onClick={onClose}>
-      <div className="pass-panel glass-panel" role="dialog" aria-modal="true" aria-label="Season pass" onClick={(e) => e.stopPropagation()}>
+      <div className="pass-panel glass-panel neon-ticks" role="dialog" aria-modal="true" aria-label="Season pass" onClick={(e) => e.stopPropagation()}>
         <header className="pass-head">
           <div className="min-w-0">
             <p className="pass-kicker">Season pass · free</p>

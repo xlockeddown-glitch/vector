@@ -23,7 +23,7 @@ export function HudBar({
   return (
     <div className="play-top relative z-20">
       <div className="hud-stat">
-        <p className="hud-kicker text-epic">Credit</p>
+        <p className="hud-kicker text-legend">Credit</p>
         <p className="hud-value num-glow-gold">{fmtCount(hud.points)}</p>
       </div>
       <div className="hud-stat">
@@ -63,7 +63,7 @@ export function HudBar({
           <button
             type="button"
             onClick={() => onAction({ type: "pause" })}
-            className="grid h-10 w-10 place-items-center rounded-md border border-line text-paper"
+            className="hud-btn hud-btn-icon"
             aria-label={hud.paused ? "Resume" : "Pause"}
           >
             {hud.paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
@@ -73,7 +73,7 @@ export function HudBar({
           <button
             type="button"
             onClick={() => onAction({ type: "speed" })}
-            className="h-10 min-w-10 rounded-md border border-line px-2 text-[12px] font-medium text-paper"
+            className="hud-btn tabular"
           >
             {hud.speed}×
           </button>
@@ -81,7 +81,7 @@ export function HudBar({
         <button
           type="button"
           onClick={() => onAction({ type: "mute" })}
-          className="grid h-10 w-10 place-items-center rounded-md border border-line text-paper"
+          className="hud-btn hud-btn-icon"
           aria-label={muted ? "Unmute" : "Mute"}
         >
           {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -89,7 +89,7 @@ export function HudBar({
         <button
           type="button"
           onClick={() => onAction({ type: "help" })}
-          className="h-10 rounded-md border border-line px-2.5 text-[12px] font-medium text-paper"
+          className="hud-btn"
         >
           More
         </button>
@@ -97,7 +97,7 @@ export function HudBar({
           <button
             type="button"
             onClick={() => onAction({ type: "startWave" })}
-            className="card-bevel h-10 rounded-md bg-ember px-3 text-[13px] font-medium text-ink"
+            className="hud-btn hud-btn-go"
           >
             Defend
           </button>
@@ -106,7 +106,7 @@ export function HudBar({
           <button
             type="button"
             onClick={() => onAction({ type: "shopContinue" })}
-            className="card-bevel h-10 rounded-md bg-ember px-3 text-[13px] font-medium text-ink"
+            className="hud-btn hud-btn-go"
           >
             Next round
           </button>
@@ -157,8 +157,8 @@ export function HudOverlays({
       )}
       {showPlay && hud.announce && (
         <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2">
-          <div className="rounded-md border border-accent/40 bg-ink/85 px-4 py-2 text-center">
-            <p className="text-[10px] tracking-[0.18em] text-accent">
+          <div className="neon-toast px-4 py-2 text-center">
+            <p className="neon-kicker">
               {hud.announce.startsWith("Wave")
                 ? "Next wave"
                 : hud.announce.startsWith("+")
@@ -183,7 +183,7 @@ export function HudOverlays({
       {hud.phase === "placement" && (
         <div
           className={cn(
-            "pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 rounded-md border border-frost/40 bg-ink/90 px-3 py-1 text-center text-[12px] text-paper",
+            "neon-toast pointer-events-none absolute left-1/2 z-20 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 px-3 py-1.5 text-center text-[13px] text-paper",
             hud.announce ? "top-20" : "top-3",
           )}
         >
@@ -192,21 +192,21 @@ export function HudOverlays({
       )}
 
       {hud.phase === "combat" && hud.paused && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-ink/50">
-          <div className="rounded-lg border border-line bg-surface px-8 py-6 text-center">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-ink/60">
+          <div className="neon-panel min-w-56 px-8 py-6 text-center">
             <p className="font-display text-2xl font-bold text-paper">Paused</p>
             <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
                 onClick={() => onAction({ type: "pause" })}
-                className="card-bevel h-10 rounded-md bg-ember px-5 text-sm font-medium text-ink"
+                className="neon-btn neon-btn-go"
               >
                 Resume
               </button>
               <button
                 type="button"
                 onClick={() => onAction({ type: "title" })}
-                className="card-bevel h-10 rounded-md border border-line px-5 text-sm font-medium text-paper"
+                className="neon-btn"
               >
                 Title
               </button>
@@ -232,7 +232,7 @@ function LevelMeter({
   const pct = xpNext > 0 ? Math.max(0, Math.min(1, xp / xpNext)) : 0;
   return (
     <div className="hud-bonus min-w-0" title="Kills fill this bar. Each level pays Credit.">
-      <p className="text-[9px] font-medium tracking-[0.16em] text-frost">Level {fmtCount(level)}</p>
+      <p className="text-[10px] font-medium tracking-[0.14em] text-frost">Level {fmtCount(level)}</p>
       <div className="level-bar-live mt-0.5">
         <span style={{ width: `${Math.round(pct * 100)}%` }} />
       </div>
@@ -306,7 +306,7 @@ function SpecialPickPanel({
           <button
             type="button"
             onClick={() => onAction({ type: "selectCard", uid: null })}
-            className="h-10 shrink-0 rounded-md border border-line px-3 text-[12px] text-paper"
+            className="hud-btn shrink-0 px-3"
           >
             Later
           </button>
@@ -371,46 +371,46 @@ function InspectPanel({
   onAction: (a: Action) => void;
 }) {
   return (
-    <div className="inspect-card pointer-events-auto absolute right-3 top-3 z-30 w-[min(100%-1.5rem,16.5rem)] rounded-md border border-line bg-ink/95 p-2.5">
+    <div className="inspect-card neon-panel pointer-events-auto absolute right-3 top-3 z-30 w-[min(100%-1.5rem,16.5rem)] p-2.5">
       <div className="flex items-center justify-between gap-2">
         <p className="min-w-0 truncate font-display text-[15px] font-bold text-paper">{info.name}</p>
         <button
           type="button"
           onClick={() => onAction({ type: "selectCard", uid: null })}
-          className="h-8 shrink-0 rounded-md border border-line px-2 text-[11px] text-paper"
+          className="hud-btn shrink-0"
         >
           Close
         </button>
       </div>
       <p className="mt-1 text-[11px] tracking-wide text-frost">Level {fmtCount(info.level)}</p>
-      <p className="mt-1.5 text-[10px] tracking-[0.18em] text-faint">First</p>
-      <p className="text-[12px] text-muted">{info.base}</p>
-      <p className="mt-1 text-[10px] tracking-[0.18em] text-frost">Now</p>
+      <p className="mt-1.5 text-[11px] tracking-[0.18em] text-steel">First</p>
+      <p className="text-[12px] text-steel">{info.base}</p>
+      <p className="mt-1 text-[11px] tracking-[0.18em] text-frost">Now</p>
       <p className="text-[12px] text-paper">{info.now}</p>
       <dl className="mt-2 grid grid-cols-2 gap-1.5 text-[12px]">
         <div>
-          <dt className="text-[10px] tracking-wide text-faint">Stopped</dt>
+          <dt className="text-[11px] tracking-wide text-steel">Stopped</dt>
           <dd className="font-display text-lg font-bold tabular">{fmtCount(info.kills)}</dd>
         </div>
         {info.kind === "gun" ? (
           <div>
-            <dt className="text-[10px] tracking-wide text-faint">Shots</dt>
+            <dt className="text-[11px] tracking-wide text-steel">Shots</dt>
             <dd className="font-display text-lg font-bold tabular">{fmtCount(info.shots)}</dd>
           </div>
         ) : (
           <div>
-            <dt className="text-[10px] tracking-wide text-faint">Grenades</dt>
+            <dt className="text-[11px] tracking-wide text-steel">Grenades</dt>
             <dd className="font-display text-lg font-bold tabular">{fmtCount(info.saves)}</dd>
           </div>
         )}
         {info.kind === "craft" ? (
           <>
             <div>
-              <dt className="text-[10px] tracking-wide text-faint">Healed</dt>
+              <dt className="text-[11px] tracking-wide text-steel">Healed</dt>
               <dd className="font-display text-lg font-bold tabular">{fmtCount(info.heals)}</dd>
             </div>
             <div>
-              <dt className="text-[10px] tracking-wide text-faint">Hull</dt>
+              <dt className="text-[11px] tracking-wide text-steel">Hull</dt>
               <dd className="font-display text-lg font-bold tabular">
                 {fmtCount(info.hull)}/{fmtCount(info.hullMax)}
               </dd>
@@ -418,7 +418,7 @@ function InspectPanel({
           </>
         ) : info.heals > 0 ? (
           <div>
-            <dt className="text-[10px] tracking-wide text-faint">Healed</dt>
+            <dt className="text-[11px] tracking-wide text-steel">Healed</dt>
             <dd className="font-display text-lg font-bold tabular">{fmtCount(info.heals)}</dd>
           </div>
         ) : null}

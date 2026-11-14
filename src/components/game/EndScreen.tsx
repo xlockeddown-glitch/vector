@@ -16,22 +16,22 @@ export function EndScreen({
 }) {
   const win = hud.phase === "victory";
   return (
-    <div className="absolute inset-0 z-30 flex items-end justify-center bg-ink/80 p-4 sm:items-center">
-      <div className="glass-panel w-full max-w-md rounded-xl p-6">
-        <p className="text-[11px] font-medium tracking-[0.18em] text-ember">{win ? "Arena done" : "Home fell"}</p>
+    <div className="neon-scrim absolute inset-0 z-30 flex justify-center overflow-y-auto p-3 sm:p-4">
+      <div className={`neon-panel ${win ? "" : "neon-panel-foe"} mt-auto h-fit w-full max-w-md p-5 sm:mb-auto sm:p-6`}>
+        <p className={`neon-kicker ${win ? "" : "neon-kicker-foe"}`}>{win ? "Arena done" : "Home fell"}</p>
         <h2 className="mt-1 font-display text-3xl font-bold tracking-wide text-paper">
           {win ? "The lane is quiet" : "Run over"}
         </h2>
-        <p className="mt-2 text-[14px] text-muted">
+        <p className="mt-2 text-[14px] text-steel">
           {win
             ? `${hud.wavesCleared} waves. Home held.`
             : `${fmtCount(hud.wavesCleared)} waves. Draft again. Credit stays.`}
         </p>
         <div className="mt-5">
-          <p className="text-[10px] font-medium tracking-[0.22em] text-epic">Credit</p>
-          <p className="font-display text-5xl font-bold tabular leading-none text-paper">{fmtCount(hud.flux)}</p>
+          <p className="neon-kicker neon-kicker-gold">Credit</p>
+          <p className="num-glow-gold mt-1 font-display text-5xl font-bold tabular leading-none">{fmtCount(hud.flux)}</p>
           {hud.fluxEarned > 0 && (
-            <p className="mt-1 text-[12px] text-muted">+{fmtCount(hud.fluxEarned)} this run</p>
+            <p className="mt-1 text-[13px] text-steel">+{fmtCount(hud.fluxEarned)} this run</p>
           )}
         </div>
         <PassGain />
@@ -61,21 +61,21 @@ export function EndScreen({
           <button
             type="button"
             onClick={onRetry}
-            className="h-11 w-full rounded-md bg-ember text-[14px] font-medium text-ink"
+            className="neon-btn neon-btn-go w-full"
           >
             Play again
           </button>
           <button
             type="button"
             onClick={onTitle}
-            className="card-bevel h-11 w-full rounded-md border border-line text-[14px] font-medium text-paper"
+            className="neon-btn w-full"
           >
             Title
           </button>
           <button
             type="button"
             onClick={onHangar}
-            className="card-bevel h-11 w-full rounded-md border border-line text-[14px] font-medium text-paper"
+            className="neon-btn neon-btn-gold w-full"
           >
             Vault · {fmtFlux(hud.flux)}
           </button>
@@ -87,11 +87,9 @@ export function EndScreen({
 
 function EndStat({ label, value, hot }: { label: string; value: string; hot?: boolean }) {
   return (
-    <div className="rounded-md border border-line bg-raised px-2.5 py-2">
-      <dt className="text-[10px] tracking-wide text-faint">{label}</dt>
-      <dd className={`tabular text-[16px] font-medium leading-none ${hot ? "text-ember" : "text-paper"}`}>
-        {value}
-      </dd>
+    <div className={hot ? "end-stat end-stat-hot" : "end-stat"}>
+      <dt>{label}</dt>
+      <dd className="tabular">{value}</dd>
     </div>
   );
 }
