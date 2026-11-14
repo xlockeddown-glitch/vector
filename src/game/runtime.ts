@@ -1215,6 +1215,11 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
             wavesCleared: world.wavesCleared ?? 0,
             won: (world.wavesCleared ?? 0) >= WIN_WAVES,
             starsMade: world.starsMade ?? 0,
+            upgradesMade: world.upgradesMade ?? 0,
+            runKills: world.runKills ?? 0,
+            runLeaks: world.runLeaks ?? 0,
+            reactions: world.reactions ?? 0,
+            playMode: world.playMode,
           });
           if (best) useGame.getState().setBest(best);
           world.recorded = true;

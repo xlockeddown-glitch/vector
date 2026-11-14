@@ -106,6 +106,13 @@ function PassGain() {
       <p className="text-[13px] text-paper">
         +{fmtCount(last.xp)} XP · tier {last.tier}/{SEASON.tiers}
       </p>
+      {last.quests?.length ? (
+        <ul className="pass-gain-quests mt-1 space-y-0.5 text-[12px] text-epic">
+          {last.quests.map((q) => (
+            <li key={q}>Challenge done: {q}</li>
+          ))}
+        </ul>
+      ) : null}
       {last.rewards.length ? (
         <ul className="mt-1 space-y-0.5 text-[12px] text-frost">
           {last.rewards.map((r) => (
