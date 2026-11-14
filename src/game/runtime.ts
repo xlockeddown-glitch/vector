@@ -1,6 +1,4 @@
 import { audio, resumeAudioOnVisible, type Sfx } from "./audio";
-import { drawCapturedText, labelCanvasFor, withCapturedText } from "./labels";
-import { PARAMS } from "./params";
 import { loadAssets, type Assets } from "./assets";
 import { hitPad, PATHS, BASE, nearestPathMeta } from "./data/map";
 import { HOME_PAD, LOOP_WAVES, WIN_WAVES, WORLD } from "./constants";
@@ -210,8 +208,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
   if (!ctx) throw new Error("Canvas 2D unavailable");
 
   const resize = () => {
-    // Pixel look: render below screen resolution and let CSS scale it up pixelated.
-    const dpr = PARAMS.pixelRes;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
     const rect = canvas.getBoundingClientRect();
     canvas.width = Math.max(1, Math.floor(rect.width * dpr));
     canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -311,9 +308,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
         audio.play(world.wantSfx as Sfx);
         world.wantSfx = null;
       }
-      withCapturedText(ctx!, () => drawWorld(ctx!, canvas, world, assets));
-      const labels = labelCanvasFor(canvas);
-      if (labels) drawCapturedText(canvas, labels);
+      drawWorld(ctx!, canvas, world, assets);
     } catch (err) {
       console.warn("vector tick", err);
     }
