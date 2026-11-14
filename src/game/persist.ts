@@ -1,4 +1,5 @@
 import type { Grade, HangarId, HangarRanks, MetaSave, Phase, ProfileSlot, ProfilesSave, RunSave, SkinId } from "./types";
+import { threatPayMul } from "./data/threat";
 import { unlockedIds, type SkinProgress } from "./data/skins";
 import { emptyHangar, hangarCost, hangarItem, hangarOf, SKIN_FLUX } from "./data/hangar";
 import { emptyVault, vaultCanBuy, vaultNode, vaultOf, type VaultSave } from "./data/vault";
@@ -187,7 +188,8 @@ export function recordRun(opts: {
   const daily = applyRunToQuests(cur.quests, { ...opts, wavesCleared });
   const passed = grantPass(
     cur,
-    passXpFromRun({ wavesCleared, won: !!opts.won, starsMade: opts.starsMade }),
+    // Threat pays more: run XP (not challenge XP) scales with threatPayMul.
+    Math.round(passXpFromRun({ wavesCleared, won: !!opts.won, starsMade: opts.starsMade }) * threatPayMul(opts.threat ?? 0)),
     daily.xp,
     daily.finished.map((q) => `${q.name} +${q.xp} XP`),
   );

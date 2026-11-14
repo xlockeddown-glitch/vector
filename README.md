@@ -34,6 +34,9 @@ VECTOR combines three things:
 | **Arena** | Draft your whole hand up front, then hold 12 waves. |
 | **Build** | Start with two guns. Draft one gun after every wave. Copies of a gun you own merge: **3 copies = ★2, 9 = ★3**. Each star multiplies the gun's damage and opens another tree pick. Hold 12. |
 
+### Threat (opt-in difficulty)
+Tap **Threat** on the title screen to turn on modifiers (tougher enemies, faster enemies, fewer lives, pricier trees, bigger mega waves, escorts, mutant affixes). Each point pays +10% Vault Credit and Pass XP. Past wave 12, enemy HP also grows 6% per wave.
+
 ## How a run works
 
 1. **Pick a craft.** It's already flying.

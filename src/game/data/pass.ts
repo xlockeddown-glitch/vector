@@ -1,4 +1,5 @@
 import type { SkinId } from "../types";
+import { skinById } from "./skins";
 import { VAULT } from "./vault";
 
 /**
@@ -111,7 +112,7 @@ const SKIN_NAME: Partial<Record<SkinId, string>> = {
 export function rewardLabel(r: PassReward): string {
   if (r.kind === "credit") return `${r.n} Vault Credit`;
   if (r.kind === "vault") return vaultName(r.id);
-  if (r.kind === "skin") return `${SKIN_NAME[r.id] ?? r.id} skin`;
+  if (r.kind === "skin") return `${SKIN_NAME[r.id] ?? skinById(r.id).name} skin`;
   return `Badge: ${r.name}`;
 }
 
