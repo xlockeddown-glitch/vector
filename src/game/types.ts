@@ -73,7 +73,24 @@ export type TowerHull =
   | "tube";
 export type SimSpeed = 1 | 2 | 3;
 export type CompanionRole = "ship" | "orb" | "hunter" | "rocket" | "jet" | "medic" | "puck" | "borer" | "ufo" | "racer" | "spinner" | "lens";
-export type SkinId = "stock" | "chrome" | "ember" | "ion" | "gold" | "void";
+/**
+ * Gun skins. Looks only. The first six are the originals; the neon set below is
+ * defined by the tower-skins slice (src/game/data/skins.ts) and handed out by the
+ * season pass (src/game/data/pass.ts). Keep ids stable: saves store them.
+ */
+export type SkinId =
+  | "stock"
+  | "chrome"
+  | "ember"
+  | "ion"
+  | "gold"
+  | "void"
+  | "synthwave"
+  | "circuit"
+  | "prism"
+  | "ghost"
+  | "holo"
+  | "nova";
 export type Phase =
   | "title"
   | "help"
@@ -398,6 +415,8 @@ export type MetaSave = {
   orbitXp?: number;
   /** Battle pass progress for the current season. */
   pass?: { season: string; xp: number; claimed: number; badges: string[] };
+  /** Season pass challenges: refreshed daily, progress counted at the end of each run. */
+  quests?: { day: string; list: { id: string; progress: number; done: boolean }[] };
   /** What the last finished run added to the pass (for the end screen). */
   lastPass?: { xp: number; rewards: string[]; tier: number } | null;
   vault?: { outfit: number; bay: number; armory: number; sky?: number; myth?: number; ownedIds: string[] };

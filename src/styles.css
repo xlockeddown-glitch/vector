@@ -1,4 +1,10 @@
 @import "tailwindcss";
+/* Per-slice styles (one file per area so parallel work does not collide). */
+@import "./styles/visual.css";
+@import "./styles/anim.css";
+@import "./styles/skins.css";
+@import "./styles/pass.css";
+@import "./styles/depth.css";
 
 @theme {
   --font-sans: "D-DIN", "DIN", "Arial", sans-serif;
