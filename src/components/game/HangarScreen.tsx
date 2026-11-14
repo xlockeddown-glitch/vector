@@ -4,7 +4,7 @@ import { VAULT, VAULT_BRANCH, vaultCanBuy, vaultHas, vaultOf, type VaultBranch }
 import { fmtCount, fmtFlux } from "@/game/format";
 import type { MetaSave, SkinId } from "@/game/types";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 
 export function HangarScreen({
   best,
@@ -174,8 +174,8 @@ export function HangarScreen({
                       className="flex min-w-0 flex-1 items-center gap-3 text-left"
                     >
                       <span
-                        className="h-8 w-8 shrink-0 rounded-sm border"
-                        style={{ background: s.glow, borderColor: s.stroke, boxShadow: `0 0 12px ${s.glow}` }}
+                        className={cn("skin-swatch h-8 w-8 shrink-0 rounded-sm border", `skin-swatch--${s.id}`)}
+                        style={{ "--swatch": s.glow, borderColor: s.stroke, boxShadow: `0 0 12px ${s.glow}` } as CSSProperties}
                       />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline justify-between gap-2">

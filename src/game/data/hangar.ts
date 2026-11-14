@@ -51,6 +51,8 @@ export const SKIN_FLUX: Partial<Record<SkinId, number>> = {
   ion: PARAMS.skinCost.ion,
   gold: PARAMS.skinCost.gold,
   void: PARAMS.skinCost.void,
+  synthwave: PARAMS.skinCost.synthwave,
+  circuit: PARAMS.skinCost.circuit,
 };
 
 export const GOLD_PER_FLUX = PARAMS.goldPerFlux;
