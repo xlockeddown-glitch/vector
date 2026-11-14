@@ -111,6 +111,8 @@ export type Enemy = {
   iced: boolean;
   marked: boolean;
   anim: number;
+  /** Seconds since spawn (drives the spawn-in fade). */
+  age?: number;
   facing: number;
   flash: number;
   lane: number;
@@ -147,7 +149,7 @@ type Projectile = {
 };
 
 type Fx = {
-  kind: "ring" | "spark" | "smoke" | "beam" | "float" | "drop" | "patch" | "mote";
+  kind: "ring" | "spark" | "smoke" | "beam" | "float" | "drop" | "patch" | "mote" | "shatter" | "plus";
   x: number;
   y: number;
   life: number;
@@ -159,6 +161,8 @@ type Fx = {
   y2?: number;
   vx?: number;
   vy?: number;
+  seed?: number;
+  big?: boolean;
 };
 
 type BoreMark = {
@@ -229,6 +233,8 @@ export type World = {
   goldWave: number;
   hitstop: number;
   trauma: number;
+  /** Seconds left of the Home-hit flash. */
+  homeHitT?: number;
   uid: number;
   draftCards: RolledCard[];
   draftPicksLeft: number;
@@ -1023,7 +1029,30 @@ function allocProj(w) {
 
 function addFx(w, fx) {
   w.fx.push({ ...fx, t: 0 });
-  if (w.fx.length > 120) w.fx.splice(0, w.fx.length - 120);
+  if (w.fx.length > 400) w.fx.splice(0, w.fx.length - 400);
+}
+
+/** Rising "+" particles (level-up, star-up, purchases). */
+function risePlus(w, x, y, color, n = 6) {
+  for (let i = 0; i < n; i++) {
+    addFx(w, {
+      kind: "plus",
+      x: x + (Math.random() - 0.5) * 36,
+      y: y + 6 + Math.random() * 8,
+      vx: (Math.random() - 0.5) * 14,
+      vy: -(40 + Math.random() * 40),
+      life: 0.7 + Math.random() * 0.35,
+      color: i % 2 ? color : "#ffd46b",
+      size: 4 + Math.random() * 3,
+    });
+  }
+}
+
+/** Expanding double ring plus rising "+" for upgrades. */
+function juiceBurst(w, x, y, color, size = 44) {
+  addFx(w, { kind: "ring", x, y, life: 0.6, color, size });
+  addFx(w, { kind: "ring", x, y, life: 0.45, color: "#eef6ff", size: size * 0.62 });
+  risePlus(w, x, y, color);
 }
 
 function motes(w, x, y, n, color, speed, life, aim) {
@@ -1061,6 +1090,7 @@ function celebrateLevel(w, x, y, color, level, uid) {
   addFx(w, { kind: "ring", x, y, life: 0.72, color: "#eef3f7", size: ring * 0.38 });
   addFx(w, { kind: "patch", x, y, life: 0.9, color: "#e8c15a", size: 32 });
   addFx(w, { kind: "spark", x, y, life: 0.6, color: "#e8c15a", size: 28 });
+  risePlus(w, x, y, color, 8);
   for (let i = 0; i < 7; i++) {
     addFx(w, {
       kind: "drop",
@@ -1156,6 +1186,7 @@ function spawnEnemy(w, type, route = 0) {
   e.elUntil = null;
   e.reactAt = 0;
   e.anim = Math.random() * 4;
+  e.age = 0;
   e.facing = 1;
   e.flash = 0;
   e.lane = ((w.enemies.reduce((n, x) => n + (x.alive ? 1 : 0), 0) + w.kills) % 3 - 1) * (type === "swarm" ? 6 : 9);
@@ -1212,6 +1243,8 @@ function applyDamage(w, e, raw, quiet = false, from = null) {
       color: "#f0f1f4",
       size: 12,
     });
+    const hitCol = (e.burnT ?? 0) > 0 ? "#ff7a3c" : (e.freezeT ?? 0) > 0 || (e.slowT ?? 0) > 0 ? "#7ecbff" : "#eef6ff";
+    addFx(w, { kind: "spark", x: e.x, y: e.y, life: 0.12, color: hitCol, size: 4 });
   }
   if (e.hp <= 0) killEnemy(w, e, from);
 }
@@ -1275,6 +1308,12 @@ function killEnemy(w, e, from = null) {
   w.uiDirty = true;
   addFx(w, { kind: "ring", x: e.x, y: e.y, life: 0.35, color: "#9aa0ab", size: 22 });
   addFx(w, { kind: "smoke", x: e.x, y: e.y, life: 0.4, color: "#8b8e98", size: 16 });
+  {
+    const bigFoe = e.type === "titan" || e.type === "colossus";
+    const foeCol = e.type === "cache" ? "#ffd46b" : "#ff3d9a";
+    addFx(w, { kind: "shatter", x: e.x, y: e.y, life: bigFoe ? 0.6 : 0.42, color: foeCol, size: Math.max(8, e.radius), seed: Math.random() * 6.283, big: bigFoe });
+    if (bigFoe) addFx(w, { kind: "ring", x: e.x, y: e.y, life: 0.55, color: foeCol, size: e.type === "titan" ? 84 : 72 });
+  }
   w.trauma = Math.min(1, w.trauma + (e.type === "titan" || e.type === "colossus" ? 0.45 : 0.12));
   w.hitstop = e.type === "titan" ? 0.08 : 0.03;
   if (e.type === "colossus" || e.type === "titan") {
@@ -1307,7 +1346,8 @@ function leakEnemy(w, e) {
   }
   w.lives -= 1;
   w.uiDirty = true;
-  w.trauma = Math.min(1, w.trauma + 0.35);
+  w.trauma = Math.min(1, w.trauma + 0.5);
+  w.homeHitT = 0.45;
   const n = GATES[e.route];
   w.lastLeakGate = n?.name ?? null;
   audio.play("leak");
@@ -2459,9 +2499,10 @@ export function stepWorld(w, dt) {
     }
   }
   w.trauma = Math.max(0, w.trauma - dt * 1.8);
+  if ((w.homeHitT ?? 0) > 0) w.homeHitT = Math.max(0, (w.homeHitT ?? 0) - dt);
   for (const fx of w.fx) {
     fx.t += dt;
-    if (fx.kind === "mote") {
+    if (fx.kind === "mote" || fx.kind === "plus") {
       fx.x += (fx.vx || 0) * dt;
       fx.y += (fx.vy || 0) * dt;
     }
@@ -2487,6 +2528,7 @@ export function stepWorld(w, dt) {
   const folders = foldingGuns(w);
   for (const e of w.enemies) {
     if (!e.alive) continue;
+    if (e.age != null && e.age < 1) e.age += dt;
     e.anim += dt * (e.type === "dart" || e.type === "striker" ? 10 : 6);
     if (e.slowT > 0) e.slowT -= dt;
     if (e.shredT > 0) e.shredT -= dt;
@@ -4450,6 +4492,8 @@ function mergeCopy(w, r, card) {
     const pos = r.placedPad ? towerPoint(r) : null;
     if (pos) {
       addFx(w, { kind: "ring", x: pos.x, y: pos.y, life: 0.6, color: "#ffd46b", size: 46 });
+      risePlus(w, pos.x, pos.y, "#ffd46b");
+      addFx(w, { kind: "ring", x: pos.x, y: pos.y, life: 0.45, color: "#eef6ff", size: 28 });
       addFx(w, { kind: "float", x: pos.x, y: pos.y - 30, life: 1.2, text: starLabel(r.copies), color: "#ffd46b", size: 18 });
     }
     audio.play("place");
@@ -4890,6 +4934,7 @@ export function pickSpecial(w, uid, id) {
     const pt = towerPoint(gun);
     if (pt) {
       addFx(w, { kind: "ring", x: pt.x, y: pt.y, life: 0.7, color: "#ff5c2a", size: 72 });
+      juiceBurst(w, pt.x, pt.y, "#ffd46b", 40);
       addFx(w, { kind: "float", x: pt.x, y: pt.y - 26, life: 1.4, text: spec.name, color: "#ff5c2a", size: 20 });
     }
     gun.levelPop = 0.38;
@@ -4933,6 +4978,7 @@ export function pickSpecial(w, uid, id) {
   w.announce = spec.name;
   w.announceT = 1.3;
   addFx(w, { kind: "ring", x: craft.x, y: craft.y, life: 0.7, color: "#3cd6cc", size: 64 });
+  juiceBurst(w, craft.x, craft.y, "#3cf2ff", 36);
   addFx(w, { kind: "float", x: craft.x, y: craft.y - 26, life: 1.4, text: spec.name, color: "#3cd6cc", size: 20 });
   craft.levelPop = 0.38;
   nextLevelPick(w);
@@ -5006,6 +5052,7 @@ function pickPart(w, uid, id) {
   w.announce = pick.name;
   w.announceT = 1.4;
   addFx(w, { kind: "ring", x: craft.x, y: craft.y, life: 0.75, color: "#e8c15a", size: 70 });
+  juiceBurst(w, craft.x, craft.y, "#ffd46b", 40);
   addFx(w, { kind: "float", x: craft.x, y: craft.y - 26, life: 1.5, text: pick.name, color: "#e8c15a", size: 22 });
   craft.levelPop = 0.42;
   nextLevelPick(w);
