@@ -111,6 +111,8 @@ const FOE_SHAPE: Record<string, { sides: number; spin: number; inner?: boolean; 
   colossus: { sides: 6, spin: 0.3, inner: true },
   titan: { sides: 8, spin: 0.25, inner: true },
   cache: { sides: 12, spin: 0.8, color: NEON.gold },
+  shard: { sides: 3, spin: 0 },
+  warden: { sides: 4, spin: 0, inner: true },
 };
 
 /** Enemies: magenta outlines; shape says what it is, inner color says what's on it. */
@@ -157,6 +159,20 @@ export function neonEnemy(ctx: CanvasRenderingContext2D, e: Enemy, t: number) {
     ctx.moveTo(0, -r * 0.4);
     ctx.lineTo(0, r * 0.4);
     ctx.stroke();
+  }
+  if (e.type === "shard" || e.type === "warden") {
+    // Depth foes. Shard: seams to each point (it splits). Warden: dashed aura ring (85 = PARAMS.wardenR).
+    ctx.strokeStyle = rgba(col, e.type === "shard" ? 0.7 : 0.35);
+    ctx.lineWidth = 1.1;
+    ctx.setLineDash(e.type === "warden" ? [6, 7] : []);
+    ctx.beginPath();
+    if (e.type === "warden") ctx.arc(0, 0, 85, 0, Math.PI * 2);
+    else for (let i = 0; i < 3; i++) {
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos((i * Math.PI * 2) / 3) * r, Math.sin((i * Math.PI * 2) / 3) * r);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
   ctx.restore();
   if (burning) {

@@ -84,6 +84,8 @@ export async function loadAssets(): Promise<Assets> {
       cache: cache.length ? cache : striker,
       dart: striker.length ? striker : grunt,
       medic: grunt,
+      shard: grunt,
+      warden: plate,
     },
   };
 }

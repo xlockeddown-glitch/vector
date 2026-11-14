@@ -173,6 +173,8 @@ export function recordRun(opts: {
   wavesCleared?: number;
   won?: boolean;
   starsMade?: number;
+  /** Threat points the run was played at (data/threat.ts; payout via threatPayMul). */
+  threat?: number;
 }) {
   const cur = loadMeta();
   const add = orbitXpFromRun(opts.wave, opts.grade);

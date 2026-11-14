@@ -106,6 +106,15 @@ export const PARAMS = {
    */
   enemyHpPerWave: 0.11,
   enemyHpPerWave2: 0.005,
+  /** Endless (past wave 12): enemy HP also grows ×this per wave beyond wave 11. */
+  endlessHpGrow: 1.06,
+  /** Shard: splits into this many Swarm on death. */
+  shardSplit: 3,
+  /** Warden: allies inside this radius take less damage (does not stack). */
+  wardenR: 85,
+  wardenCut: 0.3,
+  /** Wardens and Shards join wave mixes from this local wave (0-based; 2 = wave 3). */
+  depthFoesFrom: 2,
   /** Build mode: chance each card in a wave draft is a copy of a gun you own. */
   buildCopyOdds: 0.5,
   /** Build mode star multipliers, index 0 = ★1. */

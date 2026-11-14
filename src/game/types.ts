@@ -108,7 +108,7 @@ export type Phase =
   | "defeat";
 
 export type ProjectileKind = "arrow" | "ember" | "frost" | "hex" | "spark" | "none";
-export type EnemyType = "grunt" | "striker" | "plate" | "swarm" | "colossus" | "titan" | "cache" | "dart" | "medic";
+export type EnemyType = "grunt" | "striker" | "plate" | "swarm" | "colossus" | "titan" | "cache" | "dart" | "medic" | "shard" | "warden";
 
 export type Vec = { x: number; y: number };
 
@@ -341,8 +341,13 @@ export type EnemyDef = {
   scale: number;
 };
 
+/** Which enemy a planted gun shoots: furthest along, most HP, or least far along. */
+export type TargetMode = "first" | "strong" | "last";
+
 export type RosterItem = {
   uid: string;
+  /** Gun target priority. Missing = "first". */
+  target?: TargetMode;
   /** Element this gun was infused with this run. */
   infuse?: "heat" | "cold" | "spark" | null;
   /** Build mode: copies merged into this gun (1 = just itself). 3 = ★2, 9 = ★3. */
@@ -472,6 +477,7 @@ export type RunSave = {
     kills?: number;
     shots?: number;
     heals?: number;
+    target?: TargetMode;
   }>;
   relics: string[];
   environment: RolledCard | null;
@@ -562,6 +568,8 @@ export type RunSave = {
   pendingCompensate?: "kit" | "companion" | null;
   bansThisRound?: number;
   runBanned?: string[];
+  /** Threat toggles picked for this run (src/game/data/threat.ts). */
+  threat?: string[];
 };
 
 export type LiveOffer = {
