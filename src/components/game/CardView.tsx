@@ -2,12 +2,12 @@ import type { CardDef, Rarity, RolledCard } from "@/game/types";
 import { drawCardGlyph } from "@/game/render";
 import { NEON_LOOK } from "@/game/neon";
 import { KIND_LABEL, cardReadout } from "@/game/data/glossary";
-import { RARITY_GEM, rarityFoil } from "@/game/data/rarity";
+import { RARITY_GEM } from "@/game/data/rarity";
 import { abilityOf, getCard } from "@/game/data/cards";
 import { gunSheet, setSheets } from "@/game/data/card-stats";
 import { cardPortraitSrc } from "@/game/data/card-art";
 import { cn } from "@/lib/utils";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { BoostRocket } from "./BoostRocket";
 import { ShrikeJet } from "./ShrikeJet";
 import { BoreAuger } from "./BoreAuger";
@@ -33,22 +33,6 @@ const RARITY_LABEL: Record<Rarity, string> = {
   legendary: RARITY_GEM.legendary.name,
 };
 
-const SHELL: Record<Rarity, string> = {
-  common: "bg-surface",
-  uncommon: "bg-surface",
-  rare: "bg-ink-2",
-  epic: "bg-ink-2",
-  legendary: "card-legend bg-ink",
-};
-
-const BAR: Record<Rarity, string> = {
-  common: "bg-paper text-ink",
-  uncommon: "bg-uncommon text-ink",
-  rare: "bg-ruby text-ink",
-  epic: "bg-epic text-paper",
-  legendary: "bg-ink text-legend",
-};
-
 function GemCut({ rarity }: { rarity: Rarity }) {
   if (rarity === "common") return <ellipse cx="20" cy="20" rx="12.5" ry="14.5" />;
   if (rarity === "uncommon") return <polygon points="20,5 31,12 31,28 20,35 9,28 9,12" />;
@@ -57,46 +41,12 @@ function GemCut({ rarity }: { rarity: Rarity }) {
   return <polygon points="20,2 34,20 20,38 6,20" />;
 }
 
-const GEM_FACE: Record<Rarity, { hi: string; mid: string; lo: string; spark: string }> = {
-  common: { hi: "#f7fbff", mid: "#d7e4ef", lo: "#7d92a6", spark: "#ffffff" },
-  uncommon: { hi: "#c8e4ff", mid: "#3d9bff", lo: "#0c457f", spark: "#eef7ff" },
-  rare: { hi: "#ffb3bc", mid: "#e14d5c", lo: "#7a1224", spark: "#ffe8ea" },
-  epic: { hi: "#dccfff", mid: "#9b6cff", lo: "#3a2468", spark: "#f6f0ff" },
-  legendary: { hi: "#fff4c4", mid: "#e8c15a", lo: "#7a5c12", spark: "#fff8e0" },
-};
-
+/** Rarity gem as line art: the cut (shape) and the colour both carry the rarity. */
 function GemStone({ rarity, tiny }: { rarity: Rarity; tiny?: boolean }) {
-  const uid = useId().replace(/:/g, "");
-  const clip = `g-cut-${uid}`;
-  const fill = `g-fill-${uid}`;
-  const prism = `g-prism-${uid}`;
-  const face = GEM_FACE[rarity];
   return (
     <span className={cn("card-gem-chip", tiny && "card-gem-tiny", `gem-${rarity}`)} title={RARITY_LABEL[rarity]}>
       <svg viewBox="0 0 40 40" className="gem-svg" aria-hidden>
-        <defs>
-          <radialGradient id={fill} cx="36%" cy="28%" r="74%">
-            <stop offset="0" stopColor={face.hi} />
-            <stop offset="0.42" stopColor={face.mid} />
-            <stop offset="1" stopColor={face.lo} />
-          </radialGradient>
-          {rarity === "legendary" && (
-            <linearGradient id={prism} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#ff5c2a" stopOpacity="0.42" />
-              <stop offset="0.38" stopColor="#e8c15a" stopOpacity="0.12" />
-              <stop offset="0.68" stopColor="#3cd6cc" stopOpacity="0.4" />
-              <stop offset="1" stopColor="#e8c15a" stopOpacity="0.18" />
-            </linearGradient>
-          )}
-          <clipPath id={clip}>
-            <GemCut rarity={rarity} />
-          </clipPath>
-        </defs>
-        <g clipPath={`url(#${clip})`}>
-          <rect width="40" height="40" fill={`url(#${fill})`} />
-          {rarity === "legendary" && <rect width="40" height="40" fill={`url(#${prism})`} />}
-          <ellipse cx="14" cy="13" rx="6" ry="5" fill={face.spark} opacity="0.35" />
-        </g>
+        <GemCut rarity={rarity} />
       </svg>
     </span>
   );
@@ -285,6 +235,7 @@ export function CardView({
             </span>
             <span className="hs-inset">
               <GemStone rarity={card.rarity} tiny={tiny} />
+              <span className="hs-rarity">{RARITY_LABEL[card.rarity]}</span>
               <span className="hs-foot">
                 <span className="hs-banner">
                   <span className="hs-name">{readout.title}</span>
@@ -396,32 +347,23 @@ export function CardBack({
   return (
     <div
       className={cn(
-        compact ? "relative w-[5.4rem] min-w-[5.4rem]" : "hs-wrap hs-deal",
+        compact ? "hs-wrap is-compact" : "hs-wrap hs-deal",
         picked && "is-picked",
         dimmed && "is-dim",
+        selected && "is-on",
       )}
+      data-gem={rarity}
       style={{ animationDelay: `${delay}ms` }}
     >
-      <button
-        type="button"
-        onClick={onPick}
-        className={cn(
-          "hs-face relative flex w-full flex-col overflow-hidden text-left",
-          SHELL[rarity],
-          rarityFoil(rarity),
-          selected && "ring-1 ring-ember/50",
-        )}
-      >
-        <div className={cn("relative flex items-center justify-between px-2.5 py-1", BAR[rarity])}>
-          <span className="text-[10px] font-medium tracking-wide">{foil ? "Peek" : "Sealed"}</span>
-          <span className="text-[10px] font-medium tracking-wide">{RARITY_LABEL[rarity]}</span>
-        </div>
-        <div className="relative mx-2 mb-2 mt-1.5 flex h-[7.25rem] flex-col items-center justify-center overflow-hidden rounded-md border border-line">
-          <span className="font-display text-2xl font-bold tracking-[0.2em] text-steel">V</span>
-        </div>
-        <p className="px-2.5 pb-2.5 font-display text-[15px] font-bold tracking-wide text-paper">
-          {foil ? "Tap to flip" : "VECTOR"}
-        </p>
+      <button type="button" onClick={onPick} className="hs-face text-left">
+        <span className="hs-back">
+          <span className="hs-back-bar">
+            <span>{foil ? "Peek" : "Sealed"}</span>
+            <span>{RARITY_LABEL[rarity]}</span>
+          </span>
+          <span className="hs-back-well">V</span>
+          <span className="hs-back-foot">{foil ? "Tap to flip" : "VECTOR"}</span>
+        </span>
       </button>
     </div>
   );
