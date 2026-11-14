@@ -1,1 +1,458 @@
-/* visual slice styles */
+/* visual slice styles
+   Neon vector UI kit: tokens, panels, buttons, title backdrop.
+   Rules here are for NEW class names only. Restyles of existing classes live in
+   the "Neon vector look" section of ../styles.css, because this file is imported
+   first and would lose to the older rules there. */
+
+:root {
+  --neon-bg: #04050a;
+  --neon-panel: #070a12;
+  --neon-cyan: #3cf2ff;
+  --neon-magenta: #ff3d9a;
+  --neon-gold: #ffd46b;
+  --neon-white: #eef6ff;
+  /* Shared line weights so every panel and button reads as one kit. */
+  --neon-line: color-mix(in oklab, var(--neon-cyan) 34%, transparent);
+  --neon-line-strong: color-mix(in oklab, var(--neon-cyan) 70%, transparent);
+  --neon-glow: 0 0 14px color-mix(in oklab, var(--neon-cyan) 26%, transparent);
+}
+
+/* ── Panels ───────────────────────────────────────────────────────────── */
+.neon-panel {
+  --tick: var(--neon-cyan);
+  position: relative;
+  border: 1px solid var(--neon-line);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--neon-panel) 96%, transparent);
+  box-shadow: 0 0 0 1px #000, 0 0 26px color-mix(in oklab, var(--tick) 12%, transparent);
+}
+.neon-panel-gold {
+  --tick: var(--neon-gold);
+  border-color: color-mix(in oklab, var(--neon-gold) 38%, transparent);
+}
+.neon-panel-foe {
+  --tick: var(--neon-magenta);
+  border-color: color-mix(in oklab, var(--neon-magenta) 42%, transparent);
+}
+/* Corner ticks: four L-shaped marks drawn with gradients, so no extra markup. */
+.neon-panel::after,
+.neon-ticks::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  --t: var(--tick, var(--neon-cyan));
+  --l: var(--tick-len, 12px);
+  background:
+    linear-gradient(var(--t), var(--t)) left top / var(--l) 2px,
+    linear-gradient(var(--t), var(--t)) left top / 2px var(--l),
+    linear-gradient(var(--t), var(--t)) right top / var(--l) 2px,
+    linear-gradient(var(--t), var(--t)) right top / 2px var(--l),
+    linear-gradient(var(--t), var(--t)) left bottom / var(--l) 2px,
+    linear-gradient(var(--t), var(--t)) left bottom / 2px var(--l),
+    linear-gradient(var(--t), var(--t)) right bottom / var(--l) 2px,
+    linear-gradient(var(--t), var(--t)) right bottom / 2px var(--l);
+  background-repeat: no-repeat;
+}
+.neon-ticks { position: relative; }
+
+/* Small uppercase label above a value. No glow: it is reading text. */
+.neon-kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--neon-cyan);
+}
+.neon-kicker-gold { color: var(--neon-gold); }
+.neon-kicker-foe { color: var(--neon-magenta); }
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.neon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid var(--neon-line);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--neon-cyan) 5%, var(--neon-bg));
+  color: var(--neon-white);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: border-color 140ms, box-shadow 140ms, background-color 140ms;
+}
+.neon-btn:hover:not(:disabled) {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--neon-glow);
+}
+.neon-btn:active:not(:disabled) { transform: translateY(1px); }
+.neon-btn:focus-visible,
+.hud-btn:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+}
+.neon-btn:disabled { opacity: 0.45; }
+/* Outlined and lit: the usual "yes" button. */
+.neon-btn-primary {
+  border-color: var(--neon-cyan);
+  background: color-mix(in oklab, var(--neon-cyan) 13%, var(--neon-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--neon-cyan) 22%, transparent), var(--neon-glow);
+}
+/* Solid cyan: the one action that moves the game forward. */
+.neon-btn-go {
+  border-color: var(--neon-cyan);
+  background: var(--neon-cyan);
+  color: #021418;
+  box-shadow: 0 0 16px color-mix(in oklab, var(--neon-cyan) 45%, transparent);
+}
+.neon-btn-go:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--neon-cyan) 80%, #fff);
+}
+.neon-btn-gold {
+  border-color: color-mix(in oklab, var(--neon-gold) 60%, transparent);
+  background: color-mix(in oklab, var(--neon-gold) 8%, var(--neon-bg));
+  color: var(--neon-gold);
+}
+.neon-btn-gold:hover:not(:disabled) {
+  border-color: var(--neon-gold);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--neon-gold) 32%, transparent);
+}
+.neon-btn-sm {
+  min-height: 40px;
+  padding: 0 0.7rem;
+  font-size: 0.85rem;
+}
+
+/* HUD buttons: 40px square minimum, plain sans label. */
+.hud-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--neon-line);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--neon-cyan) 4%, var(--neon-bg));
+  color: var(--neon-white);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  transition: border-color 140ms, box-shadow 140ms;
+}
+.hud-btn:hover:not(:disabled) {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--neon-glow);
+}
+.hud-btn-icon { padding: 0; width: 40px; }
+.hud-btn-go {
+  padding: 0 0.75rem;
+  border-color: var(--neon-cyan);
+  background: var(--neon-cyan);
+  color: #021418;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 0 14px color-mix(in oklab, var(--neon-cyan) 45%, transparent);
+}
+
+/* Toast / hint strip floating over the board. */
+.neon-toast {
+  border: 1px solid var(--neon-line-strong);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--neon-bg) 92%, transparent);
+  box-shadow: var(--neon-glow);
+}
+.neon-toast-gold {
+  border-color: color-mix(in oklab, var(--neon-gold) 60%, transparent);
+  box-shadow: 0 0 14px color-mix(in oklab, var(--neon-gold) 22%, transparent);
+}
+
+/* Dark veil behind a modal, with the faint board grid showing through. */
+.neon-scrim {
+  background:
+    linear-gradient(color-mix(in oklab, var(--neon-cyan) 5%, transparent) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(90deg, color-mix(in oklab, var(--neon-cyan) 5%, transparent) 1px, transparent 1px) 0 0 / 40px 40px,
+    color-mix(in oklab, var(--neon-bg) 86%, transparent);
+}
+
+/* End screen stat cell. */
+.end-stat {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid color-mix(in oklab, var(--neon-cyan) 20%, transparent);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--neon-cyan) 4%, var(--neon-bg));
+}
+.end-stat dt {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-steel);
+}
+.end-stat dd {
+  margin-top: 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.end-stat-hot { border-color: color-mix(in oklab, var(--neon-magenta) 55%, transparent); }
+.end-stat-hot dd { color: var(--neon-magenta); }
+
+/* Ship hull bar in the roster and craft docks. */
+.craft-hp {
+  height: 3px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--neon-cyan) 16%, var(--neon-bg));
+}
+.craft-hp > i {
+  display: block;
+  height: 100%;
+  background: var(--neon-cyan);
+}
+
+/* Vault finish rows. */
+.skin-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid color-mix(in oklab, var(--color-steel) 26%, transparent);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--neon-cyan) 3%, var(--neon-bg));
+  text-align: left;
+}
+.skin-row.is-on {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--neon-glow);
+}
+.skin-row.is-shut { opacity: 0.85; }
+.skin-row-pick { min-height: 40px; }
+
+/* Rarity word beside the gem on a full-size card. */
+.hs-rarity {
+  position: absolute;
+  left: 2.05rem;
+  top: 0.42rem;
+  z-index: 7;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1.2rem;
+  text-transform: uppercase;
+  color: var(--gem);
+}
+.hs-wrap.is-tiny .hs-rarity,
+.hs-wrap.is-compact .hs-rarity { display: none; }
+@container (max-width: 8.5rem) {
+  .hs-rarity { display: none; }
+}
+
+/* Sealed card back. */
+.hs-back {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.hs-back-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--gem) 55%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gem);
+}
+.hs-back-well {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 3rem;
+  margin: 0.4rem;
+  border: 1px dashed color-mix(in oklab, var(--gem) 40%, transparent);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--gem);
+}
+.hs-back-foot {
+  padding: 0 0.5rem 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--neon-white);
+}
+
+/* ── Title backdrop ───────────────────────────────────────────────────── */
+.title-void {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(90% 55% at 50% 30%, #0a1526 0%, var(--neon-bg) 72%);
+}
+/* Faint flat grid, strongest behind the wordmark. */
+.title-void::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(color-mix(in oklab, var(--neon-cyan) 7%, transparent) 1px, transparent 1px) 50% 0 / 44px 44px,
+    linear-gradient(90deg, color-mix(in oklab, var(--neon-cyan) 7%, transparent) 1px, transparent 1px) 50% 0 / 44px 44px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 60% at 50% 30%, #000 20%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 60% at 50% 30%, #000 20%, transparent 100%);
+}
+.title-art {
+  position: absolute;
+  overflow: visible;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Wireframe planet rising behind the wordmark. */
+.title-globe {
+  left: 50%;
+  top: 4%;
+  width: min(34rem, 118vw);
+  translate: -50% 0;
+  opacity: 0.5;
+  stroke: var(--neon-cyan);
+  stroke-width: 1;
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--neon-cyan) 60%, transparent));
+  -webkit-mask-image: linear-gradient(#000 30%, transparent 92%);
+  mask-image: linear-gradient(#000 30%, transparent 92%);
+}
+.title-globe .is-foe {
+  stroke: var(--neon-magenta);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 4px var(--neon-magenta));
+}
+.title-globe .is-lane {
+  stroke: var(--neon-magenta);
+  stroke-dasharray: 3 7;
+  opacity: 0.7;
+}
+/* Perspective floor grid along the bottom edge. */
+.title-floor {
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 34%;
+  stroke: var(--neon-cyan);
+  stroke-width: 1;
+  opacity: 0.4;
+  -webkit-mask-image: linear-gradient(#000 0, #000 3px, transparent 3px, #000 65%);
+  mask-image: linear-gradient(#000 0, #000 3px, transparent 3px, #000 65%);
+}
+.title-floor path { vector-effect: non-scaling-stroke; }
+.title-floor .is-horizon {
+  stroke: var(--neon-magenta);
+  stroke-width: 1.5;
+}
+/* Neon line-art ships flanking the wordmark. */
+.title-ship {
+  width: clamp(3.2rem, 8.5vw, 5.6rem);
+  stroke: var(--neon-cyan);
+  stroke-width: 2.2;
+  filter:
+    drop-shadow(0 0 3px color-mix(in oklab, var(--neon-cyan) 90%, transparent))
+    drop-shadow(0 0 14px color-mix(in oklab, var(--neon-cyan) 45%, transparent));
+  animation: title-ship-bob 5.5s ease-in-out infinite;
+}
+.title-ship-l {
+  top: 13%;
+  left: max(5%, calc(50% - 27rem));
+  rotate: -14deg;
+}
+.title-ship-r {
+  top: 15%;
+  right: max(5%, calc(50% - 27rem));
+  rotate: 12deg;
+  animation-delay: -2.4s;
+}
+.title-ship .is-core {
+  stroke: var(--neon-white);
+  stroke-width: 1.2;
+}
+.title-ship .is-flame {
+  stroke: var(--neon-gold);
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: title-flame 0.5s ease-in-out infinite alternate;
+}
+.title-ship .is-trail {
+  stroke: var(--neon-gold);
+  stroke-width: 1.4;
+  stroke-dasharray: 2 9;
+  opacity: 0.7;
+}
+@keyframes title-ship-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -8px; }
+}
+@keyframes title-flame {
+  from { transform: scaleY(0.78); opacity: 0.75; }
+  to { transform: scaleY(1.12); opacity: 1; }
+}
+/* Rule under the wordmark: cyan to magenta with a centre diamond. */
+.title-rule {
+  position: relative;
+  width: min(100%, 22rem);
+  height: 1px;
+  margin: 0.7rem auto 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--neon-cyan) 18%,
+    var(--neon-cyan) 44%,
+    transparent 44%,
+    transparent 56%,
+    var(--neon-magenta) 56%,
+    var(--neon-magenta) 82%,
+    transparent
+  );
+}
+.title-rule::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--neon-gold);
+  translate: -50% -50%;
+  rotate: 45deg;
+  box-shadow: 0 0 8px color-mix(in oklab, var(--neon-gold) 70%, transparent);
+}
+@media (max-width: 640px) {
+  .title-ship { width: 2.5rem; opacity: 0.85; stroke-width: 2.6; }
+  .title-ship-l { top: 3.5%; left: 6%; }
+  .title-ship-r { top: 4.5%; right: 6%; }
+  .title-globe { top: 1%; opacity: 0.38; }
+  .title-floor { height: 24%; opacity: 0.3; }
+}
+@media (max-height: 560px) {
+  .title-ship { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-ship,
+  .title-ship .is-flame { animation: none; }
+}

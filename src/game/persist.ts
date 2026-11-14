@@ -1,9 +1,10 @@
 import type { Grade, HangarId, HangarRanks, MetaSave, Phase, ProfileSlot, ProfilesSave, RunSave, SkinId } from "./types";
+import { threatPayMul } from "./data/threat";
 import { unlockedIds, type SkinProgress } from "./data/skins";
 import { emptyHangar, hangarCost, hangarItem, hangarOf, SKIN_FLUX } from "./data/hangar";
 import { emptyVault, vaultCanBuy, vaultNode, vaultOf, type VaultSave } from "./data/vault";
 import { orbitXpFromRun } from "./data/orbit";
-import { PASS_TIERS, passOf, passTier, passXpFromRun, rewardLabel } from "./data/pass";
+import { PASS_TIERS, applyRunToQuests, passOf, passTier, passXpFromRun, rewardLabel } from "./data/pass";
 import { GAME_VERSION } from "./version";
 
 const META_KEY = "vector-meta-v4";
@@ -173,10 +174,25 @@ export function recordRun(opts: {
   wavesCleared?: number;
   won?: boolean;
   starsMade?: number;
+  /** Threat points the run was played at (data/threat.ts; payout via threatPayMul). */
+  threat?: number;
+  upgradesMade?: number;
+  runKills?: number;
+  runLeaks?: number;
+  reactions?: number;
+  playMode?: string;
 }) {
   const cur = loadMeta();
   const add = orbitXpFromRun(opts.wave, opts.grade);
-  const passed = grantPass(cur, passXpFromRun({ wavesCleared: opts.wavesCleared ?? opts.wave, won: !!opts.won, starsMade: opts.starsMade }));
+  const wavesCleared = opts.wavesCleared ?? opts.wave;
+  const daily = applyRunToQuests(cur.quests, { ...opts, wavesCleared });
+  const passed = grantPass(
+    cur,
+    // Threat pays more: run XP (not challenge XP) scales with threatPayMul.
+    Math.round(passXpFromRun({ wavesCleared, won: !!opts.won, starsMade: opts.starsMade }) * threatPayMul(opts.threat ?? 0)),
+    daily.xp,
+    daily.finished.map((q) => `${q.name} +${q.xp} XP`),
+  );
   return saveMeta({
     runs: cur.runs + 1,
     bestWave: Math.max(cur.bestWave, opts.wave),
@@ -184,12 +200,14 @@ export function recordRun(opts: {
     loops: opts.loops ?? cur.loops,
     bestLevel: Math.max(cur.bestLevel ?? 0, opts.level ?? 0),
     orbitXp: (cur.orbitXp ?? 0) + add,
+    quests: daily.quests,
     ...passed,
   });
 }
 
 /** Adds Pass XP and pays out every tier reached. Returns the meta fields that change. */
-function grantPass(cur: MetaSave, xp: number): Partial<MetaSave> {
+function grantPass(cur: MetaSave, runXp: number, questXp = 0, quests: string[] = []): Partial<MetaSave> {
+  const xp = runXp + questXp;
   const pass = passOf(cur.pass);
   const next = { ...pass, xp: pass.xp + xp, badges: [...pass.badges] };
   let flux = cur.flux ?? 0;
@@ -223,7 +241,7 @@ function grantPass(cur: MetaSave, xp: number): Partial<MetaSave> {
     flux,
     vault: { ...ranks, ownedIds },
     boughtSkins: bought,
-    lastPass: { xp, rewards, tier: reach },
+    lastPass: { xp, rewards, tier: reach, quests, questXp },
   };
 }
 

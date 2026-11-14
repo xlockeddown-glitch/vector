@@ -15,6 +15,7 @@ import { getCard } from "./data/cards";
 import { SIGNALS, signalToCard } from "./data/signals";
 import type { PartRoll } from "./data/parts";
 import { dealParts, partOfferWeak } from "./data/parts";
+import { threatCostMul, threatPoints } from "./data/threat";
 import type {
   ActiveCharm,
   CardDef,
@@ -207,6 +208,10 @@ export type HudState = {
   canSkipPack: boolean;
   canBan: boolean;
   draftCompensate: boolean;
+  /** Threat toggles this run, their points, and the tree pick cost multiplier (Lean). */
+  threat: string[];
+  threatPoints: number;
+  treeCostMul: number;
 };
 
 function teamOf(w: World): Array<{ key: string; card: CardDef; tag: string; uid?: string }> {
@@ -577,6 +582,9 @@ function fromWorld(w: World): HudState {
     canSkipPack: false,
     canBan: false,
     draftCompensate: !!w.draftCompensate,
+    threat: w.threat ?? [],
+    threatPoints: threatPoints(w.threat),
+    treeCostMul: threatCostMul(w.threat),
   };
 }
 

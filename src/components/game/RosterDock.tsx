@@ -33,14 +33,14 @@ export function RosterDock({
   return (
     <div className="play-bench bench-dock relative z-10 shrink-0 border-t border-line bg-ink/95 pb-[max(0.2rem,env(safe-area-inset-bottom))] pt-1">
       <div className="flex items-center gap-2 px-3">
-        <p className="min-w-0 flex-1 truncate text-[11px] font-medium tracking-wide text-steel">
+        <p className="min-w-0 flex-1 truncate text-[12px] font-medium tracking-wide text-steel">
           {status}
         </p>
         {hud.selectedItem && hud.selectedItem.card.kind === "tower" && hud.scrapValue > 0 ? (
           <button
             type="button"
             onClick={() => onAction({ type: "scrap", uid: hud.selectedItem!.uid })}
-            className="h-8 shrink-0 rounded-md border border-line px-2 text-[11px] tracking-wide text-paper"
+            className="hud-btn shrink-0"
           >
             Sell · {hud.scrapValue}
           </button>
@@ -49,7 +49,7 @@ export function RosterDock({
 
       {gunsDown ? (
         <div className="mt-1 flex gap-1 overflow-x-auto px-3 pb-1">
-          {crafts.length === 0 && <p className="py-1 text-[12px] text-muted">No ships yet.</p>}
+          {crafts.length === 0 && <p className="py-1 text-[12px] text-steel">No ships yet.</p>}
           {crafts.map((c) => {
             const isSelected = hud.selectedCard === c.uid;
             const ready = (c.specialOffer ?? []).length > 0 || (c.partOffer ?? []).length > 0;
@@ -64,7 +64,7 @@ export function RosterDock({
               >
                 <CraftPortrait id={c.art} className="h-7 w-7" />
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block truncate text-[11px] font-medium text-paper">{c.name}</span>
+                  <span className="block truncate text-[12px] font-medium text-paper">{c.name}</span>
                   <span className="craft-hp mt-0.5 block" aria-hidden>
                     <i style={{ width: `${Math.round(hp * 100)}%` }} />
                   </span>
@@ -76,7 +76,7 @@ export function RosterDock({
       ) : (
       <div className="mt-1 flex gap-1 overflow-x-auto px-3 pb-1">
         {items.length === 0 && (
-          <p className="py-1 text-[12px] text-muted">Guns sit here.</p>
+          <p className="py-1 text-[12px] text-steel">Guns sit here.</p>
         )}
         {items.map((r) => {
           const isSelected = hud.selectedCard === r.uid;

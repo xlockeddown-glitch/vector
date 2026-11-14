@@ -448,6 +448,9 @@ function packLayout(paths: Vec[][], _pads?: Pad[]): PackedLayout {
  *   twin-s — three long rows, a classic serpent (Mare)
  *   shelf  — a comb of up-and-down columns (Regolith)
  *   hook   — a wide loop that hooks back under itself (Void)
+ *   steps  — a staircase down to Home
+ *   keyhole — up, across, back under, then down: a loop around a centre hold
+ *   bracket — one long top run, a long return, then the home stretch
  */
 const RAW: Record<string, Vec[]> = {
   "twin-s": [
@@ -484,6 +487,34 @@ const RAW: Record<string, Vec[]> = {
     { x: 540, y: 648 },
     { x: 1204, y: 648 },
   ],
+  steps: [
+    { x: 72, y: 150 },
+    { x: 330, y: 150 },
+    { x: 330, y: 315 },
+    { x: 620, y: 315 },
+    { x: 620, y: 480 },
+    { x: 910, y: 480 },
+    { x: 910, y: 648 },
+    { x: 1204, y: 648 },
+  ],
+  keyhole: [
+    { x: 72, y: 300 },
+    { x: 420, y: 300 },
+    { x: 420, y: 140 },
+    { x: 860, y: 140 },
+    { x: 860, y: 460 },
+    { x: 240, y: 460 },
+    { x: 240, y: 648 },
+    { x: 1204, y: 648 },
+  ],
+  bracket: [
+    { x: 72, y: 150 },
+    { x: 1150, y: 150 },
+    { x: 1150, y: 480 },
+    { x: 200, y: 480 },
+    { x: 200, y: 648 },
+    { x: 1204, y: 648 },
+  ],
 };
 
 /** Old per-run "jog" variation is gone: lanes stay the shape they were drawn. */
@@ -500,17 +531,26 @@ export function setMapLayout(id: string, _jog = 0) {
   return L;
 }
 
-const MAP_LAYOUT: Record<string, string> = {
-  "map-mare": "twin-s",
-  "map-regolith": "shelf",
-  "map-void": "hook",
-  "map-helios": "shelf",
-  "map-lagrange": "hook",
+/** Each map card rolls one of its lanes per run. First entry is the old fixed lane. */
+const MAP_LAYOUT: Record<string, string[]> = {
+  "map-mare": ["twin-s", "steps"],
+  "map-regolith": ["shelf", "keyhole"],
+  "map-void": ["hook", "bracket"],
+  "map-helios": ["shelf", "steps"],
+  "map-lagrange": ["hook", "keyhole", "bracket"],
 };
 
-export function layoutForMap(mapId: string | null | undefined): string {
-  if (mapId && MAP_LAYOUT[mapId]) return MAP_LAYOUT[mapId]!;
-  return "twin-s";
+/** Lane for a map. `roll` picks among its lanes (0 = the original lane). */
+export function layoutForMap(mapId: string | null | undefined, roll = 0): string {
+  const list = mapId ? MAP_LAYOUT[mapId] : undefined;
+  if (!list?.length) return "twin-s";
+  const i = Math.abs(Math.floor(roll)) % list.length;
+  return list[i]!;
+}
+
+/** How many lanes a map can roll. */
+export function layoutCount(mapId: string | null | undefined): number {
+  return (mapId ? MAP_LAYOUT[mapId]?.length : 0) || 1;
 }
 
 function pointAlong(samples: PathSample[], along: number): PathSample {

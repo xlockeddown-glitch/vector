@@ -118,6 +118,8 @@ export const ENEMIES: Record<EnemyType, EnemyDef> = {
   cache: { hp: 242, speed: 78, gold: 48, armor: 0.08, radius: 16, scale: 0.86 },
   dart: { hp: 58, speed: 220, gold: 11, armor: 0, radius: 12, scale: 0.7 },
   medic: { hp: 310, speed: 38, gold: 28, armor: 0.12, radius: 18, scale: 0.95 },
+  shard: { hp: 320, speed: 55, gold: 18, armor: 0, radius: 17, scale: 0.9 },
+  warden: { hp: 450, speed: 40, gold: 30, armor: 0.2, radius: 19, scale: 0.98 },
 };
 
 export const ODDS: Record<Grade, Record<Rarity, number>> = {
@@ -164,5 +166,7 @@ export const ART = {
     cache: [1, 2, 3, 4].map((n) => `/game/enemies/striker-${n}.png`),
     dart: [1, 2, 3, 4].map((n) => `/game/enemies/striker-${n}.png`),
     medic: [1, 2, 3, 4].map((n) => `/game/enemies/grunt-${n}.png`),
+    shard: [1, 2, 3, 4].map((n) => `/game/enemies/grunt-${n}.png`),
+    warden: [1, 2, 3, 4].map((n) => `/game/enemies/plate-${n}.png`),
   } as Record<EnemyType, string[]>,
 };

@@ -16,6 +16,32 @@ import type { CardDef, RosterItem } from "@/game/types";
 import { cn } from "@/lib/utils";
 import { copiesToNext, starLabel } from "@/game/data/merge";
 import { fmtCount } from "@/game/format";
+import { useGame } from "@/game/store";
+import { sendAction } from "@/game/runtime";
+import type { TargetMode } from "@/game/types";
+
+const TARGET_LABEL: Record<TargetMode, string> = { first: "First", strong: "Strong", last: "Last" };
+const TARGET_HINT: Record<TargetMode, string> = {
+  first: "Shoots the enemy closest to Home",
+  strong: "Shoots the enemy with the most HP",
+  last: "Shoots the enemy furthest from Home",
+};
+
+/** Target priority chip. Click to cycle First → Strong → Last. */
+function TargetButton({ gun }: { gun: RosterItem }) {
+  const mode: TargetMode = gun.target ?? "first";
+  return (
+    <button
+      type="button"
+      className={cn("ui-btn ui-btn-ghost depth-target", `is-${mode}`)}
+      title={`${TARGET_HINT[mode]}. Click to change.`}
+      aria-label={`Target: ${TARGET_LABEL[mode]}. Click to change.`}
+      onClick={() => sendAction({ type: "target", uid: gun.uid })}
+    >
+      <span className="depth-target-k">Target</span> {TARGET_LABEL[mode]}
+    </button>
+  );
+}
 
 type TreeNodeView = { id: string; name: string; blurb: string; cap: boolean };
 type TreeBranchView = { id: string; name: string; nodes: TreeNodeView[] };
@@ -33,6 +59,7 @@ function TreeModal({
   fullLine,
   note,
   extra,
+  headExtra,
   cost,
   credit,
   onBuy,
@@ -49,6 +76,7 @@ function TreeModal({
   fullLine: string;
   note?: string;
   extra?: ReactNode;
+  headExtra?: ReactNode;
   cost: number;
   credit: number;
   onBuy: (id: string) => void;
@@ -81,6 +109,7 @@ function TreeModal({
             </p>
           </div>
           <div className="gun-tree-actions">
+            {headExtra}
             {left > 0 && (
               <span className={cn("tree-cost", credit < cost && "is-poor")} title="Next pick costs Credit">
                 Credit {fmtCount(cost)}
@@ -197,6 +226,7 @@ export function GunTree({
   onInfuse?: (el: ElementId) => void;
   onClose: () => void;
 }) {
+  const costMul = useGame((s) => s.hud?.treeCostMul ?? 1);
   const tree = treeOf(gun.card.stats?.role);
   if (!tree) return null;
   const used = (gun.jobs ?? []).length;
@@ -217,7 +247,8 @@ export function GunTree({
       left={Math.max(0, (gun.jobSlots ?? PARAMS.jobSlotsStart) - used)}
       fullLine="This gun is full."
       extra={onInfuse ? <ElementRow gun={gun} credit={credit} onInfuse={onInfuse} /> : null}
-      cost={upgradeCost(gun.card, used)}
+      headExtra={<TargetButton gun={gun} />}
+      cost={Math.round(upgradeCost(gun.card, used) * costMul)}
       credit={credit}
       onBuy={onBuy}
       onClose={onClose}
@@ -238,6 +269,7 @@ export function CraftTree({
   onBuy: (id: string) => void;
   onClose: () => void;
 }) {
+  const costMul = useGame((s) => s.hud?.treeCostMul ?? 1);
   const tree = craftTreeOf(craft.card);
   return (
     <TreeModal
@@ -251,7 +283,7 @@ export function CraftTree({
       left={craftPicksLeft(craft)}
       fullLine="This craft is full."
       note={craft.hullMax ? `Hull ${fmtCount(craft.hull ?? 0)}/${fmtCount(craft.hullMax)}` : undefined}
-      cost={craftUpgradeCost(craft.jobs.length)}
+      cost={Math.round(craftUpgradeCost(craft.jobs.length) * costMul)}
       credit={credit}
       onBuy={onBuy}
       onClose={onClose}

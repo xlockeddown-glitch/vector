@@ -5,42 +5,61 @@ import { fmtCount } from "@/game/format";
 import { CARDS } from "@/game/data/cards";
 import { craftHook, companionSpecialOf } from "@/game/data/companion";
 import { SETS } from "@/game/data/sets";
-import { BoostRocket } from "./BoostRocket";
-import { ShrikeJet } from "./ShrikeJet";
-import { BoreAuger } from "./BoreAuger";
 import { useState } from "react";
 import { markTutorial } from "@/game/persist";
 import { vaultHas, vaultOf } from "@/game/data/vault";
 import { GAME_VERSION } from "@/game/version";
 
-const EXHAUST = [
-  { g: "◆", x: 6, y: 42, d: "0ms", c: "text-steel" },
-  { g: "●", x: -10, y: 58, d: "220ms", c: "text-steel" },
-  { g: "△", x: 14, y: 70, d: "480ms", c: "text-muted" },
-  { g: "▸", x: -4, y: 52, d: "700ms", c: "text-steel" },
-  { g: "◆", x: 2, y: 84, d: "980ms", c: "text-muted" },
-  { g: "●", x: 16, y: 46, d: "1200ms", c: "text-steel" },
-  { g: "△", x: -16, y: 76, d: "1460ms", c: "text-steel" },
-  { g: "▸", x: 8, y: 62, d: "1680ms", c: "text-muted" },
-] as const;
+/** Perspective floor: verticals fan out from a vanishing point, horizontals bunch toward the horizon. */
+const FLOOR_FAN = Array.from({ length: 25 }, (_, i) => 400 + (i - 12) * 90);
+const FLOOR_ROWS = Array.from({ length: 9 }, (_, i) => Math.round(300 * ((i + 1) / 9) ** 2.2));
 
-const JET_EXHAUST = [
-  { g: "◆", x: 8, y: 44, d: "80ms", c: "text-frost" },
-  { g: "●", x: -12, y: 60, d: "300ms", c: "text-sage" },
-  { g: "△", x: 16, y: 72, d: "540ms", c: "text-frost" },
-  { g: "▸", x: -6, y: 54, d: "780ms", c: "text-sage" },
-  { g: "◆", x: 4, y: 86, d: "1040ms", c: "text-frost" },
-  { g: "●", x: 18, y: 48, d: "1280ms", c: "text-sage" },
-] as const;
-
-const BORE_EXHAUST = [
-  { g: "◆", x: -18, y: 8, d: "60ms", c: "bore-dust" },
-  { g: "●", x: -28, y: 22, d: "280ms", c: "bore-cyan" },
-  { g: "△", x: -12, y: 30, d: "520ms", c: "bore-dust" },
-  { g: "▸", x: -34, y: 14, d: "760ms", c: "text-frost" },
-  { g: "◆", x: -22, y: 36, d: "1020ms", c: "bore-cyan" },
-  { g: "●", x: -8, y: 18, d: "1280ms", c: "bore-dust" },
-] as const;
+/** Neon vector backdrop: grid, wireframe planet with an incoming lane, floor grid, two line-art ships. */
+function TitleBackdrop() {
+  return (
+    <div className="title-void" aria-hidden>
+      <svg className="title-art title-globe" viewBox="0 0 400 400">
+        <circle cx="200" cy="200" r="150" />
+        <ellipse cx="200" cy="200" rx="150" ry="52" />
+        <ellipse cx="200" cy="140" rx="132" ry="34" />
+        <ellipse cx="200" cy="260" rx="132" ry="34" />
+        <ellipse cx="200" cy="200" rx="52" ry="150" />
+        <ellipse cx="200" cy="200" rx="108" ry="150" />
+        <path d="M200 50 V350" />
+        <path className="is-lane" d="M-10 96 C70 60 120 80 150 120" />
+        <path className="is-lane" d="M410 76 C330 50 285 78 256 112" />
+        <path className="is-foe" d="M22 74 l8 8 -8 8 -8 -8 Z M58 66 l7 7 -7 7 -7 -7 Z M96 72 l6 6 -6 6 -6 -6 Z" />
+        <path className="is-foe" d="M380 60 l8 8 -8 8 -8 -8 Z M344 56 l7 7 -7 7 -7 -7 Z M308 66 l6 6 -6 6 -6 -6 Z" />
+      </svg>
+      <svg className="title-art title-floor" viewBox="0 0 800 300" preserveAspectRatio="none">
+        {FLOOR_FAN.map((x) => (
+          <path key={x} d={`M400 -60 L${x} 300`} />
+        ))}
+        {FLOOR_ROWS.map((y) => (
+          <path key={y} d={`M-400 ${y} H1200`} />
+        ))}
+        <path className="is-horizon" d="M-400 2 H1200" />
+      </svg>
+      <svg className="title-art title-ship title-ship-l" viewBox="0 0 100 220">
+        <path d="M50 6 C66 30 71 70 70 118 L70 150 L30 150 L30 118 C29 70 34 30 50 6 Z" />
+        <path d="M30 116 L10 166 L30 152 M70 116 L90 166 L70 152 M50 126 V150" />
+        <path d="M38 150 L34 164 H66 L62 150" />
+        <path className="is-core" d="M32 96 H68 M36 44 H64" />
+        <circle className="is-core" cx="50" cy="66" r="10" />
+        <circle className="is-core" cx="50" cy="66" r="4" />
+        <path className="is-flame" d="M39 168 L50 208 L61 168 M45 168 L50 188 L55 168" />
+      </svg>
+      <svg className="title-art title-ship title-ship-r" viewBox="0 0 100 220">
+        <path d="M50 6 L58 62 L60 150 L50 164 L40 150 L42 62 Z" />
+        <path d="M43 72 L6 138 L8 150 L41 130 M57 72 L94 138 L92 150 L59 130" />
+        <path d="M41 140 L26 164 L42 157 M59 140 L74 164 L58 157" />
+        <path className="is-core" d="M50 28 L54 58 H46 Z M50 74 V140" />
+        <path className="is-flame" d="M43 162 L46.5 196 L50 166 L53.5 196 L57 162" />
+        <path className="is-trail" d="M8 152 V214 M92 152 V214" />
+      </svg>
+    </div>
+  );
+}
 
 const CRAFTS = CARDS.filter((c) => c.kind === "companion");
 const GEM_RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
@@ -90,65 +109,18 @@ export function TitleScreen({
   };
   return (
     <div className="absolute inset-0 z-20 overflow-x-hidden overflow-y-auto bg-ink">
-      <img
-        src="/game/map/title-cyber.jpg"
-        alt=""
-        className="title-photo pointer-events-none absolute inset-0 h-full w-full object-cover"
-      />
-      <div className="title-neon" aria-hidden />
-      <div className="rocket-sky" aria-hidden>
-        <div className="rocket-craft">
-          <div className="relative">
-            <BoostRocket className="rocket-pose rocket-toned relative z-10" />
-            <div className="rocket-reflect-well">
-              <BoostRocket compact puddle className="rocket-reflect" />
-            </div>
-            {EXHAUST.map((p, i) => (
-              <span
-                key={`${p.g}-${i}`}
-                className={`exhaust-glyph text-lg sm:text-2xl ${p.c}`}
-                style={{
-                  animationDelay: p.d,
-                  ["--ex" as string]: `${p.x}px`,
-                  ["--ey" as string]: `${p.y}px`,
-                }}
-              >
-                {p.g}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="jet-craft">
-          <div className="relative">
-            <ShrikeJet className="rocket-pose jet-toned relative z-10" />
-            <div className="rocket-reflect-well jet-reflect-well">
-              <ShrikeJet compact puddle className="rocket-reflect" />
-            </div>
-            {JET_EXHAUST.map((p, i) => (
-              <span
-                key={`j-${p.g}-${i}`}
-                className={`exhaust-glyph text-lg sm:text-2xl ${p.c}`}
-                style={{
-                  animationDelay: p.d,
-                  ["--ex" as string]: `${p.x}px`,
-                  ["--ey" as string]: `${p.y}px`,
-                }}
-              >
-                {p.g}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+      <TitleBackdrop />
 
       <div className="title-stack relative z-10 flex min-h-full flex-col items-center px-5 pb-6 pt-8 text-center sm:px-10">
-        <p className="ui-kicker rise-in text-steel">
-          Tower Defense
-        </p>
+        <p className="ui-kicker rise-in">Tower Defense</p>
         <div className="title-lockup rise-in" style={{ animationDelay: "60ms" }}>
-          <h1 className="title-chrome relative font-display text-[clamp(3.6rem,14vw,9rem)] font-bold uppercase leading-[0.84] tracking-[0.05em]">
+          <h1
+            data-text="Vector"
+            className="title-chrome relative font-display text-[clamp(3.6rem,14vw,9rem)] font-bold uppercase leading-[0.84]"
+          >
             Vector
           </h1>
+          <div className="title-rule" aria-hidden />
           <p className="title-tag">Hold the lane. Keep the planet.</p>
         </div>
         <div className="title-cta relative z-20 mt-6 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "180ms" }}>
@@ -239,29 +211,8 @@ export function TitleScreen({
         </div>
         </div>
         )}
-        <div className="bore-craft rise-in" style={{ animationDelay: "200ms" }}>
-          <div className="relative">
-            <BoreAuger className="rocket-pose bore-toned relative z-10" />
-            <div className="rocket-reflect-well bore-reflect-well">
-              <BoreAuger compact puddle className="rocket-reflect" />
-            </div>
-            {BORE_EXHAUST.map((p, i) => (
-              <span
-                key={`b-${p.g}-${i}`}
-                className={`exhaust-glyph text-lg sm:text-2xl ${p.c}`}
-                style={{
-                  animationDelay: p.d,
-                  ["--ex" as string]: `${p.x}px`,
-                  ["--ey" as string]: `${p.y}px`,
-                }}
-              >
-                {p.g}
-              </span>
-            ))}
-          </div>
-        </div>
         {(best.runs > 0 || (best.bestWave ?? 0) > 0) && (
-          <p className="mt-6 tabular text-[12px] text-faint">
+          <p className="mt-6 tabular text-[12px] text-steel">
             {[
               best.runs > 0 ? `${best.runs} run${best.runs === 1 ? "" : "s"}` : null,
               best.bestWave ? `wave ${best.bestWave}` : null,
@@ -273,10 +224,10 @@ export function TitleScreen({
       </div>
       {gate && (
         <div className="tutorial-gate">
-          <div className="tutorial-gate-panel">
-            <p className="text-[11px] font-medium tracking-[0.18em] text-frost">First run</p>
+          <div className="tutorial-gate-panel neon-ticks">
+            <p className="neon-kicker">First run</p>
             <h2 className="mt-1 font-display text-2xl font-bold text-paper">A short how-to?</h2>
-            <p className="mt-2 text-[14px] text-muted">Tips while you play. You can skip any time.</p>
+            <p className="mt-2 text-[14px] text-steel">Tips while you play. You can skip any time.</p>
             <div className="mt-5 flex gap-2">
               <button
                 type="button"

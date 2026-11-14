@@ -12,6 +12,7 @@ import { MerchantScreen } from "./MerchantScreen";
 import { RosterDock } from "./RosterDock";
 import { ShopScreen } from "./ShopScreen";
 import { TitleScreen } from "./TitleScreen";
+import { ThreatPicker } from "./ThreatPicker";
 import { createRuntime, RUNTIME_GEN, type HudSink, type Runtime } from "@/game/runtime";
 import { useGame } from "@/game/store";
 import { orbitRank } from "@/game/data/orbit";
@@ -116,6 +117,8 @@ export function GameApp() {
           onBind={(id) => act({ type: "bind", id })}
         />
       )}
+
+      {phase === "title" && <ThreatPicker />}
 
       {help && <HelpSheet onClose={() => act({ type: "closeHelp" })} />}
 

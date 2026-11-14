@@ -1,1 +1,162 @@
 /* depth slice styles */
+
+/* Threat picker: a small tab at the bottom left of the title screen. */
+.depth-threat {
+  position: absolute;
+  left: max(0.75rem, env(safe-area-inset-left));
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  z-index: 30;
+  width: min(20rem, calc(100vw - 1.5rem));
+  font-size: 13px;
+  color: var(--color-paper);
+  pointer-events: none;
+}
+.depth-threat > * {
+  pointer-events: auto;
+}
+.depth-threat-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 40px;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgb(154 163 178 / 0.35);
+  border-radius: 6px;
+  background: rgb(5 6 11 / 0.82);
+  backdrop-filter: blur(8px);
+  font-family: var(--font-display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.depth-threat-tab:hover,
+.depth-threat-tab:focus-visible {
+  border-color: rgb(238 243 247 / 0.6);
+}
+.depth-threat-n {
+  min-width: 1.5em;
+  padding: 0 0.35em;
+  border-radius: 4px;
+  background: rgb(238 243 247 / 0.1);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.depth-threat.is-hot .depth-threat-tab {
+  border-color: rgb(255 92 42 / 0.6);
+  box-shadow: 0 0 12px rgb(255 92 42 / 0.25);
+}
+.depth-threat.is-hot .depth-threat-n {
+  background: rgb(255 92 42 / 0.25);
+  color: #ffb08f;
+}
+.depth-threat-pay {
+  color: #e8c15a;
+  letter-spacing: 0.06em;
+  font-size: 12px;
+}
+.depth-threat-panel {
+  margin-bottom: 0.5rem;
+  order: -1;
+  padding: 0.7rem;
+  border: 1px solid rgb(154 163 178 / 0.3);
+  border-radius: 8px;
+  background: rgb(10 14 22 / 0.94);
+  backdrop-filter: blur(10px);
+  max-height: min(60dvh, 26rem);
+  overflow-y: auto;
+}
+.depth-threat.is-open {
+  display: flex;
+  flex-direction: column;
+}
+.depth-threat.is-open .depth-threat-tab {
+  align-self: flex-start;
+}
+.depth-threat-sub {
+  margin: 0 0 0.5rem;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.depth-threat-list {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.depth-threat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid rgb(154 163 178 / 0.18);
+  border-radius: 6px;
+  background: rgb(238 243 247 / 0.03);
+  text-align: left;
+}
+.depth-threat-row:hover,
+.depth-threat-row:focus-visible {
+  border-color: rgb(238 243 247 / 0.45);
+}
+.depth-threat-row.is-on {
+  border-color: rgb(255 92 42 / 0.65);
+  background: rgb(255 92 42 / 0.1);
+}
+.depth-threat-box {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgb(238 243 247 / 0.55);
+  border-radius: 3px;
+}
+.depth-threat-row.is-on .depth-threat-box {
+  border-color: #ff5c2a;
+  background: #ff5c2a;
+  box-shadow: inset 0 0 0 2px rgb(10 14 22);
+}
+.depth-threat-copy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.depth-threat-name {
+  font-weight: 700;
+}
+.depth-threat-blurb {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.depth-threat-pts {
+  flex: none;
+  color: #e8c15a;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.depth-threat-clear {
+  margin-top: 0.5rem;
+  min-height: 32px;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+/* Gun tree header: target priority chip. */
+.depth-target {
+  min-height: 36px;
+  white-space: nowrap;
+}
+.depth-target-k {
+  color: var(--color-muted);
+  font-size: 0.85em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.depth-target.is-strong {
+  border-color: rgb(232 193 90 / 0.6);
+}
+.depth-target.is-last {
+  border-color: rgb(60 214 204 / 0.6);
+}

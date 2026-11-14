@@ -12,6 +12,8 @@ export const ENEMY_NAME: Record<EnemyType, string> = {
   cache: "Cache",
   dart: "Needle",
   medic: "Patch",
+  shard: "Shard",
+  warden: "Warden",
 };
 
 export type ScrapPaint = {

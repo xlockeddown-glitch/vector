@@ -1,1 +1,99 @@
 /* pass slice styles */
+
+/* Daily challenges, next-up card and tier reveal. */
+.pass-daily { margin-top: 0.7rem; }
+.pass-daily-title {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 0.35rem;
+}
+.pass-quests {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.4rem;
+}
+.pass-quest {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid color-mix(in oklab, var(--color-frost) 16%, transparent);
+  background: #0c1019;
+}
+.pass-quest.is-done { border-color: color-mix(in oklab, var(--color-frost) 55%, transparent); }
+.pass-quest-row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 13px; color: var(--color-paper); }
+.pass-quest-xp { color: var(--color-epic); font-size: 12px; white-space: nowrap; }
+.pass-quest.is-done .pass-quest-xp { color: var(--color-frost); }
+.pass-quest-bar {
+  margin-top: 0.35rem;
+  height: 6px;
+  background: color-mix(in oklab, var(--color-frost) 14%, #0a0e16);
+}
+.pass-quest-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-epic);
+  transition: width 0.4s ease;
+}
+.pass-quest.is-done .pass-quest-bar > span { background: var(--color-frost); }
+.pass-quest-count { font-size: 11px; color: var(--color-muted); }
+.pass-nextup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.8rem;
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--color-ember);
+  background: color-mix(in oklab, var(--color-ember) 8%, #0c1019);
+}
+.pass-nextup-kicker { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-ember); }
+.pass-nextup-name { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; color: var(--color-paper); }
+.pass-nextup-sub { font-size: 12px; color: var(--color-muted); }
+.pass-panel { position: relative; }
+.pass-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(5, 8, 14, 0.88);
+}
+.pass-reveal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  max-height: 100%;
+  width: min(26rem, 100%);
+}
+.pass-reveal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  overflow-y: auto;
+}
+.pass-reveal-item {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  grid-template-areas: "n kind" "n name";
+  column-gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid color-mix(in oklab, var(--color-frost) 45%, transparent);
+  background: #0c1019;
+  opacity: 0;
+  animation: pass-pop 0.45s ease-out forwards;
+}
+.pass-reveal-item.is-look {
+  border-color: var(--color-epic);
+  box-shadow: 0 0 14px color-mix(in oklab, var(--color-epic) 35%, transparent);
+}
+.pass-reveal-item .pass-tier-n { grid-area: n; }
+@keyframes pass-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pass-reveal-item { animation: none; opacity: 1; }
+}

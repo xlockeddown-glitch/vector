@@ -42,6 +42,7 @@ import {
   swapTower,
   dismissSwapToast,
   toggleCompanion,
+  cycleTarget,
   livePads,
   bayMoon,
   type World,
@@ -50,6 +51,7 @@ import { useGame } from "./store";
 import { cardLeans } from "./data/gifts";
 import { dealSpecials } from "./data/specials";
 import type { HangarId, OpId, SkinId } from "./types";
+import { threatPoints } from "./data/threat";
 
 export type Runtime = {
   start: () => void;
@@ -64,6 +66,12 @@ export type Runtime = {
 };
 
 export type HudSink = (w: World) => void;
+
+/** Send an action to the live runtime from a component that has no onAction prop. */
+export function sendAction(action: Action) {
+  if (typeof window === "undefined") return;
+  (window as unknown as { __vectorRuntime?: Runtime }).__vectorRuntime?.dispatch(action);
+}
 
 export type Action =
   | { type: "play"; continue?: boolean; tutorial?: boolean; mode?: "story" | "arcade" | "build" }
@@ -106,7 +114,8 @@ export type Action =
   | { type: "dismissSwap" }
   | { type: "craftBay"; uid: string }
   | { type: "slot"; id: number }
-  | { type: "bind"; id: string };
+  | { type: "bind"; id: string }
+  | { type: "target"; uid: string };
 
 type QaSnap = {
   phase: World["phase"];
@@ -1132,6 +1141,12 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
         pushHud(true);
         break;
       }
+      case "target": {
+        if (cycleTarget(world, action.uid)) checkpoint(world);
+        audio.play("ui");
+        pushHud(true);
+        break;
+      }
       case "upgradeCraft": {
         const ok = upgradeCraft(world, action.uid, action.node);
         audio.play(ok ? "place" : "ui");
@@ -1215,6 +1230,12 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
             wavesCleared: world.wavesCleared ?? 0,
             won: (world.wavesCleared ?? 0) >= WIN_WAVES,
             starsMade: world.starsMade ?? 0,
+            threat: threatPoints(world.threat),
+            upgradesMade: world.upgradesMade ?? 0,
+            runKills: world.runKills ?? 0,
+            runLeaks: world.runLeaks ?? 0,
+            reactions: world.reactions ?? 0,
+            playMode: world.playMode,
           });
           if (best) useGame.getState().setBest(best);
           world.recorded = true;

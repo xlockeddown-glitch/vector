@@ -109,15 +109,20 @@ function mixFor(local: number, theme: string, act: number): WaveGroup[] {
   }
   })();
   groups.push(g("dart", c(5 * fastN), 0.15, 0.5));
+  if (local >= PARAMS.depthFoesFrom) {
+    // Depth foes, alternating: Shards (split into Swarm) on even waves, Wardens (damage aura) on odd.
+    if (local % 2 === 0) groups.push(g("shard", c(2), 0.9, 2.6));
+    else groups.push(g("warden", 1 + (act > 0 ? 1 : 0) + loop, 2.8, 2.2));
+  }
   if (local >= Math.max(4, 6 - loop)) groups.push(g("medic", 1 + (act > 0 ? 1 : 0) + (loop > 0 ? 1 : 0), 2.5, 1.6));
   return groups;
 }
 
-function withMega(groups: WaveGroup[], mega: boolean, act: number): WaveGroup[] {
+function withMega(groups: WaveGroup[], mega: boolean, act: number, countMul: number = PARAMS.megaCountMul): WaveGroup[] {
   if (!mega) return groups;
   const scaled = groups.map((grp) => ({
     ...grp,
-    count: grp.type === "cache" ? grp.count : Math.max(1, Math.round(grp.count * PARAMS.megaCountMul)),
+    count: grp.type === "cache" ? grp.count : Math.max(1, Math.round(grp.count * countMul)),
   }));
   // One titan per mega wave: only add one if the wave doesn't already bring its own.
   if (!groups.some((grp) => grp.type === "titan")) scaled.push(g("titan", 1, 1, 2.1));
@@ -145,14 +150,15 @@ function buildWaves(): WaveDef[] {
 
 export const WAVES: WaveDef[] = buildWaves();
 
-export function waveAt(index: number): WaveDef {
+/** opts.megaCountMul overrides PARAMS.megaCountMul (Threat: Big Megas). */
+export function waveAt(index: number, opts?: { megaCountMul?: number }): WaveDef {
   const theme = themeAt(index);
   const local = ((index % THEME_LEN) + THEME_LEN) % THEME_LEN;
   const act = Math.floor(Math.max(0, index) / THEME_LEN);
   const mega = isMegaWave(index);
   return {
     name: mega ? `Mega ${theme.short} ${local + 1}` : `${theme.short} ${local + 1}`,
-    groups: withMega(mixFor(local, theme.id, act), mega, act),
+    groups: withMega(mixFor(local, theme.id, act), mega, act, opts?.megaCountMul),
     mega,
   };
 }

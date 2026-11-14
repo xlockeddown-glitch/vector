@@ -33,7 +33,7 @@ import {
 } from "./constants";
 import { combatStats, OPENING_ROUNDS, upgradeCost, getCard, gunLevelMul } from "./data/cards";
 import { dealStampPack, foldStamps, type StampLook } from "./data/stamps";
-import { BASE, PATHS, PADS, padById, pathOf, GATES, nearestPathMeta, sampleAlong, PATH_ALONG, PATH_SAMPLES, setMapLayout, layoutForMap, padReachMul, padRateMul, padBurnBonus, moonPlantLine } from "./data/map";
+import { BASE, PATHS, PADS, padById, pathOf, GATES, nearestPathMeta, sampleAlong, PATH_ALONG, PATH_SAMPLES, setMapLayout, layoutForMap, layoutCount, padReachMul, padRateMul, padBurnBonus, moonPlantLine } from "./data/map";
 import { LOOP_WAVES, loopOf, themeAt } from "./data/themes";
 import { isPlayMode } from "./data/modes";
 import { waveAt, WAVES } from "./data/waves";
@@ -62,6 +62,7 @@ import { companionFx, companionMaxHp, companionSpecialOf, pickTaunt, type Compan
 import { skillsForCraft } from "./data/skills";
 import { BONUS_CREDIT, fluxFromBank, fluxFromRound, hangarOf, hangarStartCredit } from "./data/hangar";
 import { vaultHas, vaultOf } from "./data/vault";
+import { MUTANT_AFFIXES, THREAT_NUM, hasThreat, loadThreat, threatCostMul, threatPayMul, threatPoints } from "./data/threat";
 import type {
   ActiveCharm,
   CardDef,
@@ -83,6 +84,7 @@ import type {
   RolledCard,
   RosterItem,
   RunSave,
+  TargetMode,
   SimSpeed,
   ThemeId,
 } from "./types";
@@ -111,6 +113,8 @@ export type Enemy = {
   iced: boolean;
   marked: boolean;
   anim: number;
+  /** Seconds since spawn (drives the spawn-in fade). */
+  age?: number;
   facing: number;
   flash: number;
   lane: number;
@@ -122,6 +126,14 @@ export type Enemy = {
   hat?: number;
   knockHits?: number;
   age?: number;
+  /** Threat Mutant affix, if any. */
+  affix?: "shield" | "swift" | "regen" | null;
+  /** Shield HP soaked before hull (Mutant). */
+  shield?: number;
+  /** Regen per second (Mutant). */
+  regen?: number;
+  /** Inside a Warden aura while > 0. */
+  wardT?: number;
 };
 
 type Projectile = {
@@ -147,7 +159,7 @@ type Projectile = {
 };
 
 type Fx = {
-  kind: "ring" | "spark" | "smoke" | "beam" | "float" | "drop" | "patch" | "mote";
+  kind: "ring" | "spark" | "smoke" | "beam" | "float" | "drop" | "patch" | "mote" | "shatter" | "plus";
   x: number;
   y: number;
   life: number;
@@ -159,6 +171,8 @@ type Fx = {
   y2?: number;
   vx?: number;
   vy?: number;
+  seed?: number;
+  big?: boolean;
 };
 
 type BoreMark = {
@@ -229,6 +243,8 @@ export type World = {
   goldWave: number;
   hitstop: number;
   trauma: number;
+  /** Seconds left of the Home-hit flash. */
+  homeHitT?: number;
   uid: number;
   draftCards: RolledCard[];
   draftPicksLeft: number;
@@ -314,6 +330,7 @@ export type World = {
   wavesCleared: number;
   /** Build mode: star-ups made this run (Pass XP). */
   starsMade?: number;
+  reactions?: number;
   live: LiveOffer | null;
   liveQueue: number;
   liveMark: number;
@@ -357,6 +374,8 @@ export type World = {
   boundId: string | null;
   bondLevel: number;
   bondXp: number;
+  /** Threat toggles for this run (data/threat.ts). Picked before the run, kept for the whole run. */
+  threat: string[];
 };
 
 function uid(w) {
@@ -534,6 +553,7 @@ export function createWorld(): World {
     boundId: null,
     bondLevel: 1,
     bondXp: 0,
+    threat: loadThreat(),
   };
 }
 
@@ -1023,7 +1043,30 @@ function allocProj(w) {
 
 function addFx(w, fx) {
   w.fx.push({ ...fx, t: 0 });
-  if (w.fx.length > 120) w.fx.splice(0, w.fx.length - 120);
+  if (w.fx.length > 400) w.fx.splice(0, w.fx.length - 400);
+}
+
+/** Rising "+" particles (level-up, star-up, purchases). */
+function risePlus(w, x, y, color, n = 6) {
+  for (let i = 0; i < n; i++) {
+    addFx(w, {
+      kind: "plus",
+      x: x + (Math.random() - 0.5) * 36,
+      y: y + 6 + Math.random() * 8,
+      vx: (Math.random() - 0.5) * 14,
+      vy: -(40 + Math.random() * 40),
+      life: 0.7 + Math.random() * 0.35,
+      color: i % 2 ? color : "#ffd46b",
+      size: 4 + Math.random() * 3,
+    });
+  }
+}
+
+/** Expanding double ring plus rising "+" for upgrades. */
+function juiceBurst(w, x, y, color, size = 44) {
+  addFx(w, { kind: "ring", x, y, life: 0.6, color, size });
+  addFx(w, { kind: "ring", x, y, life: 0.45, color: "#eef6ff", size: size * 0.62 });
+  risePlus(w, x, y, color);
 }
 
 function motes(w, x, y, n, color, speed, life, aim) {
@@ -1061,6 +1104,7 @@ function celebrateLevel(w, x, y, color, level, uid) {
   addFx(w, { kind: "ring", x, y, life: 0.72, color: "#eef3f7", size: ring * 0.38 });
   addFx(w, { kind: "patch", x, y, life: 0.9, color: "#e8c15a", size: 32 });
   addFx(w, { kind: "spark", x, y, life: 0.6, color: "#e8c15a", size: 28 });
+  risePlus(w, x, y, color, 8);
   for (let i = 0; i < 7; i++) {
     addFx(w, {
       kind: "drop",
@@ -1128,9 +1172,16 @@ export function inspectGun(w, item) {
   };
 }
 
-function spawnEnemy(w, type, route = 0) {
+function spawnEnemy(w, type, route = 0, noMutant = false) {
   const def = ENEMIES[type];
-  const waveScale = (1 + w.wave * PARAMS.enemyHpPerWave + w.wave * w.wave * PARAMS.enemyHpPerWave2) * (w.playMode === "build" ? PARAMS.buildHpMul : 1);
+  // Endless: past wave 12 (index >= 12), HP also grows ×endlessHpGrow per wave beyond index 11.
+  const endlessMul = w.wave >= WIN_WAVES ? Math.pow(PARAMS.endlessHpGrow, w.wave - (WIN_WAVES - 1)) : 1;
+  const threatHp = hasThreat(w.threat, "hardened") ? THREAT_NUM.hardenedHp : 1;
+  const waveScale =
+    (1 + w.wave * PARAMS.enemyHpPerWave + w.wave * w.wave * PARAMS.enemyHpPerWave2) *
+    (w.playMode === "build" ? PARAMS.buildHpMul : 1) *
+    endlessMul *
+    threatHp;
   const e = allocEnemy(w);
   e.alive = true;
   e.type = type;
@@ -1156,6 +1207,7 @@ function spawnEnemy(w, type, route = 0) {
   e.elUntil = null;
   e.reactAt = 0;
   e.anim = Math.random() * 4;
+  e.age = 0;
   e.facing = 1;
   e.flash = 0;
   e.lane = ((w.enemies.reduce((n, x) => n + (x.alive ? 1 : 0), 0) + w.kills) % 3 - 1) * (type === "swarm" ? 6 : 9);
@@ -1166,6 +1218,18 @@ function spawnEnemy(w, type, route = 0) {
   e.hat = Math.floor(Math.random() * 4);
   e.knockHits = 0;
   e.age = 0;
+  e.affix = null;
+  e.shield = 0;
+  e.regen = 0;
+  e.wardT = 0;
+  if (hasThreat(w.threat, "overdrive")) e.speed *= THREAT_NUM.overdriveSpeed;
+  if (!noMutant && hasThreat(w.threat, "mutant") && Math.random() < THREAT_NUM.mutantOdds) {
+    const affix = MUTANT_AFFIXES[Math.floor(Math.random() * MUTANT_AFFIXES.length)];
+    e.affix = affix;
+    if (affix === "shield") e.shield = e.maxHp * THREAT_NUM.mutantShield;
+    else if (affix === "swift") e.speed *= THREAT_NUM.mutantSpeed;
+    else if (affix === "regen") e.regen = e.maxHp * THREAT_NUM.mutantRegen;
+  }
   const loop = loopOf(w.wave);
   if (loop > 0) {
     if (type === "dart" || type === "striker") e.speed *= 1 + PARAMS.raidLoopSpeed * loop;
@@ -1175,6 +1239,32 @@ function spawnEnemy(w, type, route = 0) {
   const ny = Math.cos(e.hdg);
   e.x = first.x + nx * e.lane;
   e.y = first.y + ny * e.lane;
+  return e;
+}
+
+/** Shard death: split into Swarm at its spot on the lane. */
+function splitShard(w, e) {
+  const route = e.route;
+  const along = e.along ?? 0;
+  // Hold the dead Shard's slot so allocEnemy cannot hand it back as one of the Swarm.
+  e.alive = true;
+  try {
+    spawnSplit(w, route, along);
+  } finally {
+    e.alive = false;
+  }
+}
+
+function spawnSplit(w, route, along) {
+  for (let i = 0; i < PARAMS.shardSplit; i++) {
+    const s = spawnEnemy(w, "swarm", route, true);
+    s.along = Math.max(0, along - i * 10);
+    s.lane = (i - (PARAMS.shardSplit - 1) / 2) * 7;
+    const p = sampleAlong(s.route, s.along);
+    s.hdg = p.heading;
+    s.x = p.x - Math.sin(s.hdg) * s.lane;
+    s.y = p.y + Math.cos(s.hdg) * s.lane;
+  }
 }
 
 function progress(e) {
@@ -1195,7 +1285,13 @@ function applyDamage(w, e, raw, quiet = false, from = null) {
     const huntMul = hunter?.trick === "hunt" ? Math.min(0.72, PARAMS.coverHuntMul * 2.05) : PARAMS.coverHuntMul;
     amount *= inGunCover(w, e.x, e.y) ? 1 : huntMul;
   }
-  const dmg = amount * (1 - Math.max(0, e.armor - shred)) * w.nextWaveDmg * w.envDmgAmp;
+  let dmg = amount * (1 - Math.max(0, e.armor - shred)) * w.nextWaveDmg * w.envDmgAmp;
+  if ((e.wardT ?? 0) > 0) dmg *= 1 - PARAMS.wardenCut;
+  if ((e.shield ?? 0) > 0) {
+    const soak = Math.min(e.shield, dmg);
+    e.shield -= soak;
+    dmg -= soak;
+  }
   e.hp -= dmg;
   if (from) {
     const c = (w.companions ?? []).find((x) => x.uid === from);
@@ -1212,6 +1308,8 @@ function applyDamage(w, e, raw, quiet = false, from = null) {
       color: "#f0f1f4",
       size: 12,
     });
+    const hitCol = (e.burnT ?? 0) > 0 ? "#ff7a3c" : (e.freezeT ?? 0) > 0 || (e.slowT ?? 0) > 0 ? "#7ecbff" : "#eef6ff";
+    addFx(w, { kind: "spark", x: e.x, y: e.y, life: 0.12, color: hitCol, size: 4 });
   }
   if (e.hp <= 0) killEnemy(w, e, from);
 }
@@ -1220,6 +1318,7 @@ function killEnemy(w, e, from = null) {
   if (!e.alive) return;
   hopBurn(w, e);
   e.alive = false;
+  if (e.type === "shard") splitShard(w, e);
   w.kills += 1;
   w.runKills = (w.runKills ?? 0) + 1;
   if (from) {
@@ -1275,6 +1374,12 @@ function killEnemy(w, e, from = null) {
   w.uiDirty = true;
   addFx(w, { kind: "ring", x: e.x, y: e.y, life: 0.35, color: "#9aa0ab", size: 22 });
   addFx(w, { kind: "smoke", x: e.x, y: e.y, life: 0.4, color: "#8b8e98", size: 16 });
+  {
+    const bigFoe = e.type === "titan" || e.type === "colossus";
+    const foeCol = e.type === "cache" ? "#ffd46b" : "#ff3d9a";
+    addFx(w, { kind: "shatter", x: e.x, y: e.y, life: bigFoe ? 0.6 : 0.42, color: foeCol, size: Math.max(8, e.radius), seed: Math.random() * 6.283, big: bigFoe });
+    if (bigFoe) addFx(w, { kind: "ring", x: e.x, y: e.y, life: 0.55, color: foeCol, size: e.type === "titan" ? 84 : 72 });
+  }
   w.trauma = Math.min(1, w.trauma + (e.type === "titan" || e.type === "colossus" ? 0.45 : 0.12));
   w.hitstop = e.type === "titan" ? 0.08 : 0.03;
   if (e.type === "colossus" || e.type === "titan") {
@@ -1307,7 +1412,8 @@ function leakEnemy(w, e) {
   }
   w.lives -= 1;
   w.uiDirty = true;
-  w.trauma = Math.min(1, w.trauma + 0.35);
+  w.trauma = Math.min(1, w.trauma + 0.5);
+  w.homeHitT = 0.45;
   const n = GATES[e.route];
   w.lastLeakGate = n?.name ?? null;
   audio.play("leak");
@@ -1326,6 +1432,11 @@ function leakEnemy(w, e) {
   }
 }
 
+/** Run earnings (round grades, banked Credit): Threat raises the payout. */
+function bankRunFlux(w, amount) {
+  return bankFlux(w, Math.max(0, amount) * threatPayMul(threatPoints(w.threat)));
+}
+
 function bankFlux(w, amount) {
   const n = Math.max(0, Math.floor(amount));
   if (n <= 0) return 0;
@@ -1341,7 +1452,7 @@ function failRun(w) {
   w.waveActive = false;
   payoutBond(w, w.grade?.grade ?? w.lastGrade ?? "F");
   if ((w.points ?? 0) > 0) {
-    bankFlux(w, fluxFromBank(w.points));
+    bankRunFlux(w, fluxFromBank(w.points));
     w.points = 0;
   }
   if (!w.recorded) {
@@ -1353,6 +1464,12 @@ function failRun(w) {
       wavesCleared: w.wavesCleared ?? 0,
       won: (w.wavesCleared ?? 0) >= WIN_WAVES,
       starsMade: w.starsMade ?? 0,
+      threat: threatPoints(w.threat),
+      upgradesMade: w.upgradesMade ?? 0,
+      runKills: w.runKills ?? 0,
+      runLeaks: w.runLeaks ?? 0,
+      reactions: w.reactions ?? 0,
+      playMode: w.playMode,
     });
     w.recorded = true;
   }
@@ -1597,20 +1714,44 @@ function tribeOnHit(w, e, stats) {
   }
 }
 
-function firstInRange(w, x, y, stats, aim) {
+/** Gun target pick. "first" = furthest along (default), "strong" = most HP, "last" = least far along. */
+function firstInRange(w, x, y, stats, aim, mode: TargetMode = "first") {
   let best = -1;
-  let bestP = -1;
+  let bestP = -Infinity;
+  let bestHp = -1;
   for (let i = 0; i < w.enemies.length; i++) {
     const e = w.enemies[i];
     if (!e.alive) continue;
     if (!inCover(stats.cover, x, y, e.x, e.y, stats.range, aim, stats.coverInner, stats.coverArc)) continue;
     const p = progress(e);
-    if (p > bestP) {
-      bestP = p;
-      best = i;
+    if (mode === "strong") {
+      const hp = e.hp + (e.shield ?? 0);
+      if (hp > bestHp || (hp === bestHp && p > bestP)) {
+        bestHp = hp;
+        bestP = p;
+        best = i;
+      }
+    } else {
+      const score = mode === "last" ? -p : p;
+      if (score > bestP) {
+        bestP = score;
+        best = i;
+      }
     }
   }
   return best;
+}
+
+export const TARGET_MODES: TargetMode[] = ["first", "strong", "last"];
+
+/** Cycle a gun's target priority: First → Strong → Last → First. */
+export function cycleTarget(w, uid: string) {
+  const r = (w.roster ?? []).find((x) => x.uid === uid);
+  if (!r || r.card.kind !== "tower") return false;
+  const i = TARGET_MODES.indexOf(r.target ?? "first");
+  r.target = TARGET_MODES[(i + 1) % TARGET_MODES.length];
+  w.uiDirty = true;
+  return true;
 }
 
 function fireAt(w, fromX, fromY, targetIndex, dmg, stats) {
@@ -1952,7 +2093,7 @@ function stepTowers(w, dt) {
     tickGunGlow(w, item, stats, pos, dt, hot);
     if (stats.projectile === "none") continue;
     if (item.cd > 0) continue;
-    const idx = firstInRange(w, pos.x, pos.y, stats, item.aim ?? 0);
+    const idx = firstInRange(w, pos.x, pos.y, stats, item.aim ?? 0, item.target ?? "first");
     if (idx < 0) continue;
     const home = item.placedPad === HOME_PAD;
     let halo = 0;
@@ -2276,7 +2417,7 @@ function queueWave(w) {
   w.goldWave = 0;
   w.waveNotes = {};
   w.waveActive = true;
-  const t = waveAt(w.wave);
+  const t = waveAt(w.wave, hasThreat(w.threat, "bigmega") ? { megaCountMul: THREAT_NUM.bigMegaCountMul } : undefined);
   const n = w.wave % PATHS.length;
   let r = 0;
   for (const i of t.groups) {
@@ -2286,6 +2427,9 @@ function queueWave(w) {
       w.spawnQ.push({ at: i.delay + k * i.interval, type: i.type, route: a });
       r += 1;
     }
+  }
+  if (hasThreat(w.threat, "escort") && w.wave >= THREAT_NUM.escortFrom) {
+    w.spawnQ.push({ at: THREAT_NUM.escortDelay, type: "medic", route: n });
   }
   w.spawnQ.sort((a, b) => a.at - b.at);
 }
@@ -2401,7 +2545,7 @@ function finishWave(w) {
   i.odds = oddsForGrade(i.grade, luckOf(w));
   w.grade = i;
   w.lastGrade = i.grade;
-  i.flux = bankFlux(w, fluxFromRound(i.grade, w.roundKills, w.roundLeaks));
+  i.flux = bankRunFlux(w, fluxFromRound(i.grade, w.roundKills, w.roundLeaks));
   grantXp(w, n, true);
   grantXp(w, GRADE_XP[i.grade], true);
   payoutBond(w, i.grade);
@@ -2459,9 +2603,10 @@ export function stepWorld(w, dt) {
     }
   }
   w.trauma = Math.max(0, w.trauma - dt * 1.8);
+  if ((w.homeHitT ?? 0) > 0) w.homeHitT = Math.max(0, (w.homeHitT ?? 0) - dt);
   for (const fx of w.fx) {
     fx.t += dt;
-    if (fx.kind === "mote") {
+    if (fx.kind === "mote" || fx.kind === "plus") {
       fx.x += (fx.vx || 0) * dt;
       fx.y += (fx.vy || 0) * dt;
     }
@@ -2487,6 +2632,7 @@ export function stepWorld(w, dt) {
   const folders = foldingGuns(w);
   for (const e of w.enemies) {
     if (!e.alive) continue;
+    if (e.age != null && e.age < 1) e.age += dt;
     e.anim += dt * (e.type === "dart" || e.type === "striker" ? 10 : 6);
     if (e.slowT > 0) e.slowT -= dt;
     if (e.shredT > 0) e.shredT -= dt;
@@ -2512,6 +2658,17 @@ export function stepWorld(w, dt) {
         }
       }
     }
+    if ((e.wardT ?? 0) > 0) e.wardT -= dt;
+    if (e.type === "warden") {
+      // Same loop as the medic. A flag with a short timer, so two Wardens do not stack.
+      for (const o of w.enemies) {
+        if (!o.alive || o === e) continue;
+        if (Math.hypot(o.x - e.x, o.y - e.y) < PARAMS.wardenR) {
+          o.wardT = Math.max(o.wardT ?? 0, 0.15);
+        }
+      }
+    }
+    if ((e.regen ?? 0) > 0 && e.alive) e.hp = Math.min(e.maxHp, e.hp + e.regen * dt);
     if ((e.along ?? 0) >= (PATH_ALONG[e.route] ?? 1) - 4) leakEnemy(w, e);
   }
   stepCompanion(w, dt);
@@ -2619,7 +2776,7 @@ function applyMap(w, card) {
   if (!m) return;
   w.mapId = card.templateId ?? card.id;
   w.mapTheme = m.theme;
-  w.mapLayout = layoutForMap(w.mapId);
+  w.mapLayout = layoutForMap(w.mapId, Math.floor(Math.random() * layoutCount(w.mapId)));
   let jog = 0;
   for (const ch of w.mapId ?? "m") jog += ch.charCodeAt(0);
   setMapLayout(w.mapLayout, (jog % 5) - 2);
@@ -4269,7 +4426,9 @@ export function beginOpening(w) {
   w.forge = meta.forge;
   w.hangarPads = hangar.pad;
   w.hangarLuck = hangar.luck;
-  w.lives = START_LIVES + applyStamps(w).lives + hangar.life;
+  w.threat = loadThreat();
+  const baseLives = hasThreat(w.threat, "glass") ? THREAT_NUM.glassLives : START_LIVES;
+  w.lives = baseLives + applyStamps(w).lives + hangar.life;
   w.maxLives = w.lives;
   w.points = hangarStartCredit(hangar);
   w.flux = meta.flux ?? 0;
@@ -4450,6 +4609,8 @@ function mergeCopy(w, r, card) {
     const pos = r.placedPad ? towerPoint(r) : null;
     if (pos) {
       addFx(w, { kind: "ring", x: pos.x, y: pos.y, life: 0.6, color: "#ffd46b", size: 46 });
+      risePlus(w, pos.x, pos.y, "#ffd46b");
+      addFx(w, { kind: "ring", x: pos.x, y: pos.y, life: 0.45, color: "#eef6ff", size: 28 });
       addFx(w, { kind: "float", x: pos.x, y: pos.y - 30, life: 1.2, text: starLabel(r.copies), color: "#ffd46b", size: 18 });
     }
     audio.play("place");
@@ -4825,7 +4986,7 @@ export function upgradeTower(w, t, n, tuneId) {
   if (!r?.placedPad) return false;
   hydrateGun(r);
   if (!slotsOpen(r)) return false;
-  const i = upgradeCost(r.card, slotsUsed(r));
+  const i = Math.round(upgradeCost(r.card, slotsUsed(r)) * threatCostMul(w.threat));
   if (i <= 0 || w.points < i) return false;
   if (!tuneId || !canTakeJob(r, tuneId)) return false;
   r.jobs = [...gunJobs(r), tuneId];
@@ -4844,7 +5005,7 @@ export function upgradeCraft(w, craftUid, nodeId) {
   const c = (w.companions ?? []).find((x) => x.uid === craftUid);
   if (!c || !nodeId) return false;
   if (craftPicksLeft(c) <= 0) return false;
-  const cost = craftUpgradeCost((c.jobs ?? []).length);
+  const cost = Math.round(craftUpgradeCost((c.jobs ?? []).length) * threatCostMul(w.threat));
   if (cost <= 0 || w.points < cost) return false;
   if (!canTakeCraftJob(c, nodeId)) return false;
   const before = craftHullMul(c);
@@ -4890,6 +5051,7 @@ export function pickSpecial(w, uid, id) {
     const pt = towerPoint(gun);
     if (pt) {
       addFx(w, { kind: "ring", x: pt.x, y: pt.y, life: 0.7, color: "#ff5c2a", size: 72 });
+      juiceBurst(w, pt.x, pt.y, "#ffd46b", 40);
       addFx(w, { kind: "float", x: pt.x, y: pt.y - 26, life: 1.4, text: spec.name, color: "#ff5c2a", size: 20 });
     }
     gun.levelPop = 0.38;
@@ -4933,6 +5095,7 @@ export function pickSpecial(w, uid, id) {
   w.announce = spec.name;
   w.announceT = 1.3;
   addFx(w, { kind: "ring", x: craft.x, y: craft.y, life: 0.7, color: "#3cd6cc", size: 64 });
+  juiceBurst(w, craft.x, craft.y, "#3cf2ff", 36);
   addFx(w, { kind: "float", x: craft.x, y: craft.y - 26, life: 1.4, text: spec.name, color: "#3cd6cc", size: 20 });
   craft.levelPop = 0.38;
   nextLevelPick(w);
@@ -5006,6 +5169,7 @@ function pickPart(w, uid, id) {
   w.announce = pick.name;
   w.announceT = 1.4;
   addFx(w, { kind: "ring", x: craft.x, y: craft.y, life: 0.75, color: "#e8c15a", size: 70 });
+  juiceBurst(w, craft.x, craft.y, "#ffd46b", 40);
   addFx(w, { kind: "float", x: craft.x, y: craft.y - 26, life: 1.5, text: pick.name, color: "#e8c15a", size: 22 });
   craft.levelPop = 0.42;
   nextLevelPick(w);
@@ -5189,7 +5353,7 @@ export function goTitle(w, keep: boolean): boolean {
   w.waveActive = false;
   if (!keep) {
     if ((w.points ?? 0) > 0) {
-      bankFlux(w, fluxFromBank(w.points));
+      bankRunFlux(w, fluxFromBank(w.points));
       w.points = 0;
     }
     if (!w.recorded) {
@@ -5201,6 +5365,12 @@ export function goTitle(w, keep: boolean): boolean {
         wavesCleared: w.wavesCleared ?? 0,
         won: (w.wavesCleared ?? 0) >= WIN_WAVES,
         starsMade: w.starsMade ?? 0,
+        threat: threatPoints(w.threat),
+      upgradesMade: w.upgradesMade ?? 0,
+      runKills: w.runKills ?? 0,
+      runLeaks: w.runLeaks ?? 0,
+      reactions: w.reactions ?? 0,
+      playMode: w.playMode,
       });
       w.recorded = true;
     }
@@ -5271,6 +5441,7 @@ function snapshotRun(w) {
       kills: r.kills ?? 0,
       shots: r.shots ?? 0,
       heals: r.heals ?? 0,
+      target: r.target ?? "first",
     })),
     relics: w.relics,
     environment: w.environment,
@@ -5320,6 +5491,7 @@ function snapshotRun(w) {
     mapId: w.mapId,
     mapTheme: w.mapTheme,
     mapLayout: w.mapLayout,
+    threat: w.threat ?? [],
     mapSlowMul: w.mapSlowMul,
     mapRangeMul: w.mapRangeMul,
     mapScrapMul: w.mapScrapMul,
@@ -5494,6 +5666,7 @@ export function applyRun(w, run) {
   w.mapTheme = run.mapTheme ?? null;
   w.mapLayout = run.mapLayout ?? layoutForMap(w.mapId);
   setMapLayout(w.mapLayout);
+  w.threat = Array.isArray(run.threat) ? run.threat : [];
   w.mapSlowMul = run.mapSlowMul ?? 1;
   w.mapRangeMul = run.mapRangeMul ?? 1;
   w.mapScrapMul = run.mapScrapMul ?? 1;

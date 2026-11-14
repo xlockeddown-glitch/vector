@@ -1,5 +1,5 @@
 import type { Assets } from "./assets";
-import { NEON, NEON_LOOK, neonCraft, neonEnemy, neonHome, neonMoon, rgba } from "./neon";
+import { NEON, NEON_LOOK, drawMuzzleFlashes, neonCraft, neonCraftTrail, neonEnemy, neonGunJuice, neonHome, neonMoon, rgba } from "./neon";
 import { ENEMIES, HOME_PAD, PALETTE, SKY_PAD, WORLD, PARAMS } from "./constants";
 import { combatStats, getCard } from "./data/cards";
 import { glowColor, glowRadius } from "./data/glow";
@@ -9,6 +9,7 @@ import { type CompanionState } from "./data/companion";
 import { scrapPaint } from "./data/enemies";
 import { themeAt } from "./data/themes";
 import { skinById } from "./data/skins";
+import { paintGunSkin } from "./neon-skins";
 import type { CardDef, CoverShape, PadLook, RosterItem, ThemeId } from "./types";
 import type { Enemy, World } from "./sim";
 import { towerPoint, worldSets, bayMoon, BAY_ORBIT, livePads, fusePartnerOf } from "./sim";
@@ -519,7 +520,7 @@ function drawCore(
 ) {
   const { x, y } = BASE;
   if (NEON_LOOK) {
-    neonHome(ctx, x, y, t, gold);
+    neonHome(ctx, x, y, t, gold, homeHitNow);
     return;
   }
   ctx.save();
@@ -822,6 +823,7 @@ function drawTowerShape(
   const pop = 1 + (item.levelPop ?? 0) * 0.75;
   const grow = (1 + 0.1 * (Math.max(1, Math.min(4, item.level || 1)) - 1)) * pop;
   ctx.scale(grow, grow);
+  if (NEON_LOOK && world) neonGunJuice(ctx, item, x, y, t);
 
   if ((item.levelPop ?? 0) > 0.02) {
     const a = item.levelPop ?? 0;
@@ -1243,6 +1245,7 @@ function drawTowerShape(
     ctx.stroke();
     ctx.shadowBlur = 0;
   }
+  if (NEON_LOOK) paintGunSkin(ctx, skin.id, c, t);
 
   ctx.restore();
 }
@@ -2574,6 +2577,7 @@ function drawCompanion(ctx: CanvasRenderingContext2D, c: CompanionState, visT: n
     ctx.stroke();
     ctx.restore();
   }
+  if (NEON_LOOK && !c.home) neonCraftTrail(ctx, c, c.x, y, visT);
   ctx.save();
   if (c.home) ctx.globalAlpha = 0.72;
   ctx.fillStyle = "rgba(0,0,0,0.4)";
@@ -3534,6 +3538,8 @@ export function screenToWorld(canvas: HTMLCanvasElement, cx: number, cy: number)
   };
 }
 
+let homeHitNow = 0;
+
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
@@ -3543,9 +3549,10 @@ export function drawWorld(
   const { scale, ox, oy, dpr, cssW, cssH } = viewTransform(canvas);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+  homeHitNow = w.homeHitT ?? 0;
   const shake = w.trauma * w.trauma;
-  const sx = (Math.random() * 2 - 1) * shake * 8;
-  const sy = (Math.random() * 2 - 1) * shake * 6;
+  const sx = (Math.random() * 2 - 1) * shake * 10;
+  const sy = (Math.random() * 2 - 1) * shake * 8;
   const theme = themeAt(w.wave, w.mapTheme);
 
   ctx.save();
@@ -3761,6 +3768,7 @@ export function drawWorld(
     ctx.restore();
   }
 
+  if (NEON_LOOK) drawMuzzleFlashes(ctx, w.visT);
   ctx.globalCompositeOperation = "source-over";
   drawNades(ctx, w);
 
@@ -3843,6 +3851,40 @@ export function drawWorld(
       ctx.moveTo(fx.x - 14 * (1.1 - k), fx.y);
       ctx.lineTo(fx.x, fx.y - 8);
       ctx.lineTo(fx.x + 14 * (1.1 - k), fx.y);
+      ctx.stroke();
+    } else if (fx.kind === "shatter") {
+      // Short glowing line fragments flying outward.
+      const u = 1 - k;
+      const n = fx.big ? 10 : 7;
+      const reach = fx.size * (fx.big ? 3 : 2.3) * (1 - (1 - u) * (1 - u));
+      ctx.globalCompositeOperation = "lighter";
+      ctx.lineCap = "round";
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.strokeStyle = pass ? "#ffffff" : fx.color;
+        ctx.globalAlpha = Math.max(0, k) * (pass ? 0.5 : 0.9);
+        ctx.lineWidth = pass ? 0.8 : 2.2;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const a = (fx.seed ?? 0) + (i / n) * Math.PI * 2 + Math.sin(i * 12.9898) * 0.25;
+          const d0 = fx.size * 0.35 + reach * (0.7 + 0.3 * Math.sin(i * 7.3));
+          const len = (fx.size * 0.6 + 4) * k;
+          const ca = Math.cos(a);
+          const sa = Math.sin(a);
+          ctx.moveTo(fx.x + ca * d0, fx.y + sa * d0);
+          ctx.lineTo(fx.x + ca * (d0 + len), fx.y + sa * (d0 + len));
+        }
+        ctx.stroke();
+      }
+    } else if (fx.kind === "plus") {
+      const s = fx.size * (0.6 + 0.4 * k);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = fx.color;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(fx.x - s, fx.y);
+      ctx.lineTo(fx.x + s, fx.y);
+      ctx.moveTo(fx.x, fx.y - s);
+      ctx.lineTo(fx.x, fx.y + s);
       ctx.stroke();
     } else if (fx.kind === "float" && fx.text) {
       const sz = Math.max(12, fx.size || 12);
