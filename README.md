@@ -35,7 +35,7 @@ VECTOR combines three things:
 | **Build** | Start with two guns. Draft one gun after every wave. Copies of a gun you own merge: **3 copies = ★2, 9 = ★3**. Each star multiplies the gun's damage and opens another tree pick. Hold 12. |
 
 ### Threat (opt-in difficulty)
-Tap **Threat** on the title screen to turn on modifiers (tougher enemies, faster enemies, fewer lives, pricier trees, bigger mega waves, escorts, mutant affixes). Each point pays +10% Vault Credit and Pass XP. Past wave 12, enemy HP also grows 6% per wave.
+Tap **Threat** on the title screen to turn on modifiers (tougher enemies, faster enemies, fewer lives, pricier trees, no Orders, bigger mega waves, escorts, mutant affixes). Each point pays +10% Vault Credit and Pass XP. Past wave 12, enemy HP also grows 6% per wave.
 
 ### Campaign
 Tap **Campaign** on the title screen. 15 hand-set stages in 3 sectors (Tide Line, Dark Side, Lagrange). Each stage fixes the map, the lane, the mode (Arena or Build), the wave count (6, 9 or 12) and its own Threat; your Threat toggles are left alone. Win a stage to score up to 3 ★: ★1 for holding every wave, ★2 for staying under a leak cap, ★3 for that stage's twist (no leaks, tree picks, reactions, Build merges, fewest guns, a time limit or a Credit budget). Stages open in order once the one before has a ★; Dark Side opens at 8 ★, Lagrange at 20 ★. Each new ★ pays 15 Vault Credit, a first clear pays 40 Pass XP, and all 15 ★ in a sector pays a reward (Ember skin, 300 Credit, Gold skin). Replays pay normal run rewards. Stage data lives in `src/game/data/campaign.ts`; reward numbers are in `PARAMS` (`campaign*`).
@@ -45,6 +45,18 @@ Tap **Campaign** on the title screen. 15 hand-set stages in 3 sectors (Tide Line
 - **Jammer** — every 4.5 s it pulses: guns within 130 units hold fire for 1.5 s (Home and crafts are immune; a gun gets 2 s clear before it can be jammed again). Tanky and slow. Outrange it or focus it. Arena / Build from wave 8; Campaign in Lagrange.
 
 Numbers are in `PARAMS` (`blink*`, `jam*`); Campaign stages list them in `extra` (`src/game/data/campaign.ts`).
+
+## Orders
+Active abilities you cast in combat from one shared **Energy** meter (0–100). Energy resets to 50 at each wave start (one Stasis ready) (no hoarding), then refills +1/s while a wave runs, +1 per kill, +8 per Hulk / Titan / Jammer kill and +2 per element reaction. Every cast starts a 3 s lockout for all Orders.
+
+| Order | Cost | Target | Effect |
+|---|---|---|---|
+| **Stasis Net** (Cryo) | 50 | lane | after 0.6 s, r90: freeze 1.6 s (Hulk/Titan 0.6 s), marks Cryo, cancels a Blink jump or Jammer pulse that is about to go off |
+| **Lance Strike** (Plasma) | 60 | lane | after 1.0 s, r70: 12% max HP (bosses 4%) through armor, marks Plasma (Cryo-marked → Shatter) |
+| **Surge** (Volt) | 40 | a gun | 5 s: fire rate ×1.6, jam-proof, clears its jam, shots carry Volt; then 2 s overheat (holds fire) |
+| **Recall Gate** | 45 | lane | after 0.5 s, r80: knocks non-boss enemies 160 back along the lane (same fade/floor as gun knockback) |
+
+Every run starts with Stasis Net in slot 1; at run Level 3 you pick a second Order from the other three. Tap a button (or press **1** / **2**) to arm, then tap the lane or a gun; a miss or **Escape** disarms. The **Radio Silence** threat (+1) turns Orders off. Numbers live in `src/game/data/orders.ts` (`ORDER_NUM`).
 
 ## How a run works
 

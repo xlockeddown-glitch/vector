@@ -46,6 +46,11 @@ import {
   cycleTarget,
   livePads,
   bayMoon,
+  armOrder,
+  disarmOrder,
+  castOrderAt,
+  orderTargetAt,
+  pickOrder,
   type World,
 } from "./sim";
 import { useGame } from "./store";
@@ -119,7 +124,10 @@ export type Action =
   | { type: "craftBay"; uid: string }
   | { type: "slot"; id: number }
   | { type: "bind"; id: string }
-  | { type: "target"; uid: string };
+  | { type: "target"; uid: string }
+  | { type: "armOrder"; slot: number }
+  | { type: "disarmOrder" }
+  | { type: "pickOrder"; id: string };
 
 type QaSnap = {
   phase: World["phase"];
@@ -171,6 +179,15 @@ type QaSnap = {
   holdT: number;
   paused: boolean;
   pickPause: boolean;
+  orders: string[];
+  orderOffer: string[];
+  orderEnergy: number;
+  orderLock: number;
+  orderArmed: number;
+  orderPending: number;
+  ordersUsed: number;
+  orderReacts: number;
+  blinkStops: number;
   playMode: string;
   specialReady: number;
 };
@@ -294,6 +311,15 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
     holdT: Number((world.holdT ?? 0).toFixed(2)),
     paused: !!world.paused,
     pickPause: !!world.pickPause,
+    orders: world.orders ?? [],
+    orderOffer: world.orderOffer ?? [],
+    orderEnergy: Number((world.orderEnergy ?? 0).toFixed(2)),
+    orderLock: Number((world.orderLock ?? 0).toFixed(2)),
+    orderArmed: world.orderArmed ?? -1,
+    orderPending: (world.orderPending ?? []).length,
+    ordersUsed: world.ordersUsed ?? 0,
+    orderReacts: world.orderReacts ?? 0,
+    blinkStops: world.blinkStops ?? 0,
     playMode: world.playMode === "arcade" ? "arcade" : "story",
     specialReady:
       (world.roster ?? []).filter((r) => (r.specialOffer ?? []).length || (r.partOffer ?? []).length).length +
@@ -710,6 +736,13 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
       dispatch({ type: "startWave" });
     }
     if (e.code === "KeyF") dispatch({ type: "speed" });
+    if ((e.code === "Digit1" || e.code === "Digit2") && world.phase === "combat") {
+      dispatch({ type: "armOrder", slot: e.code === "Digit1" ? 0 : 1 });
+    }
+    if (e.code === "Escape" && world.orderArmed >= 0) {
+      dispatch({ type: "disarmOrder" });
+      return;
+    }
     if (e.code === "KeyP" || e.code === "Escape") dispatch({ type: "pause" });
     if (e.code === "KeyM") dispatch({ type: "mute" });
   };
@@ -812,6 +845,13 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
       return;
     }
     const p = screenToWorld(canvas, cx, cy);
+    if (world.phase === "combat" && world.orderArmed >= 0) {
+      // Armed Order: the tap casts it (lane point or planted gun). A tap that misses disarms.
+      const ok = castOrderAt(world, p.x, p.y);
+      if (!ok) audio.play("ui");
+      pushHud(true);
+      return;
+    }
     if (world.phase === "combat") {
       const moon = bayMoon(world.visT);
       const onBay = Math.hypot(p.x - moon.x, p.y - moon.y) < 36;
@@ -914,6 +954,13 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
   };
 
   const hover = (cx: number, cy: number) => {
+    if (world.phase === "combat" && world.orderArmed >= 0) {
+      const p = screenToWorld(canvas, cx, cy);
+      const t = orderTargetAt(world, p.x, p.y);
+      world.orderHover = t ? { x: t.x, y: t.y, ok: t.ok } : null;
+      canvas.style.cursor = t?.ok ? "crosshair" : "not-allowed";
+      return;
+    }
     if (world.phase === "placement" && placeDefendHit(canvas, cx, cy, world)) {
       canvas.style.cursor = "pointer";
       return;
@@ -1224,6 +1271,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
         audio.play("ui");
         break;
       case "pause":
+        disarmOrder(world);
         if (world.phase === "combat") {
           world.paused = !world.paused;
           world.uiDirty = true;
@@ -1262,6 +1310,8 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
             runKills: world.runKills ?? 0,
             runLeaks: world.runLeaks ?? 0,
             reactions: world.reactions ?? 0,
+            ordersUsed: world.ordersUsed ?? 0,
+            orderReacts: world.orderReacts ?? 0,
             playMode: world.playMode,
           });
           if (best) useGame.getState().setBest(best);
@@ -1295,6 +1345,24 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
         useGame.getState().setHasRun(saved);
         useGame.getState().setBest(loadMeta());
         audio.play("ui");
+        pushHud(true);
+        break;
+      }
+      case "armOrder": {
+        const ok = armOrder(world, action.slot);
+        audio.play("ui");
+        canvas.style.cursor = ok ? "crosshair" : "";
+        pushHud(true);
+        break;
+      }
+      case "disarmOrder":
+        disarmOrder(world);
+        canvas.style.cursor = "";
+        pushHud(true);
+        break;
+      case "pickOrder": {
+        const ok = pickOrder(world, action.id);
+        audio.play(ok ? "draft" : "ui");
         pushHud(true);
         break;
       }

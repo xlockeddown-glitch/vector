@@ -4,7 +4,8 @@
  * render.ts calls these when NEON_LOOK is on; flip it off to get the old painted look back.
  */
 import type { CompanionState } from "./data/companion";
-import type { Enemy } from "./sim";
+import type { Enemy, World } from "./sim";
+import { ORDERS, orderOf } from "./data/orders";
 import { PARAMS } from "./params";
 
 export const NEON_LOOK = true;
@@ -539,6 +540,165 @@ export function drawMuzzleFlashes(ctx: CanvasRenderingContext2D, t: number) {
     ctx.moveTo(0, 3 * k);
     ctx.lineTo(6 * k, 6 * k);
     ctx.stroke();
+    ctx.restore();
+  }
+}
+
+
+/* ---------- Orders: telegraphs, hover ghost, Surge / overheat marks ---------- */
+
+/**
+ * Lane Order telegraphs (world space): faint disk, dashed spinning rim, a countdown arc that
+ * closes as the effect nears, and a per-Order glyph. Also the desktop hover ghost while armed.
+ */
+export function neonOrders(ctx: CanvasRenderingContext2D, w: World, t: number) {
+  for (const o of w.orderPending ?? []) {
+    const def = ORDERS[o.id];
+    const col = def.color;
+    const k = o.tMax > 0 ? Math.max(0, Math.min(1, o.t / o.tMax)) : 0;
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, o.r);
+    g.addColorStop(0, rgba(col, 0.04 + 0.16 * (1 - k)));
+    g.addColorStop(1, rgba(col, 0.16 + 0.12 * (1 - k)));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, o.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = rgba(col, 0.75);
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([7, 6]);
+    ctx.lineDashOffset = -t * 30;
+    ctx.beginPath();
+    ctx.arc(0, 0, o.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Countdown: the arc closes to nothing as the Order lands.
+    ctx.strokeStyle = rgba("#ffffff", 0.9);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, o.r + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
+    ctx.stroke();
+    ctx.strokeStyle = rgba(col, 0.9);
+    ctx.lineWidth = 1.6;
+    if (o.id === "stasis") {
+      // Hex net.
+      ctx.globalAlpha = 0.55 + 0.45 * (1 - k);
+      for (let i = 0; i < 3; i++) {
+        const a = (i * Math.PI) / 3 + t * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * o.r * 0.9, Math.sin(a) * o.r * 0.9);
+        ctx.lineTo(-Math.cos(a) * o.r * 0.9, -Math.sin(a) * o.r * 0.9);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      for (let i = 0; i <= 6; i++) {
+        const a = (i * Math.PI) / 3 + t * 0.4;
+        const rr = o.r * 0.5;
+        if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      ctx.stroke();
+    } else if (o.id === "lance") {
+      // Crosshair and a beam that brightens from above.
+      const rr = o.r * (0.3 + 0.5 * k);
+      ctx.beginPath();
+      ctx.arc(0, 0, rr, 0, Math.PI * 2);
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2;
+        ctx.moveTo(Math.cos(a) * (rr + 4), Math.sin(a) * (rr + 4));
+        ctx.lineTo(Math.cos(a) * (rr + 14), Math.sin(a) * (rr + 14));
+      }
+      ctx.stroke();
+      const beam = ctx.createLinearGradient(0, -300, 0, 0);
+      beam.addColorStop(0, rgba(col, 0));
+      beam.addColorStop(1, rgba(col, 0.15 + 0.5 * (1 - k)));
+      ctx.fillStyle = beam;
+      const bw = 3 + 8 * (1 - k);
+      ctx.fillRect(-bw / 2, -300, bw, 300);
+    } else if (o.id === "recall") {
+      // Swirl of arrows pulling inward and back.
+      ctx.strokeStyle = rgba("#ffffff", 0.75);
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2 - t * 3;
+        const rr = o.r * (0.35 + 0.35 * k);
+        const x = Math.cos(a) * rr;
+        const y = Math.sin(a) * rr;
+        ctx.beginPath();
+        ctx.arc(0, 0, rr, a, a + 0.9);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(a - 1.2) * 7, y + Math.sin(a - 1.2) * 7);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  const def = orderOf((w.orders ?? [])[w.orderArmed ?? -1]);
+  const h = w.orderHover;
+  if (def && h && w.phase === "combat") {
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    const col = h.ok ? def.color : "#8b93a3";
+    const r = def.target === "gun" ? 34 : def.r;
+    ctx.strokeStyle = rgba(col, h.ok ? 0.85 : 0.45);
+    ctx.fillStyle = rgba(col, h.ok ? 0.1 : 0.04);
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/** Surge'd gun: volt halo with crackle. Overheated gun: red dim ring that drains. Drawn over the gun. */
+export function neonGunOrder(ctx: CanvasRenderingContext2D, x: number, y: number, t: number, surgeT: number, heatT: number, surgeMax: number, heatMax: number) {
+  if (surgeT > 0) {
+    const col = ORDERS.surge.color;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 14;
+    ctx.strokeStyle = rgba(col, 0.75 + 0.25 * Math.sin(t * 20));
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 26, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) {
+      const a = t * 7 + (i * Math.PI * 2) / 3;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * 20, y + Math.sin(a) * 20);
+      ctx.lineTo(x + Math.cos(a + 0.2) * 30, y + Math.sin(a + 0.2) * 30);
+      ctx.lineTo(x + Math.cos(a + 0.35) * 24, y + Math.sin(a + 0.35) * 24);
+      ctx.lineTo(x + Math.cos(a + 0.55) * 34, y + Math.sin(a + 0.55) * 34);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = rgba("#ffffff", 0.9);
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(x, y, 32, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, surgeT / surgeMax));
+    ctx.stroke();
+    ctx.restore();
+  } else if (heatT > 0) {
+    ctx.save();
+    ctx.strokeStyle = rgba("#ff4d4d", 0.55 + 0.25 * Math.sin(t * 6));
+    ctx.shadowColor = "#ff4d4d";
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 28, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, heatT / heatMax));
+    ctx.stroke();
+    ctx.fillStyle = rgba("#ff4d4d", 0.9);
+    ctx.font = "bold 10px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("HOT", x, y - 36);
     ctx.restore();
   }
 }

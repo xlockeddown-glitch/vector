@@ -17,6 +17,8 @@ import { SIGNALS, signalToCard } from "./data/signals";
 import type { PartRoll } from "./data/parts";
 import { dealParts, partOfferWeak } from "./data/parts";
 import { threatCostMul, threatPoints } from "./data/threat";
+import { ORDERS, ORDER_NUM, orderOf, type OrderId } from "./data/orders";
+import { orderBlock, ordersOn } from "./sim";
 import type {
   ActiveCharm,
   CardDef,
@@ -219,6 +221,17 @@ export type HudState = {
   campaign: { stageId: string; label: string; name: string; waves: number; mode: "story" | "build" } | null;
   /** Star reveal data after a campaign win. */
   campaignResult: CampaignResult | null;
+  /** Orders (data/orders.ts). on = false under Radio Silence. */
+  orders: {
+    on: boolean;
+    energy: number;
+    max: number;
+    lock: number;
+    lockMax: number;
+    armed: number;
+    slots: { id: OrderId; name: string; short: string; cost: number; color: string; target: "lane" | "gun"; blurb: string; block: string | null }[];
+    offer: { id: OrderId; name: string; short: string; cost: number; color: string; blurb: string }[];
+  };
 };
 
 function teamOf(w: World): Array<{ key: string; card: CardDef; tag: string; uid?: string }> {
@@ -598,6 +611,22 @@ function fromWorld(w: World): HudState {
       return st ? { stageId: st.id, label: stageLabel(st), name: st.name, waves: st.waves, mode: st.mode } : null;
     })(),
     campaignResult: w.campaignResult ?? null,
+    orders: {
+      on: ordersOn(w),
+      energy: Math.floor(w.orderEnergy ?? 0),
+      max: ORDER_NUM.energyMax,
+      lock: Math.max(0, w.orderLock ?? 0),
+      lockMax: ORDER_NUM.lockout,
+      armed: w.orderArmed ?? -1,
+      slots: (w.orders ?? []).map((id, i) => {
+        const d = ORDERS[id];
+        return { id, name: d.name, short: d.short, cost: d.cost, color: d.color, target: d.target, blurb: d.blurb, block: orderBlock(w, i) };
+      }),
+      offer: (w.orderOffer ?? [])
+        .map((id) => orderOf(id))
+        .filter((d): d is NonNullable<typeof d> => !!d)
+        .map((d) => ({ id: d.id, name: d.name, short: d.short, cost: d.cost, color: d.color, blurb: d.blurb })),
+    },
   };
 }
 

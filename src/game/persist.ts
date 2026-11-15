@@ -192,6 +192,8 @@ export function recordRun(opts: {
   runKills?: number;
   runLeaks?: number;
   reactions?: number;
+  ordersUsed?: number;
+  orderReacts?: number;
   playMode?: string;
 }) {
   const cur = loadMeta();
