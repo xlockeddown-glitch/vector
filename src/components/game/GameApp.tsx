@@ -6,6 +6,8 @@ import { HangarScreen } from "./HangarScreen";
 import { PassScreen } from "./PassScreen";
 import { HelpSheet } from "./HelpSheet";
 import { LoopScreen } from "./LoopScreen";
+import { CampaignScreen } from "./CampaignScreen";
+import { StarReveal } from "./StarReveal";
 import { TUTORIAL_TIPS } from "@/game/data/vault";
 import { HudBar, HudOverlays, CraftBanner } from "./Hud";
 import { MerchantScreen } from "./MerchantScreen";
@@ -37,6 +39,7 @@ export function GameApp() {
   const muted = useGame((s) => s.muted);
   const help = useGame((s) => s.help);
   const hangar = useGame((s) => s.hangar);
+  const campaignOpen = useGame((s) => s.campaign);
   const [passOpen, setPassOpen] = useState(false);
   const ready = useGame((s) => s.ready);
   const best = useGame((s) => s.best);
@@ -113,12 +116,21 @@ export function GameApp() {
           onHelp={() => act({ type: "help" })}
           onHangar={() => act({ type: "hangar" })}
           onPass={() => setPassOpen(true)}
+          onCampaign={() => act({ type: "campaign", open: true })}
           onSlot={(id) => act({ type: "slot", id })}
           onBind={(id) => act({ type: "bind", id })}
         />
       )}
 
-      {phase === "title" && <ThreatPicker />}
+      {phase === "title" && !campaignOpen && <ThreatPicker />}
+
+      {phase === "title" && campaignOpen && (
+        <CampaignScreen
+          best={best}
+          onStart={(id) => act({ type: "play", stage: id })}
+          onClose={() => act({ type: "campaign", open: false })}
+        />
+      )}
 
       {help && <HelpSheet onClose={() => act({ type: "closeHelp" })} />}
 
@@ -209,9 +221,19 @@ export function GameApp() {
         />
       )}
 
-      {hud && (phase === "victory" || phase === "defeat") && (
+      {hud && phase === "victory" && hud.campaignResult && (
+        <StarReveal
+          hud={hud}
+          onNext={(id) => act({ type: "play", stage: id })}
+          onRetry={() => act({ type: "retry" })}
+          onMap={() => act({ type: "campaignMap" })}
+        />
+      )}
+
+      {hud && (phase === "defeat" || (phase === "victory" && !hud.campaignResult)) && (
         <EndScreen
           hud={hud}
+          onMap={hud.campaign ? () => act({ type: "campaignMap" }) : undefined}
           onRetry={() => act({ type: "retry" })}
           onHangar={() => act({ type: "hangar" })}
           onTitle={() => act({ type: "title" })}

@@ -1,7 +1,7 @@
 import { audio, resumeAudioOnVisible, type Sfx } from "./audio";
 import { loadAssets, type Assets } from "./assets";
 import { hitPad, PATHS, BASE, nearestPathMeta } from "./data/map";
-import { HOME_PAD, LOOP_WAVES, WIN_WAVES, WORLD } from "./constants";
+import { HOME_PAD, LOOP_WAVES, WORLD } from "./constants";
 import { clearRun, loadMeta, loadRun, recordRun, equipSkin, buyHangar, buyVault, buySkin, addFlux, selectSlot, bindCraft, slotHasRun, loadProfiles, markTutorial, isLive, markLive } from "./persist";
 import { drawWorld, screenToWorld, viewTransform, placeDefendHit } from "./render";
 import {
@@ -21,6 +21,7 @@ import {
   beginNextWatch,
   keepFlying,
   goTitle,
+  winWaves,
   leaveMerchant,
   pickDraft,
   skipDraftPack,
@@ -52,6 +53,7 @@ import { cardLeans } from "./data/gifts";
 import { dealSpecials } from "./data/specials";
 import type { HangarId, OpId, SkinId } from "./types";
 import { threatPoints } from "./data/threat";
+import { campaignRunFor, stageById } from "./data/campaign";
 
 export type Runtime = {
   start: () => void;
@@ -74,7 +76,9 @@ export function sendAction(action: Action) {
 }
 
 export type Action =
-  | { type: "play"; continue?: boolean; tutorial?: boolean; mode?: "story" | "arcade" | "build" }
+  | { type: "play"; continue?: boolean; tutorial?: boolean; mode?: "story" | "arcade" | "build"; stage?: string }
+  | { type: "campaign"; open: boolean }
+  | { type: "campaignMap" }
   | { type: "help" }
   | { type: "closeHelp" }
   | { type: "pick"; id: string }
@@ -769,7 +773,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
     pushHud(true);
   };
 
-  const play = (resume = false, wantTutorial = false, mode: "story" | "arcade" | "build" = "story") => {
+  const play = (resume = false, wantTutorial = false, mode: "story" | "arcade" | "build" = "story", stageId?: string) => {
     audio.unlock();
     audio.play("ui");
     markLive(true);
@@ -791,8 +795,10 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
     world.enemies = [];
     world.projectiles = [];
     world.fx = [];
-    world.playMode = mode;
-    world.wantTutorial = !!wantTutorial;
+    const stage = stageById(stageId);
+    world.campaign = stage ? campaignRunFor(stage) : null;
+    world.playMode = stage ? stage.mode : mode;
+    world.wantTutorial = stage ? false : !!wantTutorial;
     beginOpening(world);
     pushHud(true);
   };
@@ -945,8 +951,29 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
           const p = loadProfiles();
           if (!p.slots[p.active]?.boundId) bindCraft("comp-auger");
         }
-        play(!!action.continue, !!action.tutorial, action.mode === "arcade" || action.mode === "build" ? action.mode : "story");
+        useGame.getState().setCampaign(false);
+        play(
+          !!action.continue,
+          !!action.tutorial,
+          action.mode === "arcade" || action.mode === "build" ? action.mode : "story",
+          action.continue ? undefined : action.stage,
+        );
         break;
+      case "campaign":
+        useGame.getState().setCampaign(action.open);
+        if (action.open) useGame.getState().setBest(loadMeta());
+        audio.play("ui");
+        break;
+      case "campaignMap": {
+        const keep = world.phase !== "defeat" && world.phase !== "victory" && world.phase !== "loop";
+        const saved = goTitle(world, keep);
+        useGame.getState().setHasRun(saved);
+        useGame.getState().setBest(loadMeta());
+        useGame.getState().setCampaign(true);
+        audio.play("ui");
+        pushHud(true);
+        break;
+      }
       case "help":
         useGame.getState().setHelp(true);
         audio.play("ui");
@@ -1228,7 +1255,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
             level: world.runLevel,
             loops: Math.floor(world.wave / LOOP_WAVES),
             wavesCleared: world.wavesCleared ?? 0,
-            won: (world.wavesCleared ?? 0) >= WIN_WAVES,
+            won: (world.wavesCleared ?? 0) >= winWaves(world),
             starsMade: world.starsMade ?? 0,
             threat: threatPoints(world.threat),
             upgradesMade: world.upgradesMade ?? 0,
@@ -1245,13 +1272,19 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
         clearRun();
         useGame.getState().setHasRun(false);
         audio.play("ui");
-        const keepMode = world.playMode === "arcade" ? "arcade" : "story";
+        const keepCampaign = world.campaign ? stageById(world.campaign.stageId) : undefined;
+        const keepMode = keepCampaign
+          ? keepCampaign.mode
+          : world.playMode === "arcade" || world.playMode === "build"
+            ? world.playMode
+            : "story";
         const next = createWorld();
         Object.assign(world, next);
         world.enemies = [];
         world.projectiles = [];
         world.fx = [];
         world.playMode = keepMode;
+        world.campaign = keepCampaign ? campaignRunFor(keepCampaign) : null;
         beginOpening(world);
         pushHud(true);
         break;

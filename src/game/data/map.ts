@@ -448,7 +448,7 @@ function packLayout(paths: Vec[][], _pads?: Pad[]): PackedLayout {
  *   twin-s — three long rows, a classic serpent (Mare)
  *   shelf  — a comb of up-and-down columns (Regolith)
  *   hook   — a wide loop that hooks back under itself (Void)
- *   steps  — a staircase down to Home
+ *   steps  — a long top run, then a staircase down-left, then the home stretch
  *   keyhole — up, across, back under, then down: a loop around a centre hold
  *   bracket — one long top run, a long return, then the home stretch
  */
@@ -488,20 +488,20 @@ const RAW: Record<string, Vec[]> = {
     { x: 1204, y: 648 },
   ],
   steps: [
-    { x: 72, y: 150 },
-    { x: 330, y: 150 },
-    { x: 330, y: 315 },
-    { x: 620, y: 315 },
-    { x: 620, y: 480 },
-    { x: 910, y: 480 },
-    { x: 910, y: 648 },
+    { x: 72, y: 160 },
+    { x: 1150, y: 160 },
+    { x: 1150, y: 310 },
+    { x: 800, y: 310 },
+    { x: 800, y: 460 },
+    { x: 450, y: 460 },
+    { x: 450, y: 648 },
     { x: 1204, y: 648 },
   ],
   keyhole: [
-    { x: 72, y: 300 },
-    { x: 420, y: 300 },
-    { x: 420, y: 140 },
-    { x: 860, y: 140 },
+    { x: 72, y: 310 },
+    { x: 420, y: 310 },
+    { x: 420, y: 160 },
+    { x: 860, y: 160 },
     { x: 860, y: 460 },
     { x: 240, y: 460 },
     { x: 240, y: 648 },
@@ -516,6 +516,14 @@ const RAW: Record<string, Vec[]> = {
     { x: 1204, y: 648 },
   ],
 };
+
+/** Raw corner points of a hand-made lane (for previews such as the campaign stage card). */
+export function lanePoints(id: string): Vec[] {
+  return (RAW[id] ?? RAW["twin-s"]!).map((p) => ({ ...p }));
+}
+
+/** Every hand-made lane id. */
+export const LANE_IDS = Object.keys(RAW);
 
 /** Old per-run "jog" variation is gone: lanes stay the shape they were drawn. */
 export function setMapLayout(id: string, _jog = 0) {

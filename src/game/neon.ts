@@ -125,6 +125,69 @@ const FOE_SHAPE: Record<string, { sides: number; spin: number; inner?: boolean; 
   warden: { sides: 4, spin: 0, inner: true },
 };
 
+const LIME = "#7dff9e";
+
+/** Threat Mutant marks. Shield: cold hex. Swift: pink streaks behind. Regen: orbiting lime diamonds. */
+function neonAffix(ctx: CanvasRenderingContext2D, e: Enemy, t: number, r: number) {
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  ctx.lineWidth = 1.5;
+  ctx.shadowBlur = 8;
+  if (e.affix === "shield") {
+    const sh = e.shield ?? 0;
+    if (sh > 0) {
+      const k = Math.min(1, sh / Math.max(1, e.shieldMax ?? sh));
+      ctx.strokeStyle = rgba(NEON.cold, 0.35 + 0.55 * k);
+      ctx.shadowColor = NEON.cold;
+      poly(ctx, 6, r * 1.6, t * 0.6);
+      ctx.stroke();
+    } else if ((e.shieldBreak ?? 0) > 0) {
+      const b = 1 - (e.shieldBreak ?? 0) / 0.25;
+      ctx.strokeStyle = rgba(NEON.cold, 0.9 * (1 - b));
+      ctx.shadowColor = NEON.cold;
+      poly(ctx, 6, r * (1.6 + 1.2 * b), t * 0.6);
+      ctx.stroke();
+    }
+  } else if (e.affix === "swift") {
+    const h = e.hdg ?? 0;
+    const cx = Math.cos(h + Math.PI);
+    const sy = Math.sin(h + Math.PI);
+    ctx.strokeStyle = NEON.foe;
+    ctx.shadowColor = NEON.foe;
+    for (let i = 0; i < 3; i++) {
+      const off = (i - 1) * r * 0.55;
+      const len = r * (0.9 + 0.5 * (0.5 + 0.5 * Math.sin(t * 30 + i * 2.1)));
+      const sx = cx * r * 1.15 - sy * off;
+      const sy0 = sy * r * 1.15 + cx * off;
+      ctx.globalAlpha = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(t * 26 + i * 1.7));
+      ctx.beginPath();
+      ctx.moveTo(sx, sy0);
+      ctx.lineTo(sx + cx * len, sy0 + sy * len);
+      ctx.stroke();
+    }
+  } else if (e.affix === "regen") {
+    ctx.fillStyle = rgba(LIME, 0.35);
+    ctx.strokeStyle = LIME;
+    ctx.shadowColor = LIME;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 5);
+    const d = 2.6 + 1.6 * pulse;
+    for (let i = 0; i < 3; i++) {
+      const a = t * 1.8 + (i * Math.PI * 2) / 3;
+      const x = Math.cos(a) * r * 1.8;
+      const y = Math.sin(a) * r * 1.8;
+      ctx.beginPath();
+      ctx.moveTo(x, y - d);
+      ctx.lineTo(x + d, y);
+      ctx.lineTo(x, y + d);
+      ctx.lineTo(x - d, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
 /** Enemies: magenta outlines; shape says what it is, inner color says what's on it. */
 export function neonEnemy(ctx: CanvasRenderingContext2D, e: Enemy, t: number) {
   const s = FOE_SHAPE[e.type] ?? FOE_SHAPE.grunt!;
@@ -195,6 +258,7 @@ export function neonEnemy(ctx: CanvasRenderingContext2D, e: Enemy, t: number) {
     ctx.setLineDash([]);
   }
   ctx.restore();
+  if (e.affix) neonAffix(ctx, e, t, r);
   ctx.restore();
   if (burning) {
     ctx.save();

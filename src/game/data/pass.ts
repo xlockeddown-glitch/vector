@@ -26,9 +26,9 @@ export const SEASON = {
   xpPerTier: 100,
 };
 
-/** Pass XP for a finished run: 10 per wave cleared, +50 for holding 12, +5 per star made in Build. */
+/** Pass XP for a finished run: 10 per wave cleared, +50 for holding 12 (short campaign stages don't count), +5 per star made in Build. */
 export function passXpFromRun(opts: { wavesCleared: number; won: boolean; starsMade?: number }): number {
-  return Math.max(0, Math.floor(opts.wavesCleared)) * 10 + (opts.won ? 50 : 0) + Math.max(0, opts.starsMade ?? 0) * 5;
+  return Math.max(0, Math.floor(opts.wavesCleared)) * 10 + (opts.won && opts.wavesCleared >= 12 ? 50 : 0) + Math.max(0, opts.starsMade ?? 0) * 5;
 }
 
 const LOOK: Record<number, PassReward> = {
@@ -153,8 +153,8 @@ const n = (v: number | undefined) => Math.max(0, Math.floor(v ?? 0));
 
 export const QUEST_POOL: QuestDef[] = [
   { id: "waves20", name: "Clear 20 waves", goal: 20, xp: 60, group: "waves", measure: (s) => n(s.wavesCleared) },
-  { id: "buildwin", name: "Win a Build run", goal: 1, xp: 80, group: "win", measure: (s) => (s.playMode === "build" && s.won ? 1 : 0) },
-  { id: "win", name: "Hold all 12 waves", goal: 1, xp: 70, group: "win", measure: (s) => (s.won ? 1 : 0) },
+  { id: "buildwin", name: "Win a Build run", goal: 1, xp: 80, group: "win", measure: (s) => (s.playMode === "build" && s.won && (s.wavesCleared ?? 0) >= 12 ? 1 : 0) },
+  { id: "win", name: "Hold all 12 waves", goal: 1, xp: 70, group: "win", measure: (s) => (s.won && (s.wavesCleared ?? 0) >= 12 ? 1 : 0) },
   { id: "react50", name: "Trigger 50 reactions", goal: 50, xp: 50, group: "react", measure: (s) => n(s.reactions) },
   { id: "react150", name: "Trigger 150 reactions", goal: 150, xp: 75, group: "react", measure: (s) => n(s.reactions) },
   { id: "star1", name: "Make a ★ gun", goal: 1, xp: 45, group: "star", measure: (s) => n(s.starsMade) },

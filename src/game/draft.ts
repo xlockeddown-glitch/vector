@@ -334,8 +334,14 @@ export function dealWildOpening(
   return dealSameKind(count, forge, OPENING_ODDS, { skip, rarity });
 }
 
-export function dealSector(forge: Record<string, number> = {}, skipMapId?: string | null): { map: RolledCard; env: RolledCard } | null {
-  let maps = shuffle(CARDS.filter((c) => c.kind === "map" && c.id !== skipMapId));
+export function dealSector(
+  forge: Record<string, number> = {},
+  skipMapId?: string | null,
+  onlyMapId?: string | null,
+): { map: RolledCard; env: RolledCard } | null {
+  let maps = onlyMapId
+    ? CARDS.filter((c) => c.kind === "map" && c.id === onlyMapId)
+    : shuffle(CARDS.filter((c) => c.kind === "map" && c.id !== skipMapId));
   if (!maps.length) maps = shuffle(CARDS.filter((c) => c.kind === "map"));
   const envs = shuffle(CARDS.filter((c) => c.kind === "environment"));
   const map = maps[0];

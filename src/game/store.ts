@@ -7,7 +7,8 @@ import { themeAt } from "./data/themes";
 import { storyWatchLine } from "./data/modes";
 import { waveAt } from "./data/waves";
 import { loadMeta, loadRun, loadProfiles } from "./persist";
-import { buildCopyTags, fieldedTowers, padCap, scrapValue as scrapOf, socketOnPad, coverPct, bonusPct, inspectGun, type World } from "./sim";
+import { stageById, stageLabel, type CampaignResult } from "./data/campaign";
+import { winWaves, buildCopyTags, fieldedTowers, padCap, scrapValue as scrapOf, socketOnPad, coverPct, bonusPct, inspectGun, type World } from "./sim";
 import { displayName } from "./data/glossary";
 import { companionSpecialOf, companionFx } from "./data/companion";
 import { specialCards } from "./data/specials";
@@ -212,6 +213,12 @@ export type HudState = {
   threat: string[];
   threatPoints: number;
   treeCostMul: number;
+  /** Waves needed to win (campaign stage count, else 12). */
+  winWaves: number;
+  /** Campaign stage of this run, or null. */
+  campaign: { stageId: string; label: string; name: string; waves: number; mode: "story" | "build" } | null;
+  /** Star reveal data after a campaign win. */
+  campaignResult: CampaignResult | null;
 };
 
 function teamOf(w: World): Array<{ key: string; card: CardDef; tag: string; uid?: string }> {
@@ -585,6 +592,12 @@ function fromWorld(w: World): HudState {
     threat: w.threat ?? [],
     threatPoints: threatPoints(w.threat),
     treeCostMul: threatCostMul(w.threat),
+    winWaves: winWaves(w),
+    campaign: (() => {
+      const st = stageById(w.campaign?.stageId);
+      return st ? { stageId: st.id, label: stageLabel(st), name: st.name, waves: st.waves, mode: st.mode } : null;
+    })(),
+    campaignResult: w.campaignResult ?? null,
   };
 }
 
@@ -593,6 +606,8 @@ type Store = {
   muted: boolean;
   help: boolean;
   hangar: boolean;
+  /** Campaign map open on the title screen. */
+  campaign: boolean;
   ready: boolean;
   best: MetaSave;
   hasRun: boolean;
@@ -601,6 +616,7 @@ type Store = {
   setMuted: (m: boolean) => void;
   setHelp: (h: boolean) => void;
   setHangar: (h: boolean) => void;
+  setCampaign: (v: boolean) => void;
   setReady: (r: boolean) => void;
   setBest: (b: MetaSave) => void;
   setHasRun: (v: boolean) => void;
@@ -612,6 +628,7 @@ export const useGame = create<Store>((set) => ({
   muted: false,
   help: false,
   hangar: false,
+  campaign: false,
   ready: false,
   best: loadMeta(),
   hasRun: false,
@@ -626,6 +643,7 @@ export const useGame = create<Store>((set) => ({
   setMuted: (m) => set({ muted: m }),
   setHelp: (h) => set({ help: h }),
   setHangar: (h) => set({ hangar: h }),
+  setCampaign: (v) => set({ campaign: v }),
   setReady: (r) => set({ ready: r }),
   setBest: (b) => set({ best: b }),
   setHasRun: (v) => set({ hasRun: v }),
