@@ -107,6 +107,9 @@ export function TitleScreen({
   const fill = bondFill(active.xp);
   // Read after mount: the server render has no save, so a first-frame count would not hydrate.
   const [campStars, setCampStars] = useState(0);
+  // Same for the Pass/Vault box: it depends on the save, so only show it once mounted.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   useEffect(() => {
     setCampStars(totalStars(campaignOf(best.campaign)));
   }, [best.campaign]);
@@ -177,7 +180,7 @@ export function TitleScreen({
         </div>
         <p className="title-start-hint">Arena: draft once, hold 12. Build: draft every wave, merge copies.</p>
         <p className="title-version">v{GAME_VERSION}</p>
-        {(best.runs > 0 || hasRun) && (
+        {mounted && (best.runs > 0 || hasRun) && (
         <div className="title-banks rise-in" style={{ animationDelay: "190ms" }}>
           <button type="button" onClick={onPass} aria-label="Season pass" className="keep-bank pass-bank">
             <p className="keep-bank-kicker">Pass</p>
