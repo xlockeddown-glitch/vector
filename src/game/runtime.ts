@@ -1351,7 +1351,7 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
       case "armOrder": {
         const ok = armOrder(world, action.slot);
         audio.play("ui");
-        if (ok) canvas.style.cursor = "crosshair";
+        canvas.style.cursor = ok ? "crosshair" : "";
         pushHud(true);
         break;
       }

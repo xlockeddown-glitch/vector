@@ -1627,6 +1627,7 @@ function failRun(w) {
   w.lives = 0;
   w.phase = "defeat";
   w.waveActive = false;
+  clearOrders(w);
   payoutBond(w, w.grade?.grade ?? w.lastGrade ?? "F");
   if ((w.points ?? 0) > 0) {
     bankRunFlux(w, fluxFromBank(w.points));
@@ -2705,6 +2706,7 @@ export function startWave(w) {
 function finishWave(w) {
   w.waveActive = false;
   clearJams(w);
+  clearOrders(w);
   tutorialAdvance(w, 7);
   w.nextWaveDmg = 1;
   w.wavesCleared = (w.wavesCleared ?? 0) + 1;
@@ -2971,6 +2973,19 @@ function stepOrders(w, dt) {
       }
     } else if ((r.heatT ?? 0) > 0) r.heatT = Math.max(0, r.heatT - dt);
   }
+}
+
+/** Wave end / defeat: drop telegraphs still counting down, disarm, and cool every gun. Energy resets at the next wave start. */
+function clearOrders(w) {
+  w.orderPending = [];
+  w.orderArmed = -1;
+  w.orderHover = null;
+  w.orderLock = 0;
+  for (const r of w.roster ?? []) {
+    r.surgeT = 0;
+    r.heatT = 0;
+  }
+  w.uiDirty = true;
 }
 
 /** Continue restarts the wave: no telegraphs, no Surge, fresh Energy. Slots stay. */
