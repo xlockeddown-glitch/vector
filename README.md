@@ -37,6 +37,9 @@ VECTOR combines three things:
 ### Threat (opt-in difficulty)
 Tap **Threat** on the title screen to turn on modifiers (tougher enemies, faster enemies, fewer lives, pricier trees, bigger mega waves, escorts, mutant affixes). Each point pays +10% Vault Credit and Pass XP. Past wave 12, enemy HP also grows 6% per wave.
 
+### Campaign
+Tap **Campaign** on the title screen. 15 hand-set stages in 3 sectors (Tide Line, Dark Side, Lagrange). Each stage fixes the map, the lane, the mode (Arena or Build), the wave count (6, 9 or 12) and its own Threat; your Threat toggles are left alone. Win a stage to score up to 3 ★: ★1 for holding every wave, ★2 for staying under a leak cap, ★3 for that stage's twist (no leaks, tree picks, reactions, Build merges, fewest guns, a time limit or a Credit budget). Stages open in order once the one before has a ★; Dark Side opens at 8 ★, Lagrange at 20 ★. Each new ★ pays 15 Vault Credit, a first clear pays 40 Pass XP, and all 15 ★ in a sector pays a reward (Ember skin, 300 Credit, Gold skin). Replays pay normal run rewards. Stage data lives in `src/game/data/campaign.ts`; reward numbers are in `PARAMS` (`campaign*`).
+
 ## How a run works
 
 1. **Pick a craft.** It's already flying.

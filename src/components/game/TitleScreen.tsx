@@ -5,10 +5,11 @@ import { fmtCount } from "@/game/format";
 import { CARDS } from "@/game/data/cards";
 import { craftHook, companionSpecialOf } from "@/game/data/companion";
 import { SETS } from "@/game/data/sets";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { markTutorial } from "@/game/persist";
 import { vaultHas, vaultOf } from "@/game/data/vault";
 import { GAME_VERSION } from "@/game/version";
+import { CAMPAIGN_MAX_STARS, campaignOf, totalStars } from "@/game/data/campaign";
 
 /** Perspective floor: verticals fan out from a vanishing point, horizontals bunch toward the horizon. */
 const FLOOR_FAN = Array.from({ length: 25 }, (_, i) => 400 + (i - 12) * 90);
@@ -73,6 +74,7 @@ export function TitleScreen({
   onHelp,
   onHangar,
   onPass,
+  onCampaign,
   onSlot,
   onBind,
   best,
@@ -85,6 +87,7 @@ export function TitleScreen({
   onHelp: () => void;
   onHangar: () => void;
   onPass: () => void;
+  onCampaign: () => void;
   onSlot: (id: number) => void;
   onBind: (id: string) => void;
   best: MetaSave;
@@ -102,6 +105,11 @@ export function TitleScreen({
   const vault = vaultOf(best.vault);
   const pickCrafts = PICK_CRAFTS.filter((c) => c.id !== "comp-sink" || vaultHas(vault, "myth_sink"));
   const fill = bondFill(active.xp);
+  // Read after mount: the server render has no save, so a first-frame count would not hydrate.
+  const [campStars, setCampStars] = useState(0);
+  useEffect(() => {
+    setCampStars(totalStars(campaignOf(best.campaign)));
+  }, [best.campaign]);
   const startMode = (mode: PlayMode) => {
     setPendingMode(mode);
     if (!active.boundId) onBind("comp-auger");
@@ -147,6 +155,17 @@ export function TitleScreen({
             title="Draft a gun after every wave. Copies merge into stars."
           >
             Build
+          </button>
+          <button
+            type="button"
+            onClick={onCampaign}
+            className="ui-btn ui-btn-primary card-bevel camp-cta min-w-36"
+            title="15 stages with fixed maps and Threat. Earn ★."
+          >
+            Campaign
+            <span className="camp-cta-pill tabular" aria-label={`${campStars} of ${CAMPAIGN_MAX_STARS} stars`}>
+              ★ {campStars}/{CAMPAIGN_MAX_STARS}
+            </span>
           </button>
           <button
             type="button"

@@ -8,8 +8,11 @@ export function EndScreen({
   onRetry,
   onHangar,
   onTitle,
+  onMap,
 }: {
   hud: HudState;
+  /** Campaign runs: back to the campaign map. */
+  onMap?: () => void;
   onRetry: () => void;
   onHangar: () => void;
   onTitle: () => void;
@@ -18,7 +21,9 @@ export function EndScreen({
   return (
     <div className="neon-scrim absolute inset-0 z-30 flex justify-center overflow-y-auto p-3 sm:p-4">
       <div className={`neon-panel ${win ? "" : "neon-panel-foe"} mt-auto h-fit w-full max-w-md p-5 sm:mb-auto sm:p-6`}>
-        <p className={`neon-kicker ${win ? "" : "neon-kicker-foe"}`}>{win ? "Arena done" : "Home fell"}</p>
+        <p className={`neon-kicker ${win ? "" : "neon-kicker-foe"}`}>
+          {hud.campaign ? `${hud.campaign.label} · ${hud.campaign.name}` : win ? "Arena done" : "Home fell"}
+        </p>
         <h2 className="mt-1 font-display text-3xl font-bold tracking-wide text-paper">
           {win ? "The lane is quiet" : "Run over"}
         </h2>
@@ -63,8 +68,13 @@ export function EndScreen({
             onClick={onRetry}
             className="neon-btn neon-btn-go w-full"
           >
-            Play again
+            {hud.campaign ? "Retry stage" : "Play again"}
           </button>
+          {onMap && (
+            <button type="button" onClick={onMap} className="neon-btn neon-btn-primary w-full">
+              Campaign map
+            </button>
+          )}
           <button
             type="button"
             onClick={onTitle}
