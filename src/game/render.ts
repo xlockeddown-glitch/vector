@@ -508,6 +508,10 @@ function hpBar(ctx: CanvasRenderingContext2D, e: Enemy) {
   ctx.fillRect(x, y, w, 4);
   ctx.fillStyle = e.hp / e.maxHp < 0.3 ? PALETTE.ember : PALETTE.accent;
   ctx.fillRect(x, y, w * Math.max(0, e.hp / e.maxHp), 4);
+  if ((e.shield ?? 0) > 0 && (e.shieldMax ?? 0) > 0) {
+    ctx.fillStyle = "#7ecbff";
+    ctx.fillRect(x, y - 2, w * Math.min(1, (e.shield ?? 0) / (e.shieldMax ?? 1)), 2);
+  }
 }
 
 function drawCore(
