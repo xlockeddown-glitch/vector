@@ -106,9 +106,11 @@ export const PARAMS = {
    * b was 0.005 (wave 12 ≈ 2.8× wave 1): a bot that never bought a pick still reached
    * wave 12 at full lives. 0.045 (wave 12 ≈ 7.7×, wave 6 ≈ 2.7×) — measured s4 balance pass:
    * no-pick bot loses waves 9–11, one-carry bot usually holds 12.
+   * Eased to 0.04 after Blink/Jammer landed: at 0.045 the bot lost 2-5 and 3-5 on wave 12 from 9 and 6 lives;
+   * at 0.04 both clear (★1), the no-pick bot still loses wave 12 and the pick bot wins with 1 life lost.
    */
   enemyHpPerWave: 0.11,
-  enemyHpPerWave2: 0.045,
+  enemyHpPerWave2: 0.04,
   /** Endless (past wave 12): enemy HP also grows ×this per wave beyond wave 11. Was 1.06; the steeper square term now carries most of the climb. */
   endlessHpGrow: 1.03,
   /** Shard: splits into this many Swarm on death. */
