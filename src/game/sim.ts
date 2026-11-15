@@ -130,6 +130,10 @@ export type Enemy = {
   affix?: "shield" | "swift" | "regen" | null;
   /** Shield HP soaked before hull (Mutant). */
   shield?: number;
+  /** Shield HP at spawn, for the visual (Mutant). */
+  shieldMax?: number;
+  /** Seconds left of the shield-break flash (Mutant). */
+  shieldBreak?: number;
   /** Regen per second (Mutant). */
   regen?: number;
   /** Inside a Warden aura while > 0. */
@@ -1220,13 +1224,18 @@ function spawnEnemy(w, type, route = 0, noMutant = false) {
   e.age = 0;
   e.affix = null;
   e.shield = 0;
+  e.shieldMax = 0;
+  e.shieldBreak = 0;
   e.regen = 0;
   e.wardT = 0;
   if (hasThreat(w.threat, "overdrive")) e.speed *= THREAT_NUM.overdriveSpeed;
   if (!noMutant && hasThreat(w.threat, "mutant") && Math.random() < THREAT_NUM.mutantOdds) {
     const affix = MUTANT_AFFIXES[Math.floor(Math.random() * MUTANT_AFFIXES.length)];
     e.affix = affix;
-    if (affix === "shield") e.shield = e.maxHp * THREAT_NUM.mutantShield;
+    if (affix === "shield") {
+      e.shield = e.maxHp * THREAT_NUM.mutantShield;
+      e.shieldMax = e.shield;
+    }
     else if (affix === "swift") e.speed *= THREAT_NUM.mutantSpeed;
     else if (affix === "regen") e.regen = e.maxHp * THREAT_NUM.mutantRegen;
   }
@@ -1291,6 +1300,10 @@ function applyDamage(w, e, raw, quiet = false, from = null) {
     const soak = Math.min(e.shield, dmg);
     e.shield -= soak;
     dmg -= soak;
+    if (e.shield <= 0) {
+      e.shield = 0;
+      e.shieldBreak = 0.25;
+    }
   }
   e.hp -= dmg;
   if (from) {
@@ -2668,6 +2681,7 @@ export function stepWorld(w, dt) {
         }
       }
     }
+    if ((e.shieldBreak ?? 0) > 0) e.shieldBreak = Math.max(0, e.shieldBreak - dt);
     if ((e.regen ?? 0) > 0 && e.alive) e.hp = Math.min(e.maxHp, e.hp + e.regen * dt);
     if ((e.along ?? 0) >= (PATH_ALONG[e.route] ?? 1) - 4) leakEnemy(w, e);
   }
