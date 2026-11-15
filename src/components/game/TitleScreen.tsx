@@ -233,7 +233,7 @@ export function TitleScreen({
         </div>
         </div>
         )}
-        {(best.runs > 0 || (best.bestWave ?? 0) > 0) && (
+        {mounted && (best.runs > 0 || (best.bestWave ?? 0) > 0) && (
           <p className="mt-6 tabular text-[12px] text-steel">
             {[
               best.runs > 0 ? `${best.runs} run${best.runs === 1 ? "" : "s"}` : null,

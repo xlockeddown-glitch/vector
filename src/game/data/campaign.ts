@@ -130,26 +130,26 @@ const S = (
 const BLINK: EnemyType[] = ["blink"];
 const BLINK_JAM: EnemyType[] = ["blink", "jammer"];
 
-/** Tuning: thresholds are first guesses. */
+/** Tuning: s4 balance pass — thresholds set from bot runs (see commit message). */
 export const CAMPAIGN_STAGES: CampaignStage[] = [
   // Sector 1: Tide Line
   S(0, 1, "First Hold", "map-mare", "twin-s", "story", 6, [], 3, { kind: "leaksMax", n: 0 }),
-  S(0, 2, "Staircase", "map-mare", "steps", "story", 6, [], 3, { kind: "picksMin", n: 6 }),
-  S(0, 3, "Comb", "map-regolith", "shelf", "build", 6, [], 3, { kind: "starsMadeMin", n: 1 }),
-  S(0, 4, "Keyhole", "map-regolith", "keyhole", "story", 9, ["overdrive"], 2, { kind: "reactionsMin", n: 25 }),
+  S(0, 2, "Staircase", "map-mare", "steps", "story", 6, [], 3, { kind: "gunsMax", n: 3 }),
+  S(0, 3, "Comb", "map-regolith", "shelf", "build", 6, [], 3, { kind: "starsMadeMin", n: 2 }),
+  S(0, 4, "Keyhole", "map-regolith", "keyhole", "story", 9, ["overdrive"], 2, { kind: "reactionsMin", n: 40 }),
   S(0, 5, "Hook", "map-void", "hook", "build", 9, [], 2, { kind: "starsMadeMin", n: 2 }),
   // Sector 2: Dark Side
   S(1, 1, "Long Return", "map-void", "bracket", "story", 9, ["glass"], 2, { kind: "gunsMax", n: 4 }, BLINK),
   S(1, 2, "Furnace Steps", "map-helios", "steps", "build", 9, ["lean"], 2, { kind: "creditSpentMax", n: 2000 }, BLINK),
-  S(1, 3, "Escort Duty", "map-void", "hook", "story", 9, ["escort"], 2, { kind: "reactionsMin", n: 40 }, BLINK),
-  S(1, 4, "Hot Comb", "map-helios", "shelf", "build", 12, ["hardened"], 3, { kind: "starsMadeMin", n: 3 }, BLINK),
+  S(1, 3, "Escort Duty", "map-void", "hook", "story", 9, ["escort"], 2, { kind: "reactionsMin", n: 100 }, BLINK),
+  S(1, 4, "Hot Comb", "map-helios", "shelf", "build", 9, [], 3, { kind: "starsMadeMin", n: 2 }, BLINK),
   S(1, 5, "Eclipse", "map-void", "keyhole", "story", 12, ["bigmega", "overdrive"], 2, { kind: "timeMax", n: 600 }, BLINK),
   // Sector 3: Lagrange
   S(2, 1, "Balance Point", "map-lagrange", "keyhole", "story", 9, ["mutant"], 2, { kind: "picksMax", n: 8 }, BLINK_JAM),
   S(2, 2, "Twin Pull", "map-lagrange", "twin-s", "build", 12, ["hardened", "lean"], 3, { kind: "gunsMax", n: 5 }, BLINK_JAM),
   S(2, 3, "Hookshot", "map-lagrange", "hook", "story", 12, ["escort", "glass"], 2, { kind: "creditSpentMax", n: 4000 }, BLINK_JAM),
-  S(2, 4, "Gravity Well", "map-lagrange", "bracket", "build", 12, ["mutant", "bigmega"], 3, { kind: "starsMadeMin", n: 4 }, BLINK_JAM),
-  S(2, 5, "L5 Gate", "map-lagrange", "steps", "story", 12, ["mutant", "overdrive", "hardened"], 2, { kind: "leaksMax", n: 0 }, BLINK_JAM),
+  S(2, 4, "Gravity Well", "map-lagrange", "bracket", "build", 12, ["mutant", "bigmega"], 3, { kind: "starsMadeMin", n: 3 }, BLINK_JAM),
+  S(2, 5, "L5 Gate", "map-lagrange", "steps", "story", 12, ["mutant", "overdrive", "hardened"], 3, { kind: "leaksMax", n: 1 }, BLINK_JAM),
 ];
 
 for (const s of CAMPAIGN_STAGES) {
