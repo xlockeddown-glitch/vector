@@ -4989,6 +4989,7 @@ export function placeTower(w, t, n) {
   addFx(w, { kind: "ring", x: i.x, y: i.y, life: 0.42, color: a ? "#3cd6cc" : "#7c6cf0", size: 28 });
   addFx(w, { kind: "spark", x: i.x, y: i.y - 8, life: 0.28, color: "#eef3f7", size: 10 });
   addFx(w, { kind: "smoke", x: i.x, y: i.y + 6, life: 0.34, color: "#9aa3b2", size: 14 });
+  noteGunsPeak(w);
   return true;
 }
 
