@@ -2,6 +2,16 @@
 
 Who did what on VECTOR, and how well. Claude (Opus 5.5) orchestrates, reviews and integrates every slice and has the final say. Scores are 1–10 from Claude's review after integration: correctness, staying in scope, quality of the result, and rework needed.
 
+## Round 4 — Blink + Jammer enemies, balance pass (2026-11-15)
+
+| Slice | Model | Score | Notes |
+|---|---|---|---|
+| Blink + Jammer enemies | Fable 5.2 | 9 | Both enemies, telegraphs, jam limits, campaign hook; measured in the browser. Changed the commit trailer against instructions. |
+| Balance pass (bots) | Opus 5.5 | 7.5 | Real data; fixed runaway grenades and uncounted grenade leaks. Ran 3h44m uncommitted, was cut off by a restart, left Hot Comb unsolved. |
+| Enemy code review | Gemini 4 Hydrogen (router) | 6.5 | Its top finding was already handled; no real bugs this time. |
+
+**Best this round:** Fable 5.2. Final tuning (HP square term 0.04, Hot Comb, L5 Gate) done by Claude during integration with fresh bot runs. **Lesson:** long bot runs must commit checkpoints.
+
 ## Round 3 — campaign, mutant visuals, Steps lane (2026-11-14)
 
 First round with models from the AI Router (Gemini via Large context, Grok via Code builder).
