@@ -1265,6 +1265,8 @@ function spawnEnemy(w, type, route = 0, noMutant = false) {
   e.fold = 0;
   e.hat = Math.floor(Math.random() * 4);
   e.knockHits = 0;
+  e.nadeCd = 2;
+  e.nadeN = 0;
   e.age = 0;
   e.affix = null;
   e.shield = 0;
@@ -4067,8 +4069,10 @@ function stepNades(w, dt) {
     if (e.type !== "plate" && e.type !== "colossus" && e.type !== "titan") continue;
     const cap = PATH_ALONG[e.route ?? 0] ?? 1;
     if ((e.along ?? 0) / cap < PARAMS.nadeLate) continue;
+    if ((e.nadeN ?? 0) >= PARAMS.nadeMax) continue;
     e.nadeCd = (e.nadeCd ?? 2) - dt;
     if (e.nadeCd > 0) continue;
+    e.nadeN = (e.nadeN ?? 0) + 1;
     e.nadeCd = e.type === "titan" ? 2.4 : e.type === "colossus" ? 3.2 : 4.4;
     const dx = BASE.x - e.x;
     const dy = BASE.y - e.y;
@@ -4144,6 +4148,7 @@ function stepNades(w, dt) {
         n.alive = false;
         w.lives -= n.dmg;
         w.leaks += n.dmg;
+        w.runLeaks = (w.runLeaks ?? 0) + n.dmg;
         w.trauma = Math.min(1, w.trauma + 0.35);
         addFx(w, { kind: "ring", x: BASE.x, y: BASE.y, life: 0.4, color: "#ff5c2a", size: 40 });
         w.message = "Grenade hit home.";

@@ -99,15 +99,18 @@ export const PARAMS = {
   raidLoopArmor: 0.08,
   /** Grenades wait until this far along the path. Later = a tank that gets deep costs a few lives, not all ten. */
   nadeLate: 0.7,
+  /** Grenades each Plate / Hulk / Titan may throw. Was unlimited: one lone Titan deep in the lane took all 10 lives. */
+  nadeMax: 2,
   /**
    * Enemy HP growth per wave: 1 + a·wave + b·wave².
-   * Old curve was linear 0.11. The square term keeps waves 1–5 close to before
-   * and makes 8–12 ask for a built-up team (wave 12 ≈ 2.8× wave 1, was 2.2×).
+   * b was 0.005 (wave 12 ≈ 2.8× wave 1): a bot that never bought a pick still reached
+   * wave 12 at full lives. 0.045 (wave 12 ≈ 7.7×, wave 6 ≈ 2.7×) — measured s4 balance pass:
+   * no-pick bot loses waves 9–11, one-carry bot usually holds 12.
    */
   enemyHpPerWave: 0.11,
-  enemyHpPerWave2: 0.005,
-  /** Endless (past wave 12): enemy HP also grows ×this per wave beyond wave 11. */
-  endlessHpGrow: 1.06,
+  enemyHpPerWave2: 0.045,
+  /** Endless (past wave 12): enemy HP also grows ×this per wave beyond wave 11. Was 1.06; the steeper square term now carries most of the climb. */
+  endlessHpGrow: 1.03,
   /** Shard: splits into this many Swarm on death. */
   shardSplit: 3,
   /** Warden: allies inside this radius take less damage (does not stack). */
