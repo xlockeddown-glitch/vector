@@ -40,6 +40,12 @@ Tap **Threat** on the title screen to turn on modifiers (tougher enemies, faster
 ### Campaign
 Tap **Campaign** on the title screen. 15 hand-set stages in 3 sectors (Tide Line, Dark Side, Lagrange). Each stage fixes the map, the lane, the mode (Arena or Build), the wave count (6, 9 or 12) and its own Threat; your Threat toggles are left alone. Win a stage to score up to 3 ★: ★1 for holding every wave, ★2 for staying under a leak cap, ★3 for that stage's twist (no leaks, tree picks, reactions, Build merges, fewest guns, a time limit or a Credit budget). Stages open in order once the one before has a ★; Dark Side opens at 8 ★, Lagrange at 20 ★. Each new ★ pays 15 Vault Credit, a first clear pays 40 Pass XP, and all 15 ★ in a sector pays a reward (Ember skin, 300 Credit, Gold skin). Replays pay normal run rewards. Stage data lives in `src/game/data/campaign.ts`; reward numbers are in `PARAMS` (`campaign*`).
 
+### Special enemies
+- **Blink** — every 3 s it jumps 140 path units up its lane; a marker flickers at the landing spot for 0.4 s first. Fragile. Cover the late lane or burst it. Arena / Build from wave 6; Campaign from Dark Side.
+- **Jammer** — every 4.5 s it pulses: guns within 130 units hold fire for 1.5 s (Home and crafts are immune; a gun gets 2 s clear before it can be jammed again). Tanky and slow. Outrange it or focus it. Arena / Build from wave 8; Campaign in Lagrange.
+
+Numbers are in `PARAMS` (`blink*`, `jam*`); Campaign stages list them in `extra` (`src/game/data/campaign.ts`).
+
 ## How a run works
 
 1. **Pick a craft.** It's already flying.
@@ -115,7 +121,7 @@ Saves stay in the browser.
 
 ## Look
 
-Neon vector. Everything on the board is a glowing outline on near-black with a faint grid: cyan for your side (guns, crafts, Home), magenta for enemies and their lane, element colors only where they mean something. Enemy shape tells you the type (triangle grunt, chevron striker, square plate, hexagon colossus, octagon titan). Cards show the same vector glyphs. Drawing lives in `src/game/neon.ts`; set `NEON_LOOK = false` there to get the old painted look back. The old painted card art is kept in `art-src/cards`.
+Neon vector. Everything on the board is a glowing outline on near-black with a faint grid: cyan for your side (guns, crafts, Home), magenta for enemies and their lane, element colors only where they mean something. Enemy shape tells you the type (triangle grunt, chevron striker, square plate, hexagon colossus, octagon titan, four-point spark Blink, pentagon Jammer). Cards show the same vector glyphs. Drawing lives in `src/game/neon.ts`; set `NEON_LOOK = false` there to get the old painted look back. The old painted card art is kept in `art-src/cards`.
 
 ## Where things are
 

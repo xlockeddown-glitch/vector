@@ -16,7 +16,11 @@ export function isMegaWave(index: number) {
   return (Math.max(0, index) + 1) % MEGA_EVERY === 0;
 }
 
-function mixFor(local: number, theme: string, act: number): WaveGroup[] {
+/**
+ * foes: undefined on normal runs (Blink / Jammer join by wave number).
+ * A list on Campaign runs: only the listed ones join, from PARAMS.campaignFoesFrom.
+ */
+function mixFor(local: number, theme: string, act: number, foes?: EnemyType[] | null): WaveGroup[] {
   const n = 1.2 + act * 0.24;
   const loop = Math.floor(Math.max(0, act) / THEME_ORDER.length);
   const c = (x: number) => Math.max(1, Math.round(x * n));
@@ -115,6 +119,11 @@ function mixFor(local: number, theme: string, act: number): WaveGroup[] {
     else groups.push(g("warden", 1 + (act > 0 ? 1 : 0) + loop, 2.8, 2.2));
   }
   if (local >= Math.max(4, 6 - loop)) groups.push(g("medic", 1 + (act > 0 ? 1 : 0) + (loop > 0 ? 1 : 0), 2.5, 1.6));
+  // Blink (teleports forward) and Jammer (silences guns nearby). Modest counts: they are a problem to solve, not a wall.
+  const listed = foes != null;
+  const joins = (type: EnemyType, from: number) => (listed ? foes.includes(type) && local >= PARAMS.campaignFoesFrom : local >= from);
+  if (joins("blink", PARAMS.blinkFrom)) groups.push(g("blink", c(3), 0.8, 3));
+  if (joins("jammer", PARAMS.jammerFrom)) groups.push(g("jammer", 1 + (act > 0 ? 1 : 0) + loop, 3, 2.4));
   return groups;
 }
 
@@ -150,15 +159,18 @@ function buildWaves(): WaveDef[] {
 
 export const WAVES: WaveDef[] = buildWaves();
 
-/** opts.megaCountMul overrides PARAMS.megaCountMul (Threat: Big Megas). */
-export function waveAt(index: number, opts?: { megaCountMul?: number }): WaveDef {
+/**
+ * opts.megaCountMul overrides PARAMS.megaCountMul (Threat: Big Megas).
+ * opts.foes: Campaign stage list of Blink / Jammer (see mixFor). Leave out on normal runs.
+ */
+export function waveAt(index: number, opts?: { megaCountMul?: number; foes?: EnemyType[] | null }): WaveDef {
   const theme = themeAt(index);
   const local = ((index % THEME_LEN) + THEME_LEN) % THEME_LEN;
   const act = Math.floor(Math.max(0, index) / THEME_LEN);
   const mega = isMegaWave(index);
   return {
     name: mega ? `Mega ${theme.short} ${local + 1}` : `${theme.short} ${local + 1}`,
-    groups: withMega(mixFor(local, theme.id, act), mega, act, opts?.megaCountMul),
+    groups: withMega(mixFor(local, theme.id, act, opts?.foes), mega, act, opts?.megaCountMul),
     mega,
   };
 }
