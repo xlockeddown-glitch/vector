@@ -2,6 +2,21 @@
 
 Who did what on VECTOR, and how well. Claude (Opus 5.5) orchestrates, reviews and integrates every slice and has the final say. Scores are 1–10 from Claude's review after integration: correctness, staying in scope, quality of the result, and rework needed.
 
+## Round 3 — campaign, mutant visuals, Steps lane (2026-11-14)
+
+First round with models from the AI Router (Gemini via Large context, Grok via Code builder).
+
+| Slice | Model | Score | Notes |
+|---|---|---|---|
+| Campaign design proposal | Fable 5.2 | 9.5 | Read the real entry points; caught the every-3-waves win check, Retry dropping the stage, lives vs leaks. |
+| Campaign design proposal | Gemini 4 Hydrogen (router) | 8 | Fast and tidy; caught Threat leaking into Continue and the wave-6 mega titan. Shallower on tracking. |
+| Campaign build (15 stages) | Opus 5.5 | 9.5 | 18 files, drove a 3-star win in the browser, checked Arena regression, flagged its own loopholes. |
+| Campaign code review | Gemini 4 Hydrogen (router) | 8.5 | Found a real bug (mid-wave guns dodged the guns rule). |
+| Mutant affix visuals | Sonnet 5.5 | 9 | Shield hex, swift streaks, regen diamonds, HP-bar shield segment. Verified with screenshots. |
+| Mutant affix visuals | Grok Build CLI (router) | 1 | Two runs, no files changed; second reply contained a made-up diff. Reassigned to Sonnet. |
+
+**Best this round:** Opus 5.5 (campaign build). **Lesson:** check the working tree after every router build job.
+
 ## Round 2 — visual overhaul, depth, skins, pass, animation (2026-11-14)
 
 | Slice | Model | Score | Notes |
