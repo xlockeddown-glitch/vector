@@ -1802,7 +1802,7 @@ function applyHitFx(w, e, stats) {
 const isBossType = (t) => t === "titan" || t === "colossus";
 
 /** Marks the enemy with the hit's elements; two different live elements react. */
-function elementOnHit(w, e, stats) {
+function elementOnHit(w, e, stats, linger = PARAMS.elementLinger) {
   if (!e?.alive || !stats) return;
   const els = hitElements(stats);
   if (!els.length) return;
@@ -1822,7 +1822,7 @@ function elementOnHit(w, e, stats) {
         }
       }
     }
-    if (e.alive) e.elUntil[el] = now + PARAMS.elementLinger;
+    if (e.alive) e.elUntil[el] = Math.max(e.elUntil[el] ?? 0, now + linger);
   }
 }
 
@@ -2922,10 +2922,10 @@ function resolveOrder(w, o) {
           addFx(w, { kind: "float", x: e.x, y: e.y - 26, life: 0.9, text: "CAUGHT", color: def.color, size: 13 });
         }
         if (e.type === "jammer" && (e.jamCd ?? 9) <= ORDER_NUM.stasisJamTell) e.jamCd = PARAMS.jamEvery;
-        elementOnHit(w, e, { infuse: "cold" });
+        elementOnHit(w, e, { infuse: "cold" }, ORDER_NUM.markLinger);
         addFx(w, { kind: "shatter", x: e.x, y: e.y, life: 0.3, color: def.color, size: Math.max(8, e.radius) * 0.8, seed: Math.random() * 6.283 });
       } else if (o.id === "lance") {
-        elementOnHit(w, e, { infuse: "heat" });
+        elementOnHit(w, e, { infuse: "heat" }, ORDER_NUM.markLinger);
         if (e.alive) applyDamage(w, e, e.maxHp * (boss ? ORDER_NUM.lanceBossHp : ORDER_NUM.lanceHp), false, null, true);
       } else if (o.id === "recall") {
         if (boss) continue;

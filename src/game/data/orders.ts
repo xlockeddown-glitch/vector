@@ -103,6 +103,12 @@ export const ORDER_NUM = {
   laneTap: 60,
   /** Gun taps within this of a moon pick that gun. */
   gunTap: 60,
+  /**
+   * Element marks from Orders last this long (guns: PARAMS.elementLinger = 2s).
+   * Longer so Order → Order combos work through the 3s lockout: Stasis lands at 0.6s,
+   * the next cast is at 3s and Lance lands at 4s; a 2s mark would be gone by then.
+   */
+  markLinger: 4.5,
   stasisFreeze: 1.6,
   stasisBossFreeze: 0.6,
   /** A Jammer this close to its pulse is "telegraphing": Stasis resets its pulse. */
