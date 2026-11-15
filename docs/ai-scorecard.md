@@ -2,6 +2,18 @@
 
 Who did what on VECTOR, and how well. Claude (Opus 5.5) orchestrates, reviews and integrates every slice and has the final say. Scores are 1–10 from Claude's review after integration: correctness, staying in scope, quality of the result, and rework needed.
 
+## Round 5 — Orders: active abilities (2026-11-15)
+
+| Slice | Model | Score | Notes |
+|---|---|---|---|
+| Orders design proposal | Fable 5.2 | 9.5 | Name clashes, freezeT reuse to cancel Blink/Jammer, exact input hook, save/pause risks. |
+| Orders design proposal | Gemini 4 Hydrogen (router) | 8.5 | Shared energy pool, Blink-pinning snare, EMP jam cleanse. |
+| Quick fun pitch | Gemini 3.8 Flash (router, casual) | 5 | Fun hooks, but assumed enemies shoot. |
+| Orders build | Opus 5.5 | 9 | Full system, measured in live waves, checkpoint commits. Desktop overlap and wave-end cleanup fixed during integration. |
+| Orders code review | Gemini 4 Hydrogen (router) | 8 | Two real bugs; one false alarm. |
+
+**Best this round:** Fable 5.2. **Lesson:** checkpoint commits work; give pitch models real context.
+
 ## Round 4 — Blink + Jammer enemies, balance pass (2026-11-15)
 
 | Slice | Model | Score | Notes |
