@@ -86,6 +86,8 @@ export async function loadAssets(): Promise<Assets> {
       medic: grunt,
       shard: grunt,
       warden: plate,
+      blink: striker.length ? striker : grunt,
+      jammer: plate,
     },
   };
 }

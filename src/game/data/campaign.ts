@@ -10,7 +10,8 @@
 import { PARAMS } from "../params";
 import { WAVES_PER_ROUND } from "../constants";
 import type { ThreatId } from "./threat";
-import type { SkinId } from "../types";
+import type { EnemyType, SkinId } from "../types";
+import { ENEMY_BRIEF, ENEMY_NAME } from "./enemies";
 
 export type CampaignMode = "story" | "build";
 
@@ -53,6 +54,8 @@ export type CampaignStage = {
   leaks: number;
   /** ★3 twist. */
   twist: StarRule;
+  /** Special enemies this stage brings (Blink, Jammer), from wave PARAMS.campaignFoesFrom + 1. Others stay out. */
+  extra?: EnemyType[];
 };
 
 export type CampaignSector = {
@@ -72,6 +75,8 @@ export type CampaignRun = {
   threat: ThreatId[];
   mapId: string;
   lane: string;
+  /** Special enemies the wave builder adds (stage.extra). Always set on a Campaign run; [] = none. */
+  foes: EnemyType[];
 };
 
 export type CampaignStageSave = { stars: 0 | 1 | 2 | 3; clears: number; bestLeaks?: number };
@@ -94,14 +99,14 @@ export const CAMPAIGN_SECTORS: CampaignSector[] = [
   {
     id: "dark",
     name: "Dark Side",
-    blurb: "One Threat each. Longer holds.",
+    blurb: "One Threat each. Longer holds. Blinks jump the lane.",
     need: PARAMS.campaignSectorNeed[1]!,
     reward: { kind: "credit", n: PARAMS.campaignSectorCredit },
   },
   {
     id: "lagrange",
     name: "Lagrange",
-    blurb: "Stacked Threat. Full 12-wave finales.",
+    blurb: "Stacked Threat. Full 12-wave finales. Jammers silence guns.",
     need: PARAMS.campaignSectorNeed[2]!,
     reward: { kind: "skin", id: "gold" },
   },
@@ -118,28 +123,33 @@ const S = (
   threat: ThreatId[],
   leaks: number,
   twist: StarRule,
-): CampaignStage => ({ id: `${sector + 1}-${n}`, sector, n, name, mapId, lane, mode, waves, threat, leaks, twist });
+  extra: EnemyType[] = [],
+): CampaignStage => ({ id: `${sector + 1}-${n}`, sector, n, name, mapId, lane, mode, waves, threat, leaks, twist, extra });
 
-/** Tuning: thresholds are first guesses. */
+/** Sector 2 brings Blink. Sector 3 brings Blink and Jammer. Sector 1 has neither. */
+const BLINK: EnemyType[] = ["blink"];
+const BLINK_JAM: EnemyType[] = ["blink", "jammer"];
+
+/** Tuning: s4 balance pass — thresholds set from bot runs (see commit message). */
 export const CAMPAIGN_STAGES: CampaignStage[] = [
   // Sector 1: Tide Line
   S(0, 1, "First Hold", "map-mare", "twin-s", "story", 6, [], 3, { kind: "leaksMax", n: 0 }),
-  S(0, 2, "Staircase", "map-mare", "steps", "story", 6, [], 3, { kind: "picksMin", n: 6 }),
-  S(0, 3, "Comb", "map-regolith", "shelf", "build", 6, [], 3, { kind: "starsMadeMin", n: 1 }),
-  S(0, 4, "Keyhole", "map-regolith", "keyhole", "story", 9, ["overdrive"], 2, { kind: "reactionsMin", n: 25 }),
+  S(0, 2, "Staircase", "map-mare", "steps", "story", 6, [], 3, { kind: "gunsMax", n: 3 }),
+  S(0, 3, "Comb", "map-regolith", "shelf", "build", 6, [], 3, { kind: "starsMadeMin", n: 2 }),
+  S(0, 4, "Keyhole", "map-regolith", "keyhole", "story", 9, ["overdrive"], 2, { kind: "reactionsMin", n: 40 }),
   S(0, 5, "Hook", "map-void", "hook", "build", 9, [], 2, { kind: "starsMadeMin", n: 2 }),
   // Sector 2: Dark Side
-  S(1, 1, "Long Return", "map-void", "bracket", "story", 9, ["glass"], 2, { kind: "gunsMax", n: 4 }),
-  S(1, 2, "Furnace Steps", "map-helios", "steps", "build", 9, ["lean"], 2, { kind: "creditSpentMax", n: 2000 }),
-  S(1, 3, "Escort Duty", "map-void", "hook", "story", 9, ["escort"], 2, { kind: "reactionsMin", n: 40 }),
-  S(1, 4, "Hot Comb", "map-helios", "shelf", "build", 12, ["hardened"], 3, { kind: "starsMadeMin", n: 3 }),
-  S(1, 5, "Eclipse", "map-void", "keyhole", "story", 12, ["bigmega", "overdrive"], 2, { kind: "timeMax", n: 600 }),
+  S(1, 1, "Long Return", "map-void", "bracket", "story", 9, ["glass"], 2, { kind: "gunsMax", n: 4 }, BLINK),
+  S(1, 2, "Furnace Steps", "map-helios", "steps", "build", 9, ["lean"], 2, { kind: "creditSpentMax", n: 2000 }, BLINK),
+  S(1, 3, "Escort Duty", "map-void", "hook", "story", 9, ["escort"], 2, { kind: "reactionsMin", n: 100 }, BLINK),
+  S(1, 4, "Hot Comb", "map-helios", "shelf", "build", 9, [], 3, { kind: "starsMadeMin", n: 2 }, BLINK),
+  S(1, 5, "Eclipse", "map-void", "keyhole", "story", 12, ["bigmega", "overdrive"], 2, { kind: "timeMax", n: 600 }, BLINK),
   // Sector 3: Lagrange
-  S(2, 1, "Balance Point", "map-lagrange", "keyhole", "story", 9, ["mutant"], 2, { kind: "picksMax", n: 8 }),
-  S(2, 2, "Twin Pull", "map-lagrange", "twin-s", "build", 12, ["hardened", "lean"], 3, { kind: "gunsMax", n: 5 }),
-  S(2, 3, "Hookshot", "map-lagrange", "hook", "story", 12, ["escort", "glass"], 2, { kind: "creditSpentMax", n: 4000 }),
-  S(2, 4, "Gravity Well", "map-lagrange", "bracket", "build", 12, ["mutant", "bigmega"], 3, { kind: "starsMadeMin", n: 4 }),
-  S(2, 5, "L5 Gate", "map-lagrange", "steps", "story", 12, ["mutant", "overdrive", "hardened"], 2, { kind: "leaksMax", n: 0 }),
+  S(2, 1, "Balance Point", "map-lagrange", "keyhole", "story", 9, ["mutant"], 2, { kind: "picksMax", n: 8 }, BLINK_JAM),
+  S(2, 2, "Twin Pull", "map-lagrange", "twin-s", "build", 12, ["hardened", "lean"], 3, { kind: "gunsMax", n: 5 }, BLINK_JAM),
+  S(2, 3, "Hookshot", "map-lagrange", "hook", "story", 12, ["escort", "glass"], 2, { kind: "creditSpentMax", n: 4000 }, BLINK_JAM),
+  S(2, 4, "Gravity Well", "map-lagrange", "bracket", "build", 12, ["mutant", "bigmega"], 3, { kind: "starsMadeMin", n: 3 }, BLINK_JAM),
+  S(2, 5, "L5 Gate", "map-lagrange", "steps", "story", 12, ["mutant", "overdrive", "hardened"], 3, { kind: "leaksMax", n: 1 }, BLINK_JAM),
 ];
 
 for (const s of CAMPAIGN_STAGES) {
@@ -166,7 +176,20 @@ export function modeLabel(m: CampaignMode): string {
 
 /** The run fields for a stage. */
 export function campaignRunFor(s: CampaignStage): CampaignRun {
-  return { stageId: s.id, waves: s.waves, threat: [...s.threat], mapId: s.mapId, lane: s.lane };
+  return { stageId: s.id, waves: s.waves, threat: [...s.threat], mapId: s.mapId, lane: s.lane, foes: [...(s.extra ?? [])] };
+}
+
+/**
+ * Stage card chips for special enemies. fresh = the first stage (campaign order) that brings it,
+ * shown as "New: Blink"; later stages show "Blink".
+ */
+export function stageFoes(s: CampaignStage): { type: EnemyType; label: string; brief: string; fresh: boolean }[] {
+  const at = CAMPAIGN_STAGES.indexOf(s);
+  const before = CAMPAIGN_STAGES.slice(0, Math.max(0, at));
+  return (s.extra ?? []).map((type) => {
+    const fresh = !before.some((p) => p.extra?.includes(type));
+    return { type, fresh, label: fresh ? `New: ${ENEMY_NAME[type]}` : ENEMY_NAME[type], brief: ENEMY_BRIEF[type] ?? "" };
+  });
 }
 
 /** Coerce a saved run's campaign block. Unknown stage ids drop the block. */

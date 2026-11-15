@@ -120,6 +120,10 @@ export const ENEMIES: Record<EnemyType, EnemyDef> = {
   medic: { hp: 310, speed: 38, gold: 28, armor: 0.12, radius: 18, scale: 0.95 },
   shard: { hp: 320, speed: 55, gold: 18, armor: 0, radius: 17, scale: 0.9 },
   warden: { hp: 450, speed: 40, gold: 30, armor: 0.2, radius: 19, scale: 0.98 },
+  /** Blink: teleports forward on a timer (PARAMS.blink*). Fragile, medium speed. */
+  blink: { hp: 130, speed: 70, gold: 14, armor: 0, radius: 14, scale: 0.8 },
+  /** Jammer: pulses and silences nearby guns (PARAMS.jam*). Tanky, slow. */
+  jammer: { hp: 620, speed: 34, gold: 34, armor: 0.15, radius: 20, scale: 1 },
 };
 
 export const ODDS: Record<Grade, Record<Rarity, number>> = {
@@ -168,5 +172,7 @@ export const ART = {
     medic: [1, 2, 3, 4].map((n) => `/game/enemies/grunt-${n}.png`),
     shard: [1, 2, 3, 4].map((n) => `/game/enemies/grunt-${n}.png`),
     warden: [1, 2, 3, 4].map((n) => `/game/enemies/plate-${n}.png`),
+    blink: [1, 2, 3, 4].map((n) => `/game/enemies/striker-${n}.png`),
+    jammer: [1, 2, 3, 4].map((n) => `/game/enemies/plate-${n}.png`),
   } as Record<EnemyType, string[]>,
 };

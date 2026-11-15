@@ -139,6 +139,18 @@ export type Enemy = {
   regen?: number;
   /** Inside a Warden aura while > 0. */
   wardT?: number;
+  /** Blink: seconds until the next jump. The marker shows while this is under PARAMS.blinkTell. */
+  blinkT?: number;
+  /** Blink: landing spot of the coming jump (valid while telegraphing). */
+  blinkToX?: number;
+  blinkToY?: number;
+  /** Blink: where the last jump left from, and seconds left of its afterimage. */
+  blinkFromX?: number;
+  blinkFromY?: number;
+  blinkFx?: number;
+  /** Jammer: seconds until the next pulse, and seconds left of the pulse ring. */
+  jamCd?: number;
+  jamFx?: number;
 };
 
 type Projectile = {
@@ -1265,6 +1277,8 @@ function spawnEnemy(w, type, route = 0, noMutant = false) {
   e.fold = 0;
   e.hat = Math.floor(Math.random() * 4);
   e.knockHits = 0;
+  e.nadeCd = 2;
+  e.nadeN = 0;
   e.age = 0;
   e.affix = null;
   e.shield = 0;
@@ -1272,6 +1286,11 @@ function spawnEnemy(w, type, route = 0, noMutant = false) {
   e.shieldBreak = 0;
   e.regen = 0;
   e.wardT = 0;
+  // Staggered first timers so a group does not jump or pulse on the same frame.
+  e.blinkT = type === "blink" ? PARAMS.blinkEvery * (0.7 + Math.random() * 0.3) : 0;
+  e.blinkFx = 0;
+  e.jamCd = type === "jammer" ? PARAMS.jamEvery * (0.55 + Math.random() * 0.45) : 0;
+  e.jamFx = 0;
   if (hasThreat(w.threat, "overdrive")) e.speed *= THREAT_NUM.overdriveSpeed;
   if (!noMutant && hasThreat(w.threat, "mutant") && Math.random() < THREAT_NUM.mutantOdds) {
     const affix = MUTANT_AFFIXES[Math.floor(Math.random() * MUTANT_AFFIXES.length)];
@@ -1322,6 +1341,72 @@ function spawnSplit(w, route, along) {
 
 function progress(e) {
   return e.along ?? 0;
+}
+
+/** Blink: count down, show the landing marker for the last blinkTell seconds, then jump forward along the lane. */
+function stepBlink(w, e, dt) {
+  if ((e.blinkFx ?? 0) > 0) e.blinkFx = Math.max(0, e.blinkFx - dt);
+  // Frozen Blinks hold their timer: a freeze buys real time.
+  if ((e.freezeT ?? 0) > 0) return;
+  e.blinkT = (e.blinkT ?? PARAMS.blinkEvery) - dt;
+  if (e.blinkT > PARAMS.blinkTell) return;
+  // Never land inside the last stretch before Home: it has to walk that.
+  const cap = (PATH_ALONG[e.route] ?? 1) - PARAMS.blinkHomeGap;
+  const to = Math.min(cap, (e.along ?? 0) + PARAMS.blinkJump);
+  if (to <= (e.along ?? 0) + 1) {
+    e.blinkT = PARAMS.blinkEvery;
+    return;
+  }
+  const p = sampleAlong(e.route, to);
+  const tx = p.x - Math.sin(p.heading) * (e.lane ?? 0);
+  const ty = p.y + Math.cos(p.heading) * (e.lane ?? 0);
+  if (e.blinkT > 0) {
+    e.blinkToX = tx;
+    e.blinkToY = ty;
+    return;
+  }
+  e.blinkFromX = e.x;
+  e.blinkFromY = e.y;
+  e.blinkFx = 0.35;
+  e.along = to;
+  e.hdg = p.heading;
+  e.x = tx;
+  e.y = ty;
+  e.blinkT = PARAMS.blinkEvery;
+  addFx(w, { kind: "spark", x: tx, y: ty, life: 0.16, color: "#ff3d9a", size: 9 });
+}
+
+/**
+ * Jammer: every jamEvery seconds, guns within jamR hold fire for jamT seconds.
+ * Rules that keep it fair:
+ *  - a gun cannot be jammed again until jamGrace seconds after it recovers, so pulses never chain;
+ *  - Home and crafts are never jammed;
+ *  - jam timers only count down (stepTowers) and are cleared between waves (clearJams).
+ */
+function stepJammer(w, e, dt) {
+  if ((e.jamFx ?? 0) > 0) e.jamFx = Math.max(0, e.jamFx - dt);
+  if ((e.freezeT ?? 0) > 0) return;
+  e.jamCd = (e.jamCd ?? PARAMS.jamEvery) - dt;
+  if (e.jamCd > 0) return;
+  e.jamCd = PARAMS.jamEvery;
+  e.jamFx = 0.5;
+  const r2 = PARAMS.jamR * PARAMS.jamR;
+  for (const item of placedGuns(w)) {
+    if (item.placedPad === HOME_PAD || item.card.kind !== "tower") continue;
+    if ((item.jamImmuneT ?? 0) > 0) continue;
+    const pos = towerPoint(item);
+    if (!pos || dist2(pos.x, pos.y, e.x, e.y) > r2) continue;
+    item.jamT = PARAMS.jamT;
+    item.jamImmuneT = PARAMS.jamT + PARAMS.jamGrace;
+    addFx(w, { kind: "float", x: pos.x, y: pos.y - 34, life: 0.8, text: "JAMMED", color: "#ff3d9a", size: 11 });
+  }
+}
+
+function clearJams(w) {
+  for (const r of w.roster ?? []) {
+    if (r.jamT) r.jamT = 0;
+    if (r.jamImmuneT) r.jamImmuneT = 0;
+  }
 }
 
 function dist2(ax, ay, bx, by) {
@@ -2133,6 +2218,12 @@ function stepTowers(w, dt) {
     item.cd -= dt;
     item.overclockT = Math.max(0, (item.overclockT ?? 0) - dt);
     if ((item.ultT ?? 0) > 0) item.ultT -= dt;
+    if ((item.jamImmuneT ?? 0) > 0) item.jamImmuneT = Math.max(0, item.jamImmuneT - dt);
+    if ((item.jamT ?? 0) > 0) {
+      // Jammed (Jammer pulse): no shots, no glow, no slam. The timer only ever counts down.
+      item.jamT = Math.max(0, item.jamT - dt);
+      continue;
+    }
     const hot = (item.overclockT ?? 0) > 0;
     if (hot && !item.overclockLit) {
       item.overclockLit = true;
@@ -2467,6 +2558,7 @@ function sayWave(w) {
 }
 
 function queueWave(w) {
+  clearJams(w);
   w.spawnQ = [];
   w.waveT = 0;
   noteGunsPeak(w);
@@ -2475,7 +2567,11 @@ function queueWave(w) {
   w.goldWave = 0;
   w.waveNotes = {};
   w.waveActive = true;
-  const t = waveAt(w.wave, hasThreat(w.threat, "bigmega") ? { megaCountMul: THREAT_NUM.bigMegaCountMul } : undefined);
+  const t = waveAt(w.wave, {
+    megaCountMul: hasThreat(w.threat, "bigmega") ? THREAT_NUM.bigMegaCountMul : undefined,
+    // Campaign: the stage lists its Blink / Jammer. Normal runs: they join by wave number.
+    foes: w.campaign ? (w.campaign.foes ?? []) : undefined,
+  });
   const n = w.wave % PATHS.length;
   let r = 0;
   for (const i of t.groups) {
@@ -2560,6 +2656,7 @@ export function startWave(w) {
 
 function finishWave(w) {
   w.waveActive = false;
+  clearJams(w);
   tutorialAdvance(w, 7);
   w.nextWaveDmg = 1;
   w.wavesCleared = (w.wavesCleared ?? 0) + 1;
@@ -2728,6 +2825,8 @@ export function stepWorld(w, dt) {
         }
       }
     }
+    if (e.type === "blink" && e.alive) stepBlink(w, e, dt);
+    if (e.type === "jammer" && e.alive) stepJammer(w, e, dt);
     if ((e.shieldBreak ?? 0) > 0) e.shieldBreak = Math.max(0, e.shieldBreak - dt);
     if ((e.regen ?? 0) > 0 && e.alive) e.hp = Math.min(e.maxHp, e.hp + e.regen * dt);
     if ((e.along ?? 0) >= (PATH_ALONG[e.route] ?? 1) - 4) leakEnemy(w, e);
@@ -4067,8 +4166,10 @@ function stepNades(w, dt) {
     if (e.type !== "plate" && e.type !== "colossus" && e.type !== "titan") continue;
     const cap = PATH_ALONG[e.route ?? 0] ?? 1;
     if ((e.along ?? 0) / cap < PARAMS.nadeLate) continue;
+    if ((e.nadeN ?? 0) >= PARAMS.nadeMax) continue;
     e.nadeCd = (e.nadeCd ?? 2) - dt;
     if (e.nadeCd > 0) continue;
+    e.nadeN = (e.nadeN ?? 0) + 1;
     e.nadeCd = e.type === "titan" ? 2.4 : e.type === "colossus" ? 3.2 : 4.4;
     const dx = BASE.x - e.x;
     const dy = BASE.y - e.y;
@@ -4144,6 +4245,7 @@ function stepNades(w, dt) {
         n.alive = false;
         w.lives -= n.dmg;
         w.leaks += n.dmg;
+        w.runLeaks = (w.runLeaks ?? 0) + n.dmg;
         w.trauma = Math.min(1, w.trauma + 0.35);
         addFx(w, { kind: "ring", x: BASE.x, y: BASE.y, life: 0.4, color: "#ff5c2a", size: 40 });
         w.message = "Grenade hit home.";

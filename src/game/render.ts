@@ -828,6 +828,9 @@ function drawTowerShape(
   const grow = (1 + 0.1 * (Math.max(1, Math.min(4, item.level || 1)) - 1)) * pop;
   ctx.scale(grow, grow);
   if (NEON_LOOK && world) neonGunJuice(ctx, item, x, y, t);
+  // Jammed by a Jammer pulse: the whole gun dims; the mark is drawn on top at the end.
+  const jam = world && world.phase === "combat" ? Math.max(0, item.jamT ?? 0) : 0;
+  if (jam > 0) ctx.globalAlpha *= 0.4;
 
   if ((item.levelPop ?? 0) > 0.02) {
     const a = item.levelPop ?? 0;
@@ -1251,6 +1254,48 @@ function drawTowerShape(
   }
   if (NEON_LOOK) paintGunSkin(ctx, skin.id, c, t);
 
+  ctx.restore();
+  if (jam > 0) drawJamMark(ctx, x, y, t, jam / PARAMS.jamT);
+}
+
+/** Jammed gun: magenta "no signal" ring with a cross, static ticks, and an arc that drains as it recovers. */
+function drawJamMark(ctx: CanvasRenderingContext2D, x: number, y: number, t: number, left: number) {
+  const R = 22;
+  ctx.save();
+  ctx.translate(x, y - 6);
+  ctx.strokeStyle = rgba(NEON.foe, 0.35);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = NEON.foe;
+  ctx.shadowColor = NEON.foe;
+  ctx.shadowBlur = 10;
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(0, 0, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, Math.min(1, left)));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-9, -9);
+  ctx.lineTo(9, 9);
+  ctx.moveTo(9, -9);
+  ctx.lineTo(-9, 9);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  // Static: short ticks that hop around the ring.
+  ctx.strokeStyle = rgba(NEON.white, 0.8);
+  ctx.lineWidth = 1.2;
+  const step = Math.floor(t * 18);
+  for (let i = 0; i < 5; i++) {
+    const h = Math.sin((step + i * 7) * 12.9898 + x * 0.1) * 43758.5453;
+    const a = (h - Math.floor(h)) * Math.PI * 2;
+    const len = 3 + ((i * 5 + step) % 4);
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * (R + 3), Math.sin(a) * (R + 3));
+    ctx.lineTo(Math.cos(a) * (R + 3) + len, Math.sin(a) * (R + 3));
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

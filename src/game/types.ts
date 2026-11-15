@@ -108,7 +108,7 @@ export type Phase =
   | "defeat";
 
 export type ProjectileKind = "arrow" | "ember" | "frost" | "hex" | "spark" | "none";
-export type EnemyType = "grunt" | "striker" | "plate" | "swarm" | "colossus" | "titan" | "cache" | "dart" | "medic" | "shard" | "warden";
+export type EnemyType = "grunt" | "striker" | "plate" | "swarm" | "colossus" | "titan" | "cache" | "dart" | "medic" | "shard" | "warden" | "blink" | "jammer";
 
 export type Vec = { x: number; y: number };
 
@@ -375,6 +375,10 @@ export type RosterItem = {
   glowCd?: number;
   overclockT?: number;
   overclockLit?: boolean;
+  /** Seconds left jammed by a Jammer pulse: the gun holds fire. */
+  jamT?: number;
+  /** Seconds until this gun can be jammed again (jam length + a grace window). */
+  jamImmuneT?: number;
   streak?: number;
   ultT?: number;
   parts?: PartRoll[];

@@ -7,6 +7,7 @@ import {
   modeLabel,
   sectorOpen,
   sectorStars,
+  stageFoes,
   stageLabel,
   stageOpen,
   stageRules,
@@ -219,6 +220,7 @@ function StageCard({
 }) {
   const rules = stageRules(stage);
   const threats = THREATS.filter((t) => stage.threat.includes(t.id));
+  const foes = stageFoes(stage);
   const lockLine = !secOpen ? "Sector locked" : `Earn ★ on Stage ${stage.sector + 1}-${stage.n - 1} first`;
   return (
     <section className="camp-card neon-panel" aria-label={`${stageLabel(stage)} ${stage.name}`}>
@@ -250,6 +252,11 @@ function StageCard({
         ) : (
           <span className="camp-threat is-none">No Threat</span>
         )}
+        {foes.map((f) => (
+          <span key={f.type} className={cn("camp-threat", "camp-foe", f.fresh && "is-new")} title={f.brief}>
+            <b>{f.label}</b> {f.brief}
+          </span>
+        ))}
       </div>
       <ol className="camp-rules">
         {rules.map((r, i) => (

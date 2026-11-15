@@ -5,6 +5,7 @@
  */
 import type { CompanionState } from "./data/companion";
 import type { Enemy } from "./sim";
+import { PARAMS } from "./params";
 
 export const NEON_LOOK = true;
 
@@ -123,7 +124,135 @@ const FOE_SHAPE: Record<string, { sides: number; spin: number; inner?: boolean; 
   cache: { sides: 12, spin: 0.8, color: NEON.gold },
   shard: { sides: 3, spin: 0 },
   warden: { sides: 4, spin: 0, inner: true },
+  // Blink: a four-point spark pointing along its heading (own path below). Jammer: pentagon with a broadcast mark.
+  blink: { sides: 3, spin: 0 },
+  jammer: { sides: 5, spin: 0.2, inner: true },
 };
+
+/** Blink body: a four-point spark, long axis forward. Path only. */
+function blinkPath(ctx: CanvasRenderingContext2D, r: number) {
+  const w = r * 0.28;
+  ctx.beginPath();
+  ctx.moveTo(r * 1.35, 0);
+  ctx.lineTo(w, w);
+  ctx.lineTo(0, r * 0.85);
+  ctx.lineTo(-w, w);
+  ctx.lineTo(-r * 0.95, 0);
+  ctx.lineTo(-w, -w);
+  ctx.lineTo(0, -r * 0.85);
+  ctx.lineTo(w, -w);
+  ctx.closePath();
+}
+
+/**
+ * Blink extras, in world space: the landing marker while it telegraphs (flickering ghost,
+ * closing ring, dashed lead line) and the afterimage streak right after a jump.
+ */
+function neonBlinkFx(ctx: CanvasRenderingContext2D, e: Enemy, t: number) {
+  const r = e.radius;
+  const left = e.blinkT ?? 9;
+  if (left > 0 && left < PARAMS.blinkTell && e.blinkToX != null && e.blinkToY != null) {
+    const k = 1 - left / PARAMS.blinkTell;
+    const flick = 0.7 + 0.3 * Math.sin(t * 9);
+    ctx.save();
+    ctx.strokeStyle = rgba(NEON.foe, 0.5 + 0.35 * k);
+    ctx.lineWidth = 1.3;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    ctx.moveTo(e.x, e.y);
+    ctx.lineTo(e.blinkToX, e.blinkToY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.translate(e.blinkToX, e.blinkToY);
+    ctx.shadowColor = NEON.foe;
+    ctx.shadowBlur = 8;
+    // Closing ring with four ticks: "lands here".
+    const rr = r * (2.8 - 1.5 * k);
+    ctx.strokeStyle = rgba(NEON.white, 0.6 + 0.4 * k);
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, rr, 0, Math.PI * 2);
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2 + Math.PI / 4;
+      ctx.moveTo(Math.cos(a) * (rr + 2), Math.sin(a) * (rr + 2));
+      ctx.lineTo(Math.cos(a) * (rr + 8), Math.sin(a) * (rr + 8));
+    }
+    ctx.stroke();
+    ctx.rotate(e.hdg ?? 0);
+    ctx.globalAlpha *= (0.55 + 0.45 * k) * flick;
+    blinkPath(ctx, r);
+    ctx.strokeStyle = NEON.foe;
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.restore();
+  }
+  const fx = e.blinkFx ?? 0;
+  if (fx > 0 && e.blinkFromX != null && e.blinkFromY != null) {
+    const k = fx / 0.35;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = rgba(NEON.foe, 0.55 * k);
+    ctx.lineWidth = 1 + 3 * k;
+    ctx.beginPath();
+    ctx.moveTo(e.blinkFromX, e.blinkFromY);
+    ctx.lineTo(e.x, e.y);
+    ctx.stroke();
+    ctx.translate(e.blinkFromX, e.blinkFromY);
+    ctx.rotate(e.hdg ?? 0);
+    const sc = 1 + (1 - k) * 0.8;
+    ctx.scale(sc, sc);
+    blinkPath(ctx, r);
+    ctx.strokeStyle = rgba(NEON.white, 0.7 * k);
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/** Jammer extras, centred on it: faint reach ring, broadcast arcs that charge up, and the pulse ring when it fires. */
+function neonJammerFx(ctx: CanvasRenderingContext2D, e: Enemy, col: string) {
+  const r = e.radius;
+  const R = PARAMS.jamR;
+  const cd = e.jamCd ?? 9;
+  // Charge: the last 0.6s before a pulse the mark and the reach ring brighten.
+  const charge = cd < 0.6 ? 1 - cd / 0.6 : 0;
+  ctx.strokeStyle = rgba(col, 0.26 + 0.3 * charge);
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 7]);
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = rgba(NEON.white, 0.55 + 0.45 * charge);
+  ctx.lineWidth = 1.3;
+  for (let i = 1; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.2 * i, -0.9, 0.9);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.2 * i, Math.PI - 0.9, Math.PI + 0.9);
+    ctx.stroke();
+  }
+  const fx = e.jamFx ?? 0;
+  if (fx > 0) {
+    const k = 1 - fx / 0.5;
+    const out = 1 - (1 - k) * (1 - k);
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = rgba(col, 0.95 * (1 - k));
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(r, R * out), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = rgba(NEON.white, 0.5 * (1 - k));
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(r, R * out * 0.72), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
 
 const LIME = "#7dff9e";
 
@@ -217,6 +346,11 @@ export function neonEnemy(ctx: CanvasRenderingContext2D, e: Enemy, t: number) {
     ctx.lineTo(-r * 0.35, 0);
     ctx.lineTo(-r * 0.8, -r * 0.75);
     ctx.closePath();
+  } else if (e.type === "blink") {
+    // About to jump: the body flickers.
+    const left = e.blinkT ?? 9;
+    if (left > 0 && left < PARAMS.blinkTell) ctx.globalAlpha *= 0.65 + 0.35 * Math.sin(t * 9);
+    blinkPath(ctx, r);
   } else {
     poly(ctx, s.sides, r, pointy ? 0 : Math.PI / s.sides);
   }
@@ -257,9 +391,19 @@ export function neonEnemy(ctx: CanvasRenderingContext2D, e: Enemy, t: number) {
     ctx.stroke();
     ctx.setLineDash([]);
   }
+  if (e.type === "blink") {
+    // Core dot: reads as a spark even when small.
+    ctx.fillStyle = rgba(NEON.white, 0.85);
+    ctx.beginPath();
+    ctx.arc(0, 0, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (e.type === "jammer") {
+    neonJammerFx(ctx, e, col);
+  }
   ctx.restore();
   if (e.affix) neonAffix(ctx, e, t, r);
   ctx.restore();
+  if (e.type === "blink") neonBlinkFx(ctx, e, t);
   if (burning) {
     ctx.save();
     ctx.strokeStyle = rgba(NEON.heat, 0.55 + Math.sin(t * 14 + e.x) * 0.25);

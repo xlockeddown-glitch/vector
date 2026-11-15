@@ -250,6 +250,8 @@
   color: var(--color-steel);
 }
 .camp-threat b { color: var(--neon-magenta); font-weight: 700; }
+.camp-foe.is-new { border-color: color-mix(in oklab, var(--neon-gold) 60%, transparent); }
+.camp-foe.is-new b { color: var(--neon-gold); }
 .camp-threat.is-none {
   border-color: var(--neon-line);
   background: none;

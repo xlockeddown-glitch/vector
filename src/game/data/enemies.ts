@@ -14,6 +14,14 @@ export const ENEMY_NAME: Record<EnemyType, string> = {
   medic: "Patch",
   shard: "Shard",
   warden: "Warden",
+  blink: "Blink",
+  jammer: "Jammer",
+};
+
+/** One line per special enemy: what it does and how to answer it. Campaign stage cards and the README use these. */
+export const ENEMY_BRIEF: Partial<Record<EnemyType, string>> = {
+  blink: "Jumps ahead along the lane every few seconds. Watch for the marker; cover the late lane.",
+  jammer: "Pulses every few seconds: guns inside the ring stop for a moment. Outrange it or focus it down.",
 };
 
 export type ScrapPaint = {
