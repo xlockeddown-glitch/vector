@@ -4188,6 +4188,20 @@ h1, h2, h3,
   color: var(--color-ink);
   background: color-mix(in oklab, var(--oc) 80%, white);
 }
+/* Wide boards: Home and the Bay live bottom-right, so the bar moves to the empty bottom-left corner. */
+@media (min-width: 700px) {
+  .order-bar,
+  .order-pick {
+    right: auto;
+    left: max(0.5rem, env(safe-area-inset-left));
+  }
+  .order-bar {
+    align-items: flex-start;
+  }
+  .order-row {
+    flex-direction: row-reverse;
+  }
+}
 @media (pointer: coarse) {
   .order-key {
     display: none;

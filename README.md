@@ -47,7 +47,7 @@ Tap **Campaign** on the title screen. 15 hand-set stages in 3 sectors (Tide Line
 Numbers are in `PARAMS` (`blink*`, `jam*`); Campaign stages list them in `extra` (`src/game/data/campaign.ts`).
 
 ## Orders
-Active abilities you cast in combat from one shared **Energy** meter (0–100). Energy resets to 40 at each wave start (no hoarding), then refills +1/s while a wave runs, +1 per kill, +8 per Hulk / Titan / Jammer kill and +2 per element reaction. Every cast starts a 3 s lockout for all Orders.
+Active abilities you cast in combat from one shared **Energy** meter (0–100). Energy resets to 50 at each wave start (one Stasis ready) (no hoarding), then refills +1/s while a wave runs, +1 per kill, +8 per Hulk / Titan / Jammer kill and +2 per element reaction. Every cast starts a 3 s lockout for all Orders.
 
 | Order | Cost | Target | Effect |
 |---|---|---|---|

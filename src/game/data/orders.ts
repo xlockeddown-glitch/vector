@@ -86,8 +86,8 @@ export const ORDER_IDS: OrderId[] = ["stasis", "lance", "surge", "recall"];
 /** Tuning knobs. Keep balance numbers here. */
 export const ORDER_NUM = {
   energyMax: 100,
-  /** Energy at each wave start. */
-  energyStart: 40,
+  /** Energy at each wave start. 50 = one Stasis ready as the wave opens (was 40: first cast waited ~10s). */
+  energyStart: 50,
   /** Energy per sim second in combat (while a wave runs). */
   trickle: 1,
   perKill: 1,

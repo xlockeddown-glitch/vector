@@ -64,7 +64,7 @@ const PAGES: Page[] = [
       "The round buttons bottom-right are Orders. They cost Energy.",
       "Tap one (or press 1 / 2), then tap the lane. Surge: tap a gun.",
       "Stasis Net freezes. At Level 3 you add a second Order.",
-      "Energy resets to 40 each wave. Kills and reactions fill it.",
+      "Energy resets to 50 each wave. Kills and reactions fill it.",
     ],
   },
   {
