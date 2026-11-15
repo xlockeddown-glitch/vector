@@ -58,7 +58,17 @@ const PAGES: Page[] = [
     ],
   },
   {
-    kicker: "06 · Keep",
+    kicker: "06 · Orders",
+    title: "Call an Order",
+    lines: [
+      "The round buttons bottom-right are Orders. They cost Energy.",
+      "Tap one (or press 1 / 2), then tap the lane. Surge: tap a gun.",
+      "Stasis Net freezes. At Level 3 you add a second Order.",
+      "Energy resets to 40 each wave. Kills and reactions fill it.",
+    ],
+  },
+  {
+    kicker: "07 · Keep",
     title: "Hold 12. Bank Credit.",
     lines: [
       "Survive 12 waves. That is a win.",

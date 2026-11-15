@@ -8,6 +8,7 @@ import { HOME_PAD } from "@/game/constants";
 import { Pause, Play, Volume2, VolumeX, ChartNoAxesColumn } from "lucide-react";
 import { CraftPortrait } from "./CardView";
 import { CraftTree, GunTree } from "./GunTree";
+import { OrderBar, OrderPick } from "./OrderBar";
 
 export function HudBar({
   hud,
@@ -157,6 +158,8 @@ export function HudOverlays({
       {!plantedGun && !hud.selectedCraft && hud.inspect && hud.inspect.kind === "craft" && (
         <InspectPanel info={hud.inspect} onAction={onAction} />
       )}
+      {showPlay && !plantedGun && !hud.selectedCraft && <OrderBar hud={hud} onAction={onAction} />}
+      {showPlay && !plantedGun && !hud.selectedCraft && <OrderPick hud={hud} onAction={onAction} />}
       {showPlay && hud.announce && (
         <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2">
           <div className="neon-toast px-4 py-2 text-center">

@@ -1,4 +1,6 @@
 import type { Assets } from "./assets";
+import { neonOrders, neonGunOrder } from "./neon";
+import { ORDER_NUM } from "./data/orders";
 import { NEON, NEON_LOOK, drawMuzzleFlashes, neonCraft, neonCraftTrail, neonEnemy, neonGunJuice, neonHome, neonMoon, rgba } from "./neon";
 import { ENEMIES, HOME_PAD, PALETTE, SKY_PAD, WORLD, PARAMS } from "./constants";
 import { combatStats, getCard } from "./data/cards";
@@ -831,6 +833,10 @@ function drawTowerShape(
   // Jammed by a Jammer pulse: the whole gun dims; the mark is drawn on top at the end.
   const jam = world && world.phase === "combat" ? Math.max(0, item.jamT ?? 0) : 0;
   if (jam > 0) ctx.globalAlpha *= 0.4;
+  // Overheated after a Surge (Order): dimmed, red ring drawn after.
+  const heat = world && world.phase === "combat" ? Math.max(0, item.heatT ?? 0) : 0;
+  const surge = world && world.phase === "combat" ? Math.max(0, item.surgeT ?? 0) : 0;
+  if (heat > 0) ctx.globalAlpha *= 0.45;
 
   if ((item.levelPop ?? 0) > 0.02) {
     const a = item.levelPop ?? 0;
@@ -1256,6 +1262,7 @@ function drawTowerShape(
 
   ctx.restore();
   if (jam > 0) drawJamMark(ctx, x, y, t, jam / PARAMS.jamT);
+  if (surge > 0 || heat > 0) neonGunOrder(ctx, x, y, t, surge, heat, ORDER_NUM.surgeT, ORDER_NUM.surgeHeat);
 }
 
 /** Jammed gun: magenta "no signal" ring with a cross, static ticks, and an arc that drains as it recovers. */
@@ -3753,6 +3760,7 @@ export function drawWorld(
   drawables.sort((a, b) => a.y - b.y);
   for (const d of drawables) d.draw();
   drawFuseArrows(ctx, w);
+  neonOrders(ctx, w, w.visT);
 
   // Neon: shots and effects add light instead of painting over.
   if (NEON_LOOK) ctx.globalCompositeOperation = "lighter";
