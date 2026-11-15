@@ -52,7 +52,8 @@ import { dealByKind, dealCompanionOpening, dealKitSkills, dealLoot, dealOpeningM
 import { dealSetOpening, dealSignalOpening, hasSig } from "./data/signals";
 import { expectedWaveTime, gradeWave } from "./grade";
 import { audio } from "./audio";
-import { addStamp, bumpForge, clearRun, loadMeta, saveRun, noteGunKills, noteLeakless, addFlux, activeProfile, addBondXp, recordRun, markLive } from "./persist";
+import { addStamp, bumpForge, clearRun, loadMeta, saveRun, noteGunKills, noteLeakless, addFlux, activeProfile, addBondXp, recordRun, recordCampaign, markLive } from "./persist";
+import { campaignRunOf, scoreStages, stageById, type CampaignResult, type CampaignRun, type CampaignStats } from "./data/campaign";
 import { CHARMS, emptyGems, canAfford, payGems } from "./data/charms";
 import { rollCard } from "./data/roll";
 import { copyTag, starLabel, starMul, starsOf } from "./data/merge";
@@ -257,6 +258,16 @@ export type World = {
   uiDirty: boolean;
   signals: string[];
   endless: boolean;
+  /** Campaign stage rules for this run. null on normal runs. */
+  campaign: CampaignRun | null;
+  /** Set when a campaign stage is won: what the star reveal shows. */
+  campaignResult: CampaignResult | null;
+  /** Combat seconds summed over cleared waves (campaign timeMax). */
+  runTime: number;
+  /** Credit spent on tree picks and infusions (campaign creditSpentMax). */
+  creditSpent: number;
+  /** Most guns fielded at once this run (campaign gunsMax). */
+  gunsPeak: number;
   ghostHullUsed: boolean;
   message: string | null;
   announce: string | null;
@@ -554,7 +565,40 @@ export function createWorld(): World {
     bondLevel: 1,
     bondXp: 0,
     threat: loadThreat(),
+    campaign: null,
+    campaignResult: null,
+    runTime: 0,
+    creditSpent: 0,
+    gunsPeak: 0,
   };
+}
+
+/** Waves needed to win this run: the campaign stage's count, else WIN_WAVES. */
+export function winWaves(w): number {
+  return w?.campaign?.waves ?? WIN_WAVES;
+}
+
+/** What a campaign star rule reads. */
+export function campaignStats(w): CampaignStats {
+  return {
+    wavesCleared: w.wavesCleared ?? 0,
+    runLeaks: w.runLeaks ?? 0,
+    upgradesMade: w.upgradesMade ?? 0,
+    gunsPeak: Math.max(w.gunsPeak ?? 0, fieldedTowers(w).length),
+    reactions: w.reactions ?? 0,
+    starsMade: w.starsMade ?? 0,
+    runTime: w.runTime ?? 0,
+    creditSpent: w.creditSpent ?? 0,
+  };
+}
+
+function noteGunsPeak(w) {
+  w.gunsPeak = Math.max(w.gunsPeak ?? 0, fieldedTowers(w).length);
+}
+
+function spendCredit(w, n) {
+  w.points -= n;
+  w.creditSpent = (w.creditSpent ?? 0) + Math.max(0, n);
 }
 
 function applyStamps(w) {
@@ -1462,7 +1506,7 @@ function failRun(w) {
       level: w.runLevel,
       loops: Math.floor(w.wave / LOOP_WAVES),
       wavesCleared: w.wavesCleared ?? 0,
-      won: (w.wavesCleared ?? 0) >= WIN_WAVES,
+      won: (w.wavesCleared ?? 0) >= winWaves(w),
       starsMade: w.starsMade ?? 0,
       threat: threatPoints(w.threat),
       upgradesMade: w.upgradesMade ?? 0,
@@ -1678,7 +1722,7 @@ export function infuseGun(w, uid, el) {
   if (!infuseChoices(r.card.set).includes(el)) return false;
   const cost = PARAMS.infuseCost;
   if (w.points < cost) return false;
-  w.points -= cost;
+  spendCredit(w, cost);
   r.infuse = el;
   w.upgradesMade = (w.upgradesMade ?? 0) + 1;
   w.uiDirty = true;
@@ -2412,6 +2456,7 @@ function sayWave(w) {
 function queueWave(w) {
   w.spawnQ = [];
   w.waveT = 0;
+  noteGunsPeak(w);
   w.leaks = 0;
   w.kills = 0;
   w.goldWave = 0;
@@ -2509,6 +2554,8 @@ function finishWave(w) {
   w.roundLeaks += w.leaks;
   w.roundGold += w.goldWave;
   w.roundTime += w.waveT;
+  w.runTime = (w.runTime ?? 0) + (w.waveT ?? 0);
+  noteGunsPeak(w);
   if (w.gunKills && Object.keys(w.gunKills).length) {
     noteGunKills(w.gunKills);
     w.gunKills = {};
@@ -2559,7 +2606,7 @@ function finishWave(w) {
     w.tutorialDoneReady = true;
     w.tutorialPendingGate = false;
   }
-  if ((w.wavesCleared ?? 0) >= WIN_WAVES && !w.endless) {
+  if ((w.wavesCleared ?? 0) >= winWaves(w) && !w.endless) {
     beginLoopGate(w);
     return;
   }
@@ -2776,7 +2823,10 @@ function applyMap(w, card) {
   if (!m) return;
   w.mapId = card.templateId ?? card.id;
   w.mapTheme = m.theme;
-  w.mapLayout = layoutForMap(w.mapId, Math.floor(Math.random() * layoutCount(w.mapId)));
+  w.mapLayout =
+    w.campaign?.lane && w.campaign.mapId === w.mapId
+      ? w.campaign.lane
+      : layoutForMap(w.mapId, Math.floor(Math.random() * layoutCount(w.mapId)));
   let jog = 0;
   for (const ch of w.mapId ?? "m") jog += ch.charCodeAt(0);
   setMapLayout(w.mapLayout, (jog % 5) - 2);
@@ -4389,7 +4439,10 @@ function dealOpeningRound(w) {
 }
 
 function rollNewSector(w, announce: boolean, skipMapId?: string | null) {
-  const sector = dealSector(w.forge, skipMapId ?? w.mapId);
+  // Campaign: the stage fixes the map card (and applyMap fixes the lane); weather still rolls.
+  const sector = w.campaign?.mapId
+    ? dealSector(w.forge, null, w.campaign.mapId)
+    : dealSector(w.forge, skipMapId ?? w.mapId);
   if (!sector) return;
   applyMap(w, sector.map);
   applyEnv(w, sector.env);
@@ -4426,7 +4479,12 @@ export function beginOpening(w) {
   w.forge = meta.forge;
   w.hangarPads = hangar.pad;
   w.hangarLuck = hangar.luck;
-  w.threat = loadThreat();
+  // Campaign stages bring their own Threat. Never saved: the player's toggles stay as they were.
+  w.threat = w.campaign ? [...(w.campaign.threat ?? [])] : loadThreat();
+  w.campaignResult = null;
+  w.runTime = 0;
+  w.creditSpent = 0;
+  w.gunsPeak = 0;
   const baseLives = hasThreat(w.threat, "glass") ? THREAT_NUM.glassLives : START_LIVES;
   w.lives = baseLives + applyStamps(w).lives + hangar.life;
   w.maxLives = w.lives;
@@ -4992,7 +5050,7 @@ export function upgradeTower(w, t, n, tuneId) {
   r.jobs = [...gunJobs(r), tuneId];
   if (!r.tuneJob) r.tuneJob = tuneId;
   else if (!r.tuneCap) r.tuneCap = tuneId;
-  w.points -= i;
+  spendCredit(w, i);
   r.invested += i;
   w.upgradesMade = (w.upgradesMade ?? 0) + 1;
   w.uiDirty = true;
@@ -5016,7 +5074,7 @@ export function upgradeCraft(w, craftUid, nodeId) {
     c.hpMax = Math.round(c.hpMax * grow);
     c.hp = Math.min(c.hpMax, Math.round(c.hpMax * ratio));
   }
-  w.points -= cost;
+  spendCredit(w, cost);
   w.upgradesMade = (w.upgradesMade ?? 0) + 1;
   w.uiDirty = true;
   addFx(w, { kind: "ring", x: c.x, y: c.y, life: 0.3, color: "#3cd6cc", size: 28 });
@@ -5270,7 +5328,61 @@ export function engraveTower(w, t) {
   return true;
 }
 
+/** A campaign stage was held: score ★, pay rewards, show the star reveal. No endless. */
+function finishCampaign(w) {
+  const stage = stageById(w.campaign?.stageId);
+  w.phase = "victory";
+  w.won = true;
+  w.paused = false;
+  w.pickPause = false;
+  w.holdT = 0;
+  w.waveActive = false;
+  w.pendingStamp = false;
+  w.pendingRoundPack = false;
+  w.pendingEngrave = false;
+  markLive(false);
+  if ((w.points ?? 0) > 0) {
+    bankRunFlux(w, fluxFromBank(w.points));
+    w.points = 0;
+  }
+  if (!w.recorded) {
+    recordRun({
+      wave: w.wave,
+      grade: w.grade?.grade ?? w.lastGrade ?? "F",
+      level: w.runLevel,
+      loops: Math.floor(w.wave / LOOP_WAVES),
+      wavesCleared: w.wavesCleared ?? 0,
+      won: (w.wavesCleared ?? 0) >= winWaves(w),
+      starsMade: w.starsMade ?? 0,
+      threat: threatPoints(w.threat),
+      upgradesMade: w.upgradesMade ?? 0,
+      runKills: w.runKills ?? 0,
+      runLeaks: w.runLeaks ?? 0,
+      reactions: w.reactions ?? 0,
+      playMode: w.playMode,
+    });
+    w.recorded = true;
+  }
+  if (stage) {
+    const { checks, stars } = scoreStages(stage, campaignStats(w));
+    const { meta, result } = recordCampaign(stage.id, stars, w.runLeaks ?? 0, checks);
+    w.campaignResult = result;
+    w.flux = meta.flux ?? w.flux;
+    w.fluxEarned = (w.fluxEarned ?? 0) + result.credit;
+  }
+  w.message = "Stage held.";
+  w.announce = null;
+  w.announceT = 0;
+  w.uiDirty = true;
+  audio.play("win");
+  clearRun();
+}
+
 export function beginLoopGate(w) {
+  if (w.campaign) {
+    finishCampaign(w);
+    return;
+  }
   w.phase = "loop";
   w.won = true;
   w.paused = false;
@@ -5363,7 +5475,7 @@ export function goTitle(w, keep: boolean): boolean {
         level: w.runLevel,
         loops: Math.floor(w.wave / LOOP_WAVES),
         wavesCleared: w.wavesCleared ?? 0,
-        won: (w.wavesCleared ?? 0) >= WIN_WAVES,
+        won: (w.wavesCleared ?? 0) >= winWaves(w),
         starsMade: w.starsMade ?? 0,
         threat: threatPoints(w.threat),
       upgradesMade: w.upgradesMade ?? 0,
@@ -5483,6 +5595,10 @@ function snapshotRun(w) {
     pendingRoundPack: w.pendingRoundPack,
     signals: w.signals ?? [],
     endless: !!w.endless,
+    campaign: w.campaign ?? null,
+    runTime: w.runTime ?? 0,
+    creditSpent: w.creditSpent ?? 0,
+    gunsPeak: w.gunsPeak ?? 0,
     ghostHullUsed: !!w.ghostHullUsed,
     gems: w.gems,
     charms: w.charms,
@@ -5657,6 +5773,12 @@ export function applyRun(w, run) {
   w.pendingRoundPack = run.pendingRoundPack ?? false;
   w.signals = run.signals ?? [];
   w.endless = !!run.endless;
+  w.campaign = campaignRunOf(run.campaign);
+  if (w.campaign) w.endless = false;
+  w.campaignResult = null;
+  w.runTime = run.runTime ?? 0;
+  w.creditSpent = run.creditSpent ?? 0;
+  w.gunsPeak = run.gunsPeak ?? 0;
   w.ghostHullUsed = !!run.ghostHullUsed;
   w.gems = run.gems ?? emptyGems();
   w.charms = run.charms ?? [];

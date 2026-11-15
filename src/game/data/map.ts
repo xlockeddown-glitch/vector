@@ -517,6 +517,14 @@ const RAW: Record<string, Vec[]> = {
   ],
 };
 
+/** Raw corner points of a hand-made lane (for previews such as the campaign stage card). */
+export function lanePoints(id: string): Vec[] {
+  return (RAW[id] ?? RAW["twin-s"]!).map((p) => ({ ...p }));
+}
+
+/** Every hand-made lane id. */
+export const LANE_IDS = Object.keys(RAW);
+
 /** Old per-run "jog" variation is gone: lanes stay the shape they were drawn. */
 export function setMapLayout(id: string, _jog = 0) {
   const raw = RAW[id] ?? RAW["twin-s"]!;

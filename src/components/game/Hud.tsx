@@ -4,7 +4,7 @@ import { fmtCount } from "@/game/format";
 import { cn } from "@/lib/utils";
 import { rarityGem } from "@/game/data/rarity";
 import type { Rarity } from "@/game/types";
-import { HOME_PAD, WIN_WAVES } from "@/game/constants";
+import { HOME_PAD } from "@/game/constants";
 import { Pause, Play, Volume2, VolumeX, ChartNoAxesColumn } from "lucide-react";
 import { CraftPortrait } from "./CardView";
 import { CraftTree, GunTree } from "./GunTree";
@@ -31,9 +31,11 @@ export function HudBar({
         <p className="hud-value">{fmtCount(hud.lives)}</p>
       </div>
       <div className="hud-stat">
-        <p className="hud-kicker text-steel">Wave</p>
+        <p className="hud-kicker text-steel">
+          {hud.campaign ? <span className="hud-stage" title={hud.campaign.name}>{hud.campaign.label}</span> : "Wave"}
+        </p>
         <p className="hud-value">
-          {hud.endless ? fmtCount(hud.wavesCleared) : `${fmtCount(hud.wavesCleared)}/${WIN_WAVES}`}
+          {hud.endless ? fmtCount(hud.wavesCleared) : `${fmtCount(hud.wavesCleared)}/${hud.winWaves}`}
         </p>
         {playing && (
           <LevelMeter

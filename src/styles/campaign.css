@@ -1,0 +1,327 @@
+/* campaign slice styles: title button pill, campaign map, stage card, star reveal. */
+
+/* Title: Campaign button with a ★ pill. */
+.camp-cta { gap: 0.5rem; }
+.camp-cta-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.42rem;
+  border: 1px solid color-mix(in oklab, var(--neon-gold) 55%, transparent);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--neon-gold) 10%, var(--neon-bg));
+  color: var(--neon-gold);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* HUD stage label. */
+.hud-stage { color: var(--neon-gold); }
+
+/* ── Campaign map ────────────────────────────────────────────────────── */
+.camp-screen { color: var(--color-paper); background-color: var(--neon-bg); }
+.camp-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.camp-title {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.camp-total {
+  flex: 0 0 auto;
+  min-width: 4.6rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid color-mix(in oklab, var(--neon-gold) 55%, transparent);
+  border-radius: 2px;
+  color: var(--neon-gold);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 0 12px color-mix(in oklab, var(--neon-gold) 18%, transparent);
+}
+
+.camp-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.camp-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  min-height: 44px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--neon-line);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--neon-cyan) 4%, var(--neon-bg));
+  color: var(--neon-white);
+  text-align: left;
+  transition: border-color 140ms, box-shadow 140ms;
+}
+.camp-tab:hover { border-color: var(--neon-cyan); }
+.camp-tab.is-on {
+  border-color: var(--neon-cyan);
+  background: color-mix(in oklab, var(--neon-cyan) 13%, var(--neon-bg));
+  box-shadow: var(--neon-glow);
+}
+.camp-tab.is-locked { opacity: 0.6; }
+.camp-tab.is-locked .camp-tab-sub { color: var(--neon-magenta); }
+.camp-tab-k {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--neon-cyan);
+}
+.camp-tab-name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.05;
+}
+.camp-tab-sub { font-size: 11px; color: var(--neon-gold); }
+
+.camp-map { padding: 0.8rem 0.8rem 0.4rem; }
+.camp-map.is-locked .camp-path { opacity: 0.4; filter: saturate(0.3); }
+.camp-blurb { margin: 0; font-size: 13px; color: var(--color-steel); }
+.camp-path {
+  position: relative;
+  height: clamp(150px, 30vw, 220px);
+  margin: 0.2rem 0.2rem 0.6rem;
+}
+.camp-path-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.camp-path-dim,
+.camp-path-lit {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.camp-path-dim {
+  stroke: color-mix(in oklab, var(--neon-cyan) 22%, transparent);
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+}
+.camp-path-lit {
+  stroke: var(--neon-cyan);
+  stroke-width: 3;
+  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--neon-cyan) 70%, transparent));
+}
+.camp-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  transform: translate(-50%, -50%);
+  padding: 2px;
+  background: none;
+  border: 0;
+  color: var(--neon-white);
+}
+.camp-node-ring {
+  display: grid;
+  place-items: center;
+  width: clamp(44px, 11vw, 56px);
+  height: clamp(44px, 11vw, 56px);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--neon-cyan) 10%, var(--neon-bg));
+  box-shadow: 0 0 12px color-mix(in oklab, var(--neon-cyan) 40%, transparent);
+  transition: transform 140ms, box-shadow 140ms;
+}
+.camp-node.is-build .camp-node-ring { border-radius: 6px; transform: rotate(45deg); }
+.camp-node.is-build .camp-node-n { transform: rotate(-45deg); }
+.camp-node-n {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.camp-node.is-full .camp-node-ring {
+  border-color: var(--neon-gold);
+  box-shadow: 0 0 14px color-mix(in oklab, var(--neon-gold) 50%, transparent);
+}
+.camp-node.is-sel .camp-node-ring {
+  background: color-mix(in oklab, var(--neon-cyan) 30%, var(--neon-bg));
+  box-shadow: 0 0 0 3px var(--neon-bg), 0 0 0 5px var(--neon-white), 0 0 20px color-mix(in oklab, var(--neon-cyan) 60%, transparent);
+}
+.camp-node.is-locked .camp-node-ring {
+  border-color: color-mix(in oklab, var(--color-steel) 45%, transparent);
+  background: var(--neon-bg);
+  box-shadow: none;
+  color: var(--color-muted);
+}
+.camp-node:focus-visible { outline: none; }
+.camp-node:focus-visible .camp-node-ring { outline: 2px solid var(--neon-cyan); outline-offset: 4px; }
+
+.camp-pips { display: inline-flex; gap: 1px; font-size: 13px; line-height: 1; }
+.camp-pips i {
+  font-style: normal;
+  color: color-mix(in oklab, var(--color-steel) 35%, transparent);
+}
+.camp-pips i.is-lit {
+  color: var(--neon-gold);
+  text-shadow: 0 0 6px color-mix(in oklab, var(--neon-gold) 70%, transparent);
+}
+
+/* Stage card. */
+.camp-card { padding: 0.9rem; }
+.camp-card-top { display: flex; gap: 0.8rem; align-items: flex-start; }
+.camp-card-lane { flex: 0 0 auto; width: clamp(120px, 34vw, 200px); }
+.camp-card-name {
+  margin: 0.1rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 5vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.camp-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0.35rem 0 0;
+  font-size: 13px;
+  color: var(--color-steel);
+}
+.camp-chip {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--neon-line-strong);
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--neon-cyan);
+}
+.camp-chip.is-build {
+  border-color: color-mix(in oklab, var(--neon-magenta) 60%, transparent);
+  color: var(--neon-magenta);
+}
+.camp-card-best {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  font-size: 12px;
+  color: var(--color-steel);
+}
+.camp-card-best .camp-pips { font-size: 17px; }
+
+.camp-lane { display: block; height: auto; aspect-ratio: 16 / 9; }
+.camp-lane-frame {
+  fill: color-mix(in oklab, var(--neon-cyan) 4%, var(--neon-bg));
+  stroke: var(--neon-line);
+  stroke-width: 6;
+}
+.camp-lane-glow,
+.camp-lane-line { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.camp-lane-glow { stroke: color-mix(in oklab, var(--neon-cyan) 22%, transparent); stroke-width: 54; }
+.camp-lane-line { stroke: var(--neon-cyan); stroke-width: 12; }
+.camp-lane-spawn { fill: var(--neon-magenta); }
+.camp-lane-home { fill: none; stroke: var(--neon-gold); stroke-width: 10; }
+
+.camp-threats { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.75rem; }
+.camp-threat {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--neon-magenta) 45%, transparent);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--neon-magenta) 7%, var(--neon-bg));
+  font-size: 12px;
+  color: var(--color-steel);
+}
+.camp-threat b { color: var(--neon-magenta); font-weight: 700; }
+.camp-threat.is-none {
+  border-color: var(--neon-line);
+  background: none;
+}
+
+.camp-rules { margin: 0.75rem 0; padding: 0; list-style: none; display: grid; gap: 0.3rem; }
+.camp-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--neon-cyan) 16%, transparent);
+  border-radius: 2px;
+  font-size: 14px;
+}
+.camp-rule-star { color: color-mix(in oklab, var(--color-steel) 45%, transparent); font-size: 16px; }
+.camp-rule.is-lit { border-color: color-mix(in oklab, var(--neon-gold) 40%, transparent); }
+.camp-rule.is-lit .camp-rule-star {
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px color-mix(in oklab, var(--neon-gold) 70%, transparent);
+}
+.camp-start:disabled { background: var(--neon-bg); color: var(--color-steel); border-color: var(--neon-line); box-shadow: none; }
+.camp-foot { margin: 0; font-size: 12px; color: var(--color-muted); text-align: center; }
+
+@media (max-width: 480px) {
+  .camp-card-top { flex-direction: column; }
+  .camp-card-lane { width: 100%; max-width: 280px; }
+  .camp-tab { padding: 0.4rem 0.45rem; }
+  .camp-tab-name { font-size: 0.9rem; }
+}
+
+/* ── Star reveal ──────────────────────────────────────────────────────── */
+.star-row { display: flex; justify-content: center; gap: 0.6rem; margin: 1rem 0 0.6rem; }
+.star-big {
+  font-size: clamp(3rem, 15vw, 4.2rem);
+  line-height: 1;
+  color: color-mix(in oklab, var(--color-steel) 28%, transparent);
+}
+.star-big.is-lit {
+  color: color-mix(in oklab, var(--color-steel) 28%, transparent);
+  animation: star-light 520ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) forwards;
+}
+@keyframes star-light {
+  0% { transform: scale(0.6); color: color-mix(in oklab, var(--color-steel) 28%, transparent); }
+  55% { transform: scale(1.3); color: #fff6d6; text-shadow: 0 0 26px var(--neon-gold); }
+  100% { transform: scale(1); color: var(--neon-gold); text-shadow: 0 0 16px color-mix(in oklab, var(--neon-gold) 70%, transparent); }
+}
+.star-checks { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.3rem; }
+.star-check {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid color-mix(in oklab, var(--neon-cyan) 16%, transparent);
+  border-radius: 2px;
+  font-size: 13px;
+  opacity: 0;
+  animation: rise-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) forwards;
+}
+.star-check-mark { font-size: 15px; color: color-mix(in oklab, var(--color-steel) 40%, transparent); }
+.star-check.is-ok { border-color: color-mix(in oklab, var(--neon-gold) 45%, transparent); }
+.star-check.is-ok .star-check-mark { color: var(--neon-gold); }
+.star-check-val { font-size: 12px; color: var(--color-steel); white-space: nowrap; }
+.star-check.is-ok .star-check-val { color: var(--neon-gold); }
+.star-check.is-miss .star-check-val { color: var(--neon-magenta); }
+.star-rewards {
+  margin-top: 0.9rem;
+  opacity: 0;
+  animation: rise-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .star-big.is-lit { animation: none; color: var(--neon-gold); }
+  .star-check, .star-rewards { animation: none; opacity: 1; }
+}

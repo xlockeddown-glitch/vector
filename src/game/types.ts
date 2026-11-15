@@ -429,6 +429,8 @@ export type MetaSave = {
   tutorialSkipped?: boolean;
   /** Last build that wrote this save. Old saves stay valid. */
   build?: string;
+  /** Campaign stars and claimed sector rewards (data/campaign.ts). Shared across save slots. */
+  campaign?: import("./data/campaign").CampaignSave;
 };
 
 export type ProfileSlot = {
@@ -518,6 +520,11 @@ export type RunSave = {
   pendingRoundPack?: boolean;
   signals?: string[];
   endless?: boolean;
+  /** Campaign stage rules for this run (data/campaign.ts). Absent on normal runs. */
+  campaign?: import("./data/campaign").CampaignRun | null;
+  runTime?: number;
+  creditSpent?: number;
+  gunsPeak?: number;
   ghostHullUsed?: boolean;
   gems: Record<GemId, number>;
   charms: ActiveCharm[];

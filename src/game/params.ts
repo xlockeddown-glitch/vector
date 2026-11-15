@@ -156,6 +156,14 @@ export const PARAMS = {
   levelRing: 160,
   /** Floating LEVEL text size. */
   levelFloatSize: 36,
+  /** Campaign: Vault Credit for each new ★ (replays of an earned ★ pay nothing extra). */
+  campaignStarCredit: 15,
+  /** Campaign: Pass XP for the first clear of a stage. */
+  campaignClearXp: 40,
+  /** Campaign: ★ needed to open sector 1 / 2 / 3. */
+  campaignSectorNeed: [0, 8, 20],
+  /** Campaign: Vault Credit for a full-★ sector that pays credit instead of a skin. */
+  campaignSectorCredit: 300,
 } as const;
 
 export type ParamKey = keyof typeof PARAMS;

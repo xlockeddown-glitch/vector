@@ -6,6 +6,16 @@ import { emptyVault, vaultCanBuy, vaultNode, vaultOf, type VaultSave } from "./d
 import { orbitXpFromRun } from "./data/orbit";
 import { PASS_TIERS, applyRunToQuests, passOf, passTier, passXpFromRun, rewardLabel } from "./data/pass";
 import { GAME_VERSION } from "./version";
+import { PARAMS } from "./params";
+import {
+  CAMPAIGN_SECTORS,
+  campaignOf,
+  sectorStars,
+  stageById,
+  stagesOf,
+  type CampaignResult,
+  type StarCheck,
+} from "./data/campaign";
 
 const META_KEY = "vector-meta-v4";
 const META_V3 = "tensor-meta-v3";
@@ -67,6 +77,7 @@ function withUnlocks(m: MetaSave): MetaSave {
     orbitXp: Math.max(0, Math.floor(m.orbitXp ?? 0)),
     vault: vaultOf(m.vault),
     pass: passOf(m.pass),
+    campaign: campaignOf(m.campaign),
     tutorialDone: !!m.tutorialDone,
     tutorialSkipped: !!m.tutorialSkipped,
     build: GAME_VERSION,
@@ -89,6 +100,7 @@ function coerceMeta(p: Partial<MetaSave> & { v?: number }): MetaSave {
     orbitXp: Math.max(0, Math.floor(p.orbitXp ?? 0)),
     vault: vaultOf(p.vault),
     pass: passOf(p.pass),
+    campaign: campaignOf(p.campaign),
     tutorialDone: !!p.tutorialDone,
     tutorialSkipped: !!p.tutorialSkipped,
   });
@@ -203,6 +215,86 @@ export function recordRun(opts: {
     quests: daily.quests,
     ...passed,
   });
+}
+
+/**
+ * Campaign stage result. Keeps the best ★ per stage and pays only what is new:
+ * +campaignStarCredit Vault Credit per new ★, +campaignClearXp Pass XP on the first clear,
+ * and the sector reward once all 15 ★ of a sector are earned. Call after recordRun.
+ */
+export function recordCampaign(
+  stageId: string,
+  stars: 0 | 1 | 2 | 3,
+  leaks: number,
+  checks: StarCheck[] = [],
+): { meta: MetaSave; result: CampaignResult } {
+  const cur = loadMeta();
+  const camp = campaignOf(cur.campaign);
+  const stage = stageById(stageId);
+  const prev = camp.stages[stageId] ?? { stars: 0 as const, clears: 0 };
+  const result: CampaignResult = {
+    stageId,
+    stars,
+    prevStars: prev.stars,
+    checks,
+    newStars: 0,
+    credit: 0,
+    passXp: 0,
+    firstClear: false,
+    sectorReward: null,
+  };
+  if (!stage || stars <= 0) return { meta: cur, result };
+  const best = Math.max(prev.stars, stars) as 0 | 1 | 2 | 3;
+  result.newStars = best - prev.stars;
+  result.firstClear = prev.clears === 0 && prev.stars === 0;
+  const stages = {
+    ...camp.stages,
+    [stageId]: {
+      stars: best,
+      clears: prev.clears + 1,
+      bestLeaks: Math.min(prev.bestLeaks ?? Infinity, Math.max(0, Math.floor(leaks))),
+    },
+  };
+  const claimed = [...camp.claimed];
+  let flux = cur.flux ?? 0;
+  result.credit = result.newStars * PARAMS.campaignStarCredit;
+  flux += result.credit;
+  const bought = [...(cur.boughtSkins ?? [])];
+  const nextCamp = { v: 1 as const, stages, claimed };
+  const sec = CAMPAIGN_SECTORS[stage.sector];
+  if (sec && !claimed.includes(sec.id) && sectorStars(nextCamp, stage.sector) >= stagesOf(stage.sector).length * 3) {
+    claimed.push(sec.id);
+    if (sec.reward.kind === "credit") {
+      flux += sec.reward.n;
+      result.credit += sec.reward.n;
+      result.sectorReward = `${sec.name} complete: +${sec.reward.n} Vault Credit`;
+    } else if (bought.includes(sec.reward.id) || cur.unlocked.includes(sec.reward.id)) {
+      // Already own the skin: pay its worth in a small credit bonus instead.
+      flux += PARAMS.campaignSectorCredit;
+      result.credit += PARAMS.campaignSectorCredit;
+      result.sectorReward = `${sec.name} complete: +${PARAMS.campaignSectorCredit} Vault Credit (skin owned)`;
+    } else {
+      bought.push(sec.reward.id);
+      result.sectorReward = `${sec.name} complete: ${sec.reward.id} skin`;
+    }
+  }
+  let patch: Partial<MetaSave> = { flux, boughtSkins: bought, campaign: nextCamp };
+  if (result.firstClear) {
+    result.passXp = PARAMS.campaignClearXp;
+    const passed = grantPass({ ...cur, flux, boughtSkins: bought }, PARAMS.campaignClearXp);
+    // Fold the clear XP into what recordRun already reported for this run.
+    const last = cur.lastPass;
+    const lp = passed.lastPass!;
+    patch = {
+      ...patch,
+      ...passed,
+      campaign: nextCamp,
+      lastPass: last
+        ? { ...last, xp: last.xp + lp.xp, tier: lp.tier, rewards: [...last.rewards, ...lp.rewards] }
+        : lp,
+    };
+  }
+  return { meta: saveMeta(patch), result };
 }
 
 /** Adds Pass XP and pays out every tier reached. Returns the meta fields that change. */
