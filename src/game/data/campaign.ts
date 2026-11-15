@@ -24,6 +24,7 @@ export type CampaignMode = "story" | "build";
  *   starsMadeMin   w.starsMade (Build merges into ★2/★3)
  *   timeMax        w.runTime (sim seconds of combat, summed per wave)
  *   creditSpentMax w.creditSpent (Credit spent on tree picks and infusions)
+ *   ordersMax      w.ordersUsed (Orders cast, data/orders.ts)
  */
 export type StarRuleKind =
   | "leaksMax"
@@ -33,7 +34,8 @@ export type StarRuleKind =
   | "reactionsMin"
   | "starsMadeMin"
   | "timeMax"
-  | "creditSpentMax";
+  | "creditSpentMax"
+  | "ordersMax";
 
 export type StarRule = { kind: StarRuleKind; n: number };
 
@@ -275,6 +277,7 @@ export type CampaignStats = {
   starsMade: number;
   runTime: number;
   creditSpent: number;
+  ordersUsed?: number;
 };
 
 export type StarCheck = { ok: boolean; label: string; rule: string; value: number };
@@ -296,6 +299,8 @@ function ruleValue(kind: StarRuleKind, st: CampaignStats): number {
       return Math.round(st.runTime);
     case "creditSpentMax":
       return Math.round(st.creditSpent);
+    case "ordersMax":
+      return st.ordersUsed ?? 0;
   }
 }
 
@@ -308,6 +313,7 @@ const RULE_NAME: Record<StarRuleKind, string> = {
   starsMadeMin: "Merges",
   timeMax: "Time",
   creditSpentMax: "Credit spent",
+  ordersMax: "Orders",
 };
 
 function isMax(kind: StarRuleKind): boolean {
@@ -342,6 +348,8 @@ export function ruleText(r: StarRule): string {
       return `Clear in ${fmtTime(r.n)} or less`;
     case "creditSpentMax":
       return `Spend ${r.n} Credit or less`;
+    case "ordersMax":
+      return r.n === 0 ? "Cast no Orders" : `Cast ${r.n} Orders or fewer`;
   }
 }
 

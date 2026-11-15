@@ -146,6 +146,8 @@ export type TowerStats = {
   sendHome?: number;
   dockPatch?: { pct: number; rest: number; yank?: number; split?: boolean };
   healPulse?: { pct: number; period: number };
+  /** Surge (Order): shots carry Volt. */
+  volt?: boolean;
 };
 
 export type EnvEffect = {
@@ -379,6 +381,10 @@ export type RosterItem = {
   jamT?: number;
   /** Seconds until this gun can be jammed again (jam length + a grace window). */
   jamImmuneT?: number;
+  /** Surge (Order): seconds left of fast, jam-proof Volt shots. */
+  surgeT?: number;
+  /** Seconds left of the overheat after a Surge: the gun holds fire. */
+  heatT?: number;
   streak?: number;
   ultT?: number;
   parts?: PartRoll[];
@@ -581,6 +587,12 @@ export type RunSave = {
   runBanned?: string[];
   /** Threat toggles picked for this run (src/game/data/threat.ts). */
   threat?: string[];
+  /** Orders slotted this run (src/game/data/orders.ts) and the pending second-slot offer. */
+  orders?: string[];
+  orderOffer?: string[];
+  ordersUsed?: number;
+  orderReacts?: number;
+  blinkStops?: number;
 };
 
 export type LiveOffer = {

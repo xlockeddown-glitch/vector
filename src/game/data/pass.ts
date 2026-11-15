@@ -135,6 +135,9 @@ export type RunStats = {
   runKills?: number;
   runLeaks?: number;
   reactions?: number;
+  /** Orders cast, and element reactions triggered directly by Orders (data/orders.ts). */
+  ordersUsed?: number;
+  orderReacts?: number;
   playMode?: string;
 };
 
@@ -163,6 +166,8 @@ export const QUEST_POOL: QuestDef[] = [
   { id: "picks8", name: "Buy 8 tree picks", goal: 8, xp: 40, group: "picks", measure: (s) => n(s.upgradesMade) },
   { id: "picks20", name: "Buy 20 tree picks", goal: 20, xp: 65, group: "picks", measure: (s) => n(s.upgradesMade) },
   { id: "kills400", name: "Defeat 400 enemies", goal: 400, xp: 45, group: "kills", measure: (s) => n(s.runKills) },
+  { id: "orders6", name: "Cast 6 Orders", goal: 6, xp: 40, group: "orders", measure: (s) => n(s.ordersUsed) },
+  { id: "orderreact5", name: "Trigger 5 reactions with Orders", goal: 5, xp: 55, group: "orderreact", measure: (s) => n(s.orderReacts) },
   { id: "arcade15", name: "Reach wave 15 in Arcade", goal: 1, xp: 70, group: "arcade", measure: (s) => (s.playMode === "arcade" && n(s.wave) >= 15 ? 1 : 0) },
 ];
 

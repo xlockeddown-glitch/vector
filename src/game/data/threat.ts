@@ -3,7 +3,7 @@
  * Each toggle adds its points to the run's Threat; Threat raises the payout.
  * (Not "heat": that name belongs to the heat card set and gun heatXp.)
  */
-export type ThreatId = "hardened" | "overdrive" | "glass" | "lean" | "bigmega" | "escort" | "mutant";
+export type ThreatId = "hardened" | "overdrive" | "glass" | "lean" | "bigmega" | "escort" | "mutant" | "silence";
 
 export type ThreatDef = { id: ThreatId; name: string; blurb: string; points: number };
 
@@ -12,6 +12,7 @@ export const THREATS: ThreatDef[] = [
   { id: "overdrive", name: "Overdrive", blurb: "+10% enemy speed.", points: 1 },
   { id: "glass", name: "Glass", blurb: "Start with 6 lives, not 10.", points: 1 },
   { id: "lean", name: "Lean", blurb: "Tree picks cost 25% more.", points: 1 },
+  { id: "silence", name: "Radio Silence", blurb: "No Orders this run.", points: 1 },
   { id: "bigmega", name: "Big Megas", blurb: "Mega waves bring 1.5× enemies.", points: 2 },
   { id: "escort", name: "Escort", blurb: "A Patch joins every wave from wave 2.", points: 2 },
   { id: "mutant", name: "Mutant", blurb: "15% of enemies get a shield, speed or regen.", points: 3 },

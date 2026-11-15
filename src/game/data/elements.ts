@@ -53,9 +53,11 @@ export function applyInfusion(stats: TowerStats, el: ElementId | null | undefine
 }
 
 /** Which elements a hit carries: the gun's own set (if elemental) plus its infusion. */
-export function hitElements(stats: { tribe?: SetId; infuse?: ElementId | null; burnDps?: number; slowT?: number }): ElementId[] {
+export function hitElements(stats: { tribe?: SetId; infuse?: ElementId | null; burnDps?: number; slowT?: number; volt?: boolean }): ElementId[] {
   const out = new Set<ElementId>();
   if (isElement(stats.tribe)) out.add(stats.tribe);
   if (stats.infuse) out.add(stats.infuse);
+  // Surge (Order): shots carry Volt while it lasts.
+  if (stats.volt) out.add("spark");
   return [...out];
 }

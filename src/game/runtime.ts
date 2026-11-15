@@ -1262,6 +1262,8 @@ export function createRuntime(canvas: HTMLCanvasElement, sink?: HudSink): Runtim
             runKills: world.runKills ?? 0,
             runLeaks: world.runLeaks ?? 0,
             reactions: world.reactions ?? 0,
+            ordersUsed: world.ordersUsed ?? 0,
+            orderReacts: world.orderReacts ?? 0,
             playMode: world.playMode,
           });
           if (best) useGame.getState().setBest(best);

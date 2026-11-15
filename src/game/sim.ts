@@ -33,7 +33,7 @@ import {
 } from "./constants";
 import { combatStats, OPENING_ROUNDS, upgradeCost, getCard, gunLevelMul } from "./data/cards";
 import { dealStampPack, foldStamps, type StampLook } from "./data/stamps";
-import { BASE, PATHS, PADS, padById, pathOf, GATES, nearestPathMeta, sampleAlong, PATH_ALONG, PATH_SAMPLES, setMapLayout, layoutForMap, layoutCount, padReachMul, padRateMul, padBurnBonus, moonPlantLine } from "./data/map";
+import { BASE, PATHS, PADS, padById, hitPad, pathOf, GATES, nearestPathMeta, sampleAlong, PATH_ALONG, PATH_SAMPLES, setMapLayout, layoutForMap, layoutCount, padReachMul, padRateMul, padBurnBonus, moonPlantLine } from "./data/map";
 import { LOOP_WAVES, loopOf, themeAt } from "./data/themes";
 import { isPlayMode } from "./data/modes";
 import { waveAt, WAVES } from "./data/waves";
@@ -64,6 +64,7 @@ import { skillsForCraft } from "./data/skills";
 import { BONUS_CREDIT, fluxFromBank, fluxFromRound, hangarOf, hangarStartCredit } from "./data/hangar";
 import { vaultHas, vaultOf } from "./data/vault";
 import { MUTANT_AFFIXES, THREAT_NUM, hasThreat, loadThreat, threatCostMul, threatPayMul, threatPoints } from "./data/threat";
+import { ORDERS, ORDER_NUM, cleanOrders, isBigFoe, isBossFoe, orderChoices, orderOf, type OrderId } from "./data/orders";
 import type {
   ActiveCharm,
   CardDef,
@@ -403,6 +404,28 @@ export type World = {
   bondXp: number;
   /** Threat toggles for this run (data/threat.ts). Picked before the run, kept for the whole run. */
   threat: string[];
+  /** Orders (data/orders.ts): slotted Order ids, slot 0 is always Stasis Net. */
+  orders: OrderId[];
+  /** Second-slot choices waiting for a pick (run Level 3), or []. */
+  orderOffer: OrderId[];
+  /** Shared Energy, 0..energyMax. */
+  orderEnergy: number;
+  /** Global lockout left after a cast, sim seconds. */
+  orderLock: number;
+  /** Armed slot index, or -1. */
+  orderArmed: number;
+  /** Desktop hover point for the armed Order's radius ghost (world space), or null. */
+  orderHover: { x: number; y: number; ok: boolean } | null;
+  /** Lane Orders waiting out their telegraph. */
+  orderPending: { id: OrderId; x: number; y: number; t: number; tMax: number; r: number }[];
+  /** Orders cast this run (campaign ordersMax, pass challenges). */
+  ordersUsed: number;
+  /** Element reactions triggered directly by Orders this run. */
+  orderReacts: number;
+  /** Blink jumps cancelled by Stasis Net this run. */
+  blinkStops: number;
+  /** True while an Order's effect resolves (reactions credit the Order). */
+  orderCtx?: boolean;
 };
 
 function uid(w) {
@@ -586,6 +609,16 @@ export function createWorld(): World {
     runTime: 0,
     creditSpent: 0,
     gunsPeak: 0,
+    orders: ["stasis"],
+    orderOffer: [],
+    orderEnergy: ORDER_NUM.energyStart,
+    orderLock: 0,
+    orderArmed: -1,
+    orderHover: null,
+    orderPending: [],
+    ordersUsed: 0,
+    orderReacts: 0,
+    blinkStops: 0,
   };
 }
 
@@ -605,6 +638,7 @@ export function campaignStats(w): CampaignStats {
     starsMade: w.starsMade ?? 0,
     runTime: w.runTime ?? 0,
     creditSpent: w.creditSpent ?? 0,
+    ordersUsed: w.ordersUsed ?? 0,
   };
 }
 
@@ -1393,7 +1427,7 @@ function stepJammer(w, e, dt) {
   const r2 = PARAMS.jamR * PARAMS.jamR;
   for (const item of placedGuns(w)) {
     if (item.placedPad === HOME_PAD || item.card.kind !== "tower") continue;
-    if ((item.jamImmuneT ?? 0) > 0) continue;
+    if ((item.jamImmuneT ?? 0) > 0 || (item.surgeT ?? 0) > 0) continue;
     const pos = towerPoint(item);
     if (!pos || dist2(pos.x, pos.y, e.x, e.y) > r2) continue;
     item.jamT = PARAMS.jamT;
@@ -1415,7 +1449,7 @@ function dist2(ax, ay, bx, by) {
   return dx * dx + dy * dy;
 }
 
-function applyDamage(w, e, raw, quiet = false, from = null) {
+function applyDamage(w, e, raw, quiet = false, from = null, pierce = false) {
   const shred = e.shredT > 0 || w.envShred > 0 ? Math.max(0.35, w.envShred) : 0;
   let amount = raw;
   if (from && from !== "slam" && (w.companions ?? []).some((x) => x.uid === from)) {
@@ -1423,7 +1457,7 @@ function applyDamage(w, e, raw, quiet = false, from = null) {
     const huntMul = hunter?.trick === "hunt" ? Math.min(0.72, PARAMS.coverHuntMul * 2.05) : PARAMS.coverHuntMul;
     amount *= inGunCover(w, e.x, e.y) ? 1 : huntMul;
   }
-  let dmg = amount * (1 - Math.max(0, e.armor - shred)) * w.nextWaveDmg * w.envDmgAmp;
+  let dmg = amount * (pierce ? 1 : 1 - Math.max(0, e.armor - shred)) * w.nextWaveDmg * w.envDmgAmp;
   if ((e.wardT ?? 0) > 0) dmg *= 1 - PARAMS.wardenCut;
   if ((e.shield ?? 0) > 0) {
     const soak = Math.min(e.shield, dmg);
@@ -1461,6 +1495,7 @@ function killEnemy(w, e, from = null) {
   hopBurn(w, e);
   e.alive = false;
   if (e.type === "shard") splitShard(w, e);
+  addEnergy(w, isBigFoe(e.type) ? ORDER_NUM.perBigKill : ORDER_NUM.perKill);
   w.kills += 1;
   w.runKills = (w.runKills ?? 0) + 1;
   if (from) {
@@ -1611,6 +1646,8 @@ function failRun(w) {
       runKills: w.runKills ?? 0,
       runLeaks: w.runLeaks ?? 0,
       reactions: w.reactions ?? 0,
+      ordersUsed: w.ordersUsed ?? 0,
+      orderReacts: w.orderReacts ?? 0,
       playMode: w.playMode,
     });
     w.recorded = true;
@@ -1792,6 +1829,8 @@ function elementOnHit(w, e, stats) {
 function react(w, e, id) {
   const r = REACTIONS[id];
   w.reactions = (w.reactions ?? 0) + 1;
+  addEnergy(w, ORDER_NUM.perReaction);
+  if (w.orderCtx) w.orderReacts = (w.orderReacts ?? 0) + 1;
   addFx(w, { kind: "float", x: e.x, y: e.y - 24, life: 0.8, text: r.name.toUpperCase(), color: r.color, size: 13 });
   addFx(w, { kind: "ring", x: e.x, y: e.y, life: 0.3, color: r.color, size: id === "overload" ? PARAMS.overloadRadius : 22 });
   if (id === "shatter") {
@@ -2219,6 +2258,13 @@ function stepTowers(w, dt) {
     item.overclockT = Math.max(0, (item.overclockT ?? 0) - dt);
     if ((item.ultT ?? 0) > 0) item.ultT -= dt;
     if ((item.jamImmuneT ?? 0) > 0) item.jamImmuneT = Math.max(0, item.jamImmuneT - dt);
+    const surged = (item.surgeT ?? 0) > 0;
+    if (surged) {
+      // Surge (Order): jam-proof, faster, shots carry Volt.
+      item.jamT = 0;
+      stats = { ...stats, volt: true };
+    }
+    if ((item.heatT ?? 0) > 0) continue;
     if ((item.jamT ?? 0) > 0) {
       // Jammed (Jammer pulse): no shots, no glow, no slam. The timer only ever counts down.
       item.jamT = Math.max(0, item.jamT - dt);
@@ -2251,7 +2297,7 @@ function stepTowers(w, dt) {
     }
     const buff = item.placedPad && w.padBuff?.[item.placedPad] > 0 ? 1 + (halo || 0.22) : 1;
     const oc = hot ? PARAMS.overclockMul * (hasSig(w.signals, "sig-slam") ? 1.55 : 1) : 1;
-    const rate = stats.rate * w.rateMul * charmRateMul(w) * (home ? 1.18 : 1) * buff * oc;
+    const rate = stats.rate * w.rateMul * charmRateMul(w) * (home ? 1.18 : 1) * buff * oc * (surged ? ORDER_NUM.surgeRate : 1);
     item.cd = 1 / Math.max(0.2, rate);
     item.shots = (item.shots ?? 0) + (item.extraShot ? 2 : 1);
     const e = w.enemies[idx];
@@ -2559,6 +2605,7 @@ function sayWave(w) {
 
 function queueWave(w) {
   clearJams(w);
+  w.orderEnergy = ORDER_NUM.energyStart;
   w.spawnQ = [];
   w.waveT = 0;
   noteGunsPeak(w);
@@ -2605,6 +2652,7 @@ function grantXp(w, t, quiet = false) {
     w.runLevel += 1;
     r += 1;
   }
+  if (r) offerSecondOrder(w);
   if (r) {
     const pay = r * BONUS_CREDIT;
     w.points += pay;
@@ -2734,6 +2782,210 @@ function finishWave(w) {
   w.uiDirty = true;
 }
 
+/* ---------- Orders (data/orders.ts) ---------- */
+
+/** Orders are on unless the run took the Radio Silence threat. */
+export function ordersOn(w): boolean {
+  return !hasThreat(w.threat, "silence");
+}
+
+function addEnergy(w, n) {
+  if (!ordersOn(w) || w.phase !== "combat") return;
+  const before = w.orderEnergy ?? 0;
+  w.orderEnergy = Math.min(ORDER_NUM.energyMax, before + n);
+  if (Math.floor(before / 5) !== Math.floor(w.orderEnergy / 5)) w.uiDirty = true;
+}
+
+/** At run Level 3 the player picks a second Order from the other three. */
+function offerSecondOrder(w) {
+  if (!ordersOn(w)) return;
+  w.orders = cleanOrders(w.orders);
+  if (w.orders.length >= ORDER_NUM.maxSlots) return;
+  if ((w.runLevel ?? 1) < ORDER_NUM.secondSlotLevel) return;
+  if ((w.orderOffer ?? []).length) return;
+  w.orderOffer = orderChoices(w.orders);
+  w.uiDirty = true;
+}
+
+export function pickOrder(w, id): boolean {
+  if (!(w.orderOffer ?? []).includes(id)) return false;
+  w.orders = cleanOrders([...(w.orders ?? []), id]);
+  w.orderOffer = [];
+  w.message = `${ORDERS[id].name} ready. Slot 2.`;
+  w.uiDirty = true;
+  checkpoint(w);
+  return true;
+}
+
+/** Why slot can't be armed right now, or null if it can. */
+export function orderBlock(w, slot): string | null {
+  if (!ordersOn(w)) return "off";
+  const id = (w.orders ?? [])[slot];
+  const def = orderOf(id);
+  if (!def) return "empty";
+  if (w.phase !== "combat") return "phase";
+  if (w.paused || w.pickPause) return "paused";
+  if ((w.orderLock ?? 0) > 0) return "lock";
+  if ((w.orderEnergy ?? 0) < def.cost) return "energy";
+  return null;
+}
+
+/** Arm (or disarm when already armed) an Order slot. */
+export function armOrder(w, slot): boolean {
+  if (w.orderArmed === slot) {
+    w.orderArmed = -1;
+    w.orderHover = null;
+    w.uiDirty = true;
+    return false;
+  }
+  if (orderBlock(w, slot)) {
+    w.uiDirty = true;
+    return false;
+  }
+  w.orderArmed = slot;
+  w.selectedCard = null;
+  w.selectedPad = null;
+  w.uiDirty = true;
+  return true;
+}
+
+export function disarmOrder(w) {
+  if (w.orderArmed < 0 && !w.orderHover) return false;
+  w.orderArmed = -1;
+  w.orderHover = null;
+  w.uiDirty = true;
+  return true;
+}
+
+/** Where a tap at (x, y) would land for the armed Order: a lane point, or a planted gun. */
+export function orderTargetAt(w, x, y) {
+  const def = orderOf((w.orders ?? [])[w.orderArmed]);
+  if (!def) return null;
+  if (def.target === "gun") {
+    const pad = hitPad(x, y, ORDER_NUM.gunTap, livePads(w));
+    const gun = pad ? (w.roster ?? []).find((r) => r.placedPad === pad.id && r.card.kind === "tower") : null;
+    if (!gun || gun.placedPad === HOME_PAD) return { ok: false, x, y, gun: null };
+    const pos = towerPoint(gun);
+    return { ok: !!pos, x: pos?.x ?? x, y: pos?.y ?? y, gun };
+  }
+  const m = nearestPathMeta(x, y);
+  if (m.dist >= ORDER_NUM.laneTap) return { ok: false, x, y, gun: null };
+  return { ok: true, x: m.px, y: m.py, gun: null };
+}
+
+/** Cast the armed Order at a tap. An invalid tap disarms. Returns true on a cast. */
+export function castOrderAt(w, x, y): boolean {
+  const slot = w.orderArmed;
+  const id = (w.orders ?? [])[slot];
+  const def = orderOf(id);
+  const tgt = def ? orderTargetAt(w, x, y) : null;
+  const block = def ? orderBlock(w, slot) : "empty";
+  w.orderArmed = -1;
+  w.orderHover = null;
+  w.uiDirty = true;
+  if (!def || !tgt?.ok || block) return false;
+  w.orderEnergy -= def.cost;
+  w.orderLock = ORDER_NUM.lockout;
+  w.ordersUsed = (w.ordersUsed ?? 0) + 1;
+  if (def.target === "gun") {
+    const g = tgt.gun;
+    g.surgeT = ORDER_NUM.surgeT;
+    g.heatT = 0;
+    g.jamT = 0;
+    g.cd = Math.min(g.cd ?? 0, 0.05);
+    addFx(w, { kind: "ring", x: tgt.x, y: tgt.y, life: 0.45, color: def.color, size: 46 });
+    addFx(w, { kind: "spark", x: tgt.x, y: tgt.y - 10, life: 0.3, color: def.color, size: 22 });
+    addFx(w, { kind: "float", x: tgt.x, y: tgt.y - 40, life: 1, text: "SURGE", color: def.color, size: 14 });
+  } else {
+    w.orderPending.push({ id: def.id, x: tgt.x, y: tgt.y, t: def.tell, tMax: def.tell, r: def.r });
+  }
+  w.wantSfx = "place";
+  return true;
+}
+
+function resolveOrder(w, o) {
+  const def = ORDERS[o.id];
+  w.orderCtx = true;
+  try {
+    for (const e of w.enemies) {
+      if (!e.alive) continue;
+      const reach = o.r + (e.radius ?? 0) * 0.5;
+      if (dist2(e.x, e.y, o.x, o.y) > reach * reach) continue;
+      const boss = isBossFoe(e.type);
+      if (o.id === "stasis") {
+        e.freezeT = Math.max(e.freezeT ?? 0, boss ? ORDER_NUM.stasisBossFreeze : ORDER_NUM.stasisFreeze);
+        if (e.type === "blink" && (e.blinkT ?? 9) <= PARAMS.blinkTell) {
+          e.blinkT = PARAMS.blinkEvery;
+          e.blinkToX = undefined;
+          e.blinkToY = undefined;
+          w.blinkStops = (w.blinkStops ?? 0) + 1;
+          addFx(w, { kind: "float", x: e.x, y: e.y - 26, life: 0.9, text: "CAUGHT", color: def.color, size: 13 });
+        }
+        if (e.type === "jammer" && (e.jamCd ?? 9) <= ORDER_NUM.stasisJamTell) e.jamCd = PARAMS.jamEvery;
+        elementOnHit(w, e, { infuse: "cold" });
+        addFx(w, { kind: "shatter", x: e.x, y: e.y, life: 0.3, color: def.color, size: Math.max(8, e.radius) * 0.8, seed: Math.random() * 6.283 });
+      } else if (o.id === "lance") {
+        elementOnHit(w, e, { infuse: "heat" });
+        if (e.alive) applyDamage(w, e, e.maxHp * (boss ? ORDER_NUM.lanceBossHp : ORDER_NUM.lanceHp), false, null, true);
+      } else if (o.id === "recall") {
+        if (boss) continue;
+        knockEnemy(e, ORDER_NUM.recallKnock);
+        addFx(w, { kind: "spark", x: e.x, y: e.y, life: 0.25, color: def.color, size: 12 });
+      }
+    }
+  } finally {
+    w.orderCtx = false;
+  }
+  addFx(w, { kind: "ring", x: o.x, y: o.y, life: 0.5, color: def.color, size: o.r });
+  addFx(w, { kind: "ring", x: o.x, y: o.y, life: 0.32, color: "#eef6ff", size: o.r * 0.55 });
+  if (o.id === "lance") {
+    addFx(w, { kind: "beam", x: o.x, y: o.y - 260, x2: o.x, y2: o.y, life: 0.3, color: def.color, size: 6 });
+    w.trauma = Math.min(1, w.trauma + 0.25);
+  }
+  motes(w, o.x, o.y, 10, def.color, 120, 0.4);
+  w.uiDirty = true;
+}
+
+/** Orders on sim time: energy trickle, lockout, telegraphs, Surge and overheat. Runs after stepWorld's early returns. */
+function stepOrders(w, dt) {
+  if ((w.orderLock ?? 0) > 0) {
+    const was = w.orderLock;
+    w.orderLock = Math.max(0, w.orderLock - dt);
+    if (w.orderLock <= 0 || Math.ceil(was) !== Math.ceil(w.orderLock)) w.uiDirty = true;
+  }
+  if (w.waveActive) addEnergy(w, ORDER_NUM.trickle * dt);
+  if (w.orderPending?.length) {
+    for (const o of w.orderPending) {
+      o.t -= dt;
+      if (o.t <= 0) resolveOrder(w, o);
+    }
+    w.orderPending = w.orderPending.filter((o) => o.t > 0);
+  }
+  for (const r of w.roster ?? []) {
+    if ((r.surgeT ?? 0) > 0) {
+      r.surgeT = Math.max(0, r.surgeT - dt);
+      if (r.surgeT <= 0) {
+        r.heatT = ORDER_NUM.surgeHeat;
+        const pos = towerPoint(r);
+        if (pos) addFx(w, { kind: "float", x: pos.x, y: pos.y - 34, life: 0.9, text: "OVERHEAT", color: "#ff4d4d", size: 11 });
+      }
+    } else if ((r.heatT ?? 0) > 0) r.heatT = Math.max(0, r.heatT - dt);
+  }
+}
+
+/** Continue restarts the wave: no telegraphs, no Surge, fresh Energy. Slots stay. */
+function resetOrdersForRestart(w) {
+  w.orderPending = [];
+  w.orderArmed = -1;
+  w.orderHover = null;
+  w.orderLock = 0;
+  w.orderEnergy = ORDER_NUM.energyStart;
+  for (const r of w.roster ?? []) {
+    r.surgeT = 0;
+    r.heatT = 0;
+  }
+}
+
 export function stepWorld(w, dt) {
   unstickWorld(w);
   w.visT += dt;
@@ -2833,6 +3085,7 @@ export function stepWorld(w, dt) {
   }
   stepCompanion(w, dt);
   tickPadCare(w, dt);
+  stepOrders(w, dt);
   if (!frozen) {
     stepBores(w, dt);
     stepNades(w, dt);
@@ -5476,6 +5729,8 @@ function finishCampaign(w) {
       runKills: w.runKills ?? 0,
       runLeaks: w.runLeaks ?? 0,
       reactions: w.reactions ?? 0,
+      ordersUsed: w.ordersUsed ?? 0,
+      orderReacts: w.orderReacts ?? 0,
       playMode: w.playMode,
     });
     w.recorded = true;
@@ -5599,6 +5854,8 @@ export function goTitle(w, keep: boolean): boolean {
       runKills: w.runKills ?? 0,
       runLeaks: w.runLeaks ?? 0,
       reactions: w.reactions ?? 0,
+      ordersUsed: w.ordersUsed ?? 0,
+      orderReacts: w.orderReacts ?? 0,
       playMode: w.playMode,
       });
       w.recorded = true;
@@ -5725,6 +5982,11 @@ function snapshotRun(w) {
     mapTheme: w.mapTheme,
     mapLayout: w.mapLayout,
     threat: w.threat ?? [],
+    orders: cleanOrders(w.orders),
+    orderOffer: w.orderOffer ?? [],
+    ordersUsed: w.ordersUsed ?? 0,
+    orderReacts: w.orderReacts ?? 0,
+    blinkStops: w.blinkStops ?? 0,
     mapSlowMul: w.mapSlowMul,
     mapRangeMul: w.mapRangeMul,
     mapScrapMul: w.mapScrapMul,
@@ -5906,6 +6168,11 @@ export function applyRun(w, run) {
   w.mapLayout = run.mapLayout ?? layoutForMap(w.mapId);
   setMapLayout(w.mapLayout);
   w.threat = Array.isArray(run.threat) ? run.threat : [];
+  w.orders = cleanOrders(run.orders);
+  w.orderOffer = Array.isArray(run.orderOffer) && w.orders.length < ORDER_NUM.maxSlots ? orderChoices(w.orders).filter((id) => run.orderOffer.includes(id)) : [];
+  w.ordersUsed = run.ordersUsed ?? 0;
+  w.orderReacts = run.orderReacts ?? 0;
+  w.blinkStops = run.blinkStops ?? 0;
   w.mapSlowMul = run.mapSlowMul ?? 1;
   w.mapRangeMul = run.mapRangeMul ?? 1;
   w.mapScrapMul = run.mapScrapMul ?? 1;
@@ -6026,6 +6293,8 @@ export function applyRun(w, run) {
   w.projectiles = [];
   w.spawnQ = [];
   w.waveActive = false;
+  resetOrdersForRestart(w);
+  offerSecondOrder(w);
   if (w.phase === "placement") {
     const firstGun = w.roster.find((x) => x.card.kind === "tower" && !x.placedPad);
     w.selectedCard = firstGun?.uid ?? null;
