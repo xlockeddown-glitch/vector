@@ -1022,7 +1022,8 @@ function drawTowerShape(
   }
   const art = card.art;
   const hull = card.stats?.hull ?? art;
-  if (false) {
+  const legacyHullArtEnabled = false;
+  if (legacyHullArtEnabled) {
   const skipMast = hull === "cone" || hull === "invert" || hull === "mill" || hull === "spin" || hull === "tube" || hull === "halo" || hull === "dish" || hull === "drum";
   if (!skipMast) drawMast(ctx);
 
