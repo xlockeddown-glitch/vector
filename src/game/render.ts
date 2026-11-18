@@ -717,24 +717,6 @@ function drawSteelPad(
   }
 }
 
-function drawMast(ctx: CanvasRenderingContext2D) {
-  const steel = ctx.createLinearGradient(-5, -36, 6, 6);
-  steel.addColorStop(0, "#f4f6f8");
-  steel.addColorStop(0.28, "#c5ccd3");
-  steel.addColorStop(0.62, "#6a7280");
-  steel.addColorStop(1, "#1a1e26");
-  ctx.fillStyle = steel;
-  roundRect(ctx, -5, -36, 10, 40, 5);
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.42)";
-  roundRect(ctx, -3.2, -34, 2.2, 34, 1);
-  ctx.fill();
-  ctx.fillStyle = "#0a0c10";
-  roundRect(ctx, -5, -12, 10, 3.2, 1);
-  ctx.fill();
-  ctx.fillStyle = "#ff5c2a";
-  ctx.fillRect(-5, -10.6, 10, 1.15);
-}
 
 function roundRect(
   ctx: CanvasRenderingContext2D,
@@ -1020,221 +1002,6 @@ function drawTowerShape(
     }
     ctx.restore();
   }
-  const art = card.art;
-  const hull = card.stats?.hull ?? art;
-  const legacyHullArtEnabled = false;
-  if (legacyHullArtEnabled) {
-  const skipMast = hull === "cone" || hull === "invert" || hull === "mill" || hull === "spin" || hull === "tube" || hull === "halo" || hull === "dish" || hull === "drum";
-  if (!skipMast) drawMast(ctx);
-
-  ctx.lineJoin = "round";
-  ctx.lineWidth = 1.4;
-  ctx.strokeStyle = "rgba(5,6,11,0.35)";
-  const glass = ctx.createLinearGradient(-12, -56, 12, -32);
-  glass.addColorStop(0, hexA("#ffffff", 0.45));
-  glass.addColorStop(0.45, hexA(c, 0.85));
-  glass.addColorStop(1, hexA("#05060b", 0.55));
-  ctx.fillStyle = glass;
-  if (hull === "cone") {
-    ctx.beginPath();
-    ctx.moveTo(0, -64);
-    ctx.lineTo(13, -26);
-    ctx.lineTo(-13, -26);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = hexA("#ffffff", 0.35);
-    ctx.beginPath();
-    ctx.moveTo(0, -58);
-    ctx.lineTo(4, -34);
-    ctx.lineTo(-1, -34);
-    ctx.closePath();
-    ctx.fill();
-  } else if (hull === "invert" || hull === "mortar" || art === "ember") {
-    ctx.beginPath();
-    ctx.moveTo(-15, -56);
-    ctx.lineTo(15, -56);
-    ctx.lineTo(9, -28);
-    ctx.lineTo(-9, -28);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = hexA("#05060b", 0.45);
-    ctx.beginPath();
-    ctx.ellipse(0, -50, 9, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (hull === "mill" || hull === "fan") {
-    ctx.save();
-    ctx.translate(0, -40);
-    ctx.rotate(t * 2.2);
-    for (let i = 0; i < 3; i++) {
-      ctx.rotate((Math.PI * 2) / 3);
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.quadraticCurveTo(10, -6, 18, -2);
-      ctx.quadraticCurveTo(8, 4, 0, 0);
-      ctx.fill();
-    }
-    ctx.restore();
-    ctx.fillStyle = PALETTE.paper;
-    ctx.beginPath();
-    ctx.arc(0, -40, 3.4, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (hull === "spin" || hull === "saw") {
-    ctx.save();
-    ctx.translate(0, -40);
-    ctx.rotate(t * 4.4);
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI * 2 * i) / 6;
-      const r = i % 2 === 0 ? 16 : 7;
-      const px = Math.cos(a) * r;
-      const py = Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = PALETTE.ink;
-    ctx.beginPath();
-    ctx.arc(0, -40, 3, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (hull === "tube" || hull === "rail") {
-    ctx.beginPath();
-    ctx.ellipse(0, -52, 8, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    roundRect(ctx, -8, -52, 16, 26, 3);
-    ctx.fill();
-    ctx.fillStyle = hexA("#ffffff", 0.28);
-    ctx.beginPath();
-    ctx.ellipse(0, -52, 5, 2.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = c;
-    roundRect(ctx, -2, -48, 4, 18, 1);
-    ctx.fill();
-  } else if (hull === "crystal" || art === "rime") {
-    ctx.beginPath();
-    ctx.moveTo(0, -56);
-    ctx.lineTo(10, -34);
-    ctx.lineTo(-10, -34);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = hexA("#eef3f7", 0.3);
-    ctx.fillRect(-2, -48, 4, 12);
-  } else if (hull === "prism" || art === "hex") {
-    ctx.beginPath();
-    ctx.moveTo(0, -56);
-    ctx.lineTo(11, -40);
-    ctx.lineTo(0, -26);
-    ctx.lineTo(-11, -40);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = PALETTE.paper;
-    ctx.beginPath();
-    ctx.arc(0, -42, 3, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (hull === "dish" || hull === "halo" || art === "grove") {
-    ctx.save();
-    ctx.translate(0, -40);
-    if (hull === "halo") ctx.rotate(t * 1.6);
-    ctx.strokeStyle = c;
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.arc(0, 0, 14, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(0, 0, 7, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = PALETTE.paper;
-    ctx.beginPath();
-    ctx.arc(0, 0, 2.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  } else if (hull === "coil" || art === "arc") {
-    roundRect(ctx, -4, -54, 8, 18, 3);
-    ctx.fill();
-    roundRect(ctx, -16, -44, 10, 6, 3);
-    ctx.fill();
-    roundRect(ctx, 6, -44, 10, 6, 3);
-    ctx.fill();
-  } else if (hull === "stamp" || art === "captain") {
-    ctx.beginPath();
-    ctx.ellipse(0, -42, 14, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = PALETTE.ink;
-    ctx.beginPath();
-    ctx.ellipse(0, -42, 6, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (hull === "lens") {
-    ctx.beginPath();
-    ctx.arc(0, -42, 10, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = hexA("#7ef0ea", 0.8);
-    ctx.beginPath();
-    ctx.arc(0, -42, 4, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (hull === "crane") {
-    roundRect(ctx, -3, -56, 6, 22, 2);
-    ctx.fill();
-    ctx.fillStyle = c;
-    roundRect(ctx, 2, -54, 16, 5, 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(18, -51, 3, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (hull === "furnace") {
-    roundRect(ctx, -10, -48, 20, 18, 4);
-    ctx.fill();
-    ctx.fillStyle = hexA("#ff5c2a", 0.9);
-    ctx.beginPath();
-    ctx.moveTo(-4, -48);
-    ctx.lineTo(0, -60);
-    ctx.lineTo(4, -48);
-    ctx.fill();
-  } else if (hull === "drill") {
-    ctx.beginPath();
-    ctx.moveTo(0, -58);
-    ctx.lineTo(8, -36);
-    ctx.lineTo(-8, -36);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = c;
-    ctx.beginPath();
-    ctx.arc(0, -34, 5, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (hull === "drum") {
-    ctx.beginPath();
-    ctx.ellipse(0, -42, 12, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = hexA("#ffffff", 0.25);
-    ctx.beginPath();
-    ctx.ellipse(0, -46, 7, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (hull === "twin") {
-    roundRect(ctx, -14, -52, 8, 16, 3);
-    ctx.fill();
-    roundRect(ctx, 6, -52, 8, 16, 3);
-    ctx.fill();
-  } else if (item.extraShot) {
-    roundRect(ctx, -12, -52, 7, 15, 3);
-    ctx.fill();
-    roundRect(ctx, 5, -52, 7, 15, 3);
-    ctx.fill();
-  } else if (hull === "barrier") {
-    roundRect(ctx, -16, -46, 32, 10, 2);
-    ctx.fill();
-    ctx.fillStyle = hexA("#ffffff", 0.3);
-    roundRect(ctx, -12, -43, 24, 4, 1);
-    ctx.fill();
-  } else {
-    roundRect(ctx, -5, -54, 10, 18, 4);
-    ctx.fill();
-    ctx.fillStyle = c;
-    roundRect(ctx, 4, -46, 16, 5, 2);
-    ctx.fill();
-  }
-  }
 
   if (item.level > 1) {
     ctx.fillStyle = c;
@@ -1306,7 +1073,6 @@ function drawJamMark(ctx: CanvasRenderingContext2D, x: number, y: number, t: num
   }
   ctx.restore();
 }
-
 
 function drawOrbiters(
   ctx: CanvasRenderingContext2D,
@@ -3962,7 +3728,6 @@ export function drawWorld(
   ctx.restore();
   drawPlacePrompt(ctx, w, { dpr, cssW, cssH, scale, oy });
 }
-
 
 /**
  * Neon card portrait: the same vector glyphs the board uses, drawn into a card's art box.

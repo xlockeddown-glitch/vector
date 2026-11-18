@@ -86,6 +86,13 @@ export function isMainModule(moduleUrl) {
   }
 }
 
+/** Resolve Windows' Vite shim to its JS entry without a shell. */
+export function resolveSpawn(command, args, { platform, root, execPath }) {
+  return platform === "win32" && command === "vite"
+    ? { file: execPath, args: [join(root, "node_modules/vite/bin/vite.js"), ...args] }
+    : { file: command, args };
+}
+
 function main(argv) {
   const [command, ...args] = argv;
   if (!command) {
@@ -93,14 +100,12 @@ function main(argv) {
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  // Windows cannot spawn npm's vite.cmd shim directly. Run its JS entry
-  // through Node instead, preserving argument boundaries without a shell.
-  const windowsVite = process.platform === "win32" && command === "vite";
-  const child = spawn(
-    windowsVite ? process.execPath : command,
-    windowsVite ? [join(projectRoot(), "node_modules/vite/bin/vite.js"), ...args] : args,
-    { stdio: "inherit", env },
-  );
+  const resolved = resolveSpawn(command, args, {
+    platform: process.platform,
+    root: projectRoot(),
+    execPath: process.execPath,
+  });
+  const child = spawn(resolved.file, resolved.args, { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));
