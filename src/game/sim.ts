@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   BASE_PADS,
   CACHE_XP,
@@ -31,14 +30,14 @@ import {
   scrapMul,
   xpToNext,
 } from "./constants";
-import { combatStats, OPENING_ROUNDS, upgradeCost, getCard, gunLevelMul } from "./data/cards";
+import { combatStats, OPENING_ROUNDS, upgradeCost, getCard, gunLevelMul, type CombatAmp } from "./data/cards";
 import { dealStampPack, foldStamps, type StampLook } from "./data/stamps";
 import { BASE, PATHS, PADS, padById, hitPad, pathOf, GATES, nearestPathMeta, sampleAlong, PATH_ALONG, PATH_SAMPLES, setMapLayout, layoutForMap, layoutCount, padReachMul, padRateMul, padBurnBonus, moonPlantLine } from "./data/map";
 import { LOOP_WAVES, loopOf, themeAt } from "./data/themes";
 import { isPlayMode } from "./data/modes";
 import { waveAt, WAVES } from "./data/waves";
 import { countSets } from "./data/sets";
-import { ELEMENTS, REACTIONS, applyInfusion, hitElements, infuseChoices } from "./data/elements";
+import { ELEMENTS, REACTIONS, applyInfusion, hitElements, infuseChoices, type ElementId, type ReactionId } from "./data/elements";
 import { OPERATORS } from "./data/sets";
 import { lordFlags } from "./data/lords";
 import { canTakeCraftJob, craftUpgradeCost, craftDockHealMul, craftHullMul, craftPicksLeft } from "./data/craft-tree";
@@ -54,18 +53,20 @@ import { expectedWaveTime, gradeWave } from "./grade";
 import { audio } from "./audio";
 import { addStamp, bumpForge, clearRun, loadMeta, saveRun, noteGunKills, noteLeakless, addFlux, activeProfile, addBondXp, recordRun, recordCampaign, markLive } from "./persist";
 import { campaignRunOf, scoreStages, stageById, type CampaignResult, type CampaignRun, type CampaignStats } from "./data/campaign";
-import { CHARMS, emptyGems, canAfford, payGems } from "./data/charms";
+import { GEM_META, CHARMS, emptyGems, canAfford, payGems } from "./data/charms";
 import { rollCard } from "./data/roll";
 import { copyTag, starLabel, starMul, starsOf } from "./data/merge";
 import { bondFill, bondJobCount, bondKits, bondLookCount, bondMul, xpFromCraft } from "./data/bond";
 import { inCover, COVER } from "./cover";
-import { companionFx, companionMaxHp, companionSpecialOf, pickTaunt, type CompanionState } from "./data/companion";
+import { companionFx, companionMaxHp, companionSpecialOf, pickTaunt, type CompanionState, type CompanionFx } from "./data/companion";
 import { skillsForCraft } from "./data/skills";
 import { BONUS_CREDIT, fluxFromBank, fluxFromRound, hangarOf, hangarStartCredit } from "./data/hangar";
 import { vaultHas, vaultOf } from "./data/vault";
 import { MUTANT_AFFIXES, THREAT_NUM, hasThreat, loadThreat, threatCostMul, threatPayMul, threatPoints } from "./data/threat";
 import { ORDERS, ORDER_NUM, cleanOrders, isBigFoe, isBossFoe, orderChoices, orderOf, type OrderId } from "./data/orders";
 import type {
+  TowerStats,
+  Vec,
   ActiveCharm,
   CardDef,
   CardKind,
@@ -127,7 +128,9 @@ export type Enemy = {
   fold: number;
   hat?: number;
   knockHits?: number;
-  age?: number;
+  elUntil?: Partial<Record<ElementId, number>> | null;
+  reactAt?: number;
+  nadeN?: number;
   /** Threat Mutant affix, if any. */
   affix?: "shield" | "swift" | "regen" | null;
   /** Shield HP soaked before hull (Mutant). */
@@ -219,7 +222,10 @@ type Nade = {
 
 type SpawnQ = { at: number; type: EnemyType; route: number };
 
+type WaveNote = { kills: number; froze: number; splash: number; chain: number };
+
 export type World = {
+  waveNotes: Record<string, WaveNote>;
   phase: Phase;
   playMode: PlayMode;
   gold: number;
@@ -428,7 +434,7 @@ export type World = {
   orderCtx?: boolean;
 };
 
-function uid(w) {
+function uid(w: World) {
   w.uid += 1;
   return `u${w.uid}`;
 }
@@ -623,12 +629,12 @@ export function createWorld(): World {
 }
 
 /** Waves needed to win this run: the campaign stage's count, else WIN_WAVES. */
-export function winWaves(w): number {
+export function winWaves(w: World): number {
   return w?.campaign?.waves ?? WIN_WAVES;
 }
 
 /** What a campaign star rule reads. */
-export function campaignStats(w): CampaignStats {
+export function campaignStats(w: World): CampaignStats {
   return {
     wavesCleared: w.wavesCleared ?? 0,
     runLeaks: w.runLeaks ?? 0,
@@ -642,16 +648,16 @@ export function campaignStats(w): CampaignStats {
   };
 }
 
-function noteGunsPeak(w) {
+function noteGunsPeak(w: World) {
   w.gunsPeak = Math.max(w.gunsPeak ?? 0, fieldedTowers(w).length);
 }
 
-function spendCredit(w, n) {
+function spendCredit(w: World, n: number) {
   w.points -= n;
   w.creditSpent = (w.creditSpent ?? 0) + Math.max(0, n);
 }
 
-function applyStamps(w) {
+function applyStamps(w: World) {
   const folded = foldStamps(loadMeta().stamps ?? []);
   w.stampDmg = folded.dmg;
   w.stampRange = folded.range;
@@ -664,11 +670,11 @@ function applyStamps(w) {
   return folded;
 }
 
-export function padCap(w) {
+export function padCap(w: World) {
   return Math.min(MAX_TOWERS, BASE_PADS + levelPadBonus(w.runLevel) + w.stampPads + (w.mapPads ?? 0) + (w.hangarPads ?? 0));
 }
 
-export function livePads(w) {
+export function livePads(w: World) {
   const cap = padCap(w);
   const far = PADS.filter((p) => p.far);
   const rest = PADS.filter((p) => !p.far);
@@ -676,7 +682,7 @@ export function livePads(w) {
   if (n >= rest.length) return [...far, ...rest];
   const all = rest;
   if (n >= all.length) return [...far, ...all.slice()];
-  const used = new Set();
+  const used = new Set<number>();
   const out = [];
   for (let i = 0; i < n; i++) {
     let idx = Math.round((i * (all.length - 1)) / Math.max(1, n - 1));
@@ -688,13 +694,13 @@ export function livePads(w) {
   return [...far, ...out];
 }
 
-export function fieldedTowers(w) {
+export function fieldedTowers(w: World) {
   return w.roster.filter((r) => r.placedPad && r.placedPad !== HOME_PAD && r.card.kind === "tower");
 }
 
-function hydrateGun(r) {
+function hydrateGun(r: RosterItem) {
   if (!r) return r;
-  r.jobs = r.jobs ?? [r.tuneJob, r.tuneCap].filter(Boolean);
+  r.jobs = r.jobs ?? ([r.tuneJob, r.tuneCap].filter(Boolean) as string[]);
   r.jobSlots = r.jobSlots ?? PARAMS.jobSlotsStart;
   r.heatXp = r.heatXp ?? 0;
   if (r.level == null) r.level = 1;
@@ -711,15 +717,15 @@ function hydrateGun(r) {
   return r;
 }
 
-function heatNeed(heat) {
+function heatNeed(heat: number) {
   return Math.max(1, Math.round(PARAMS.heatBase * PARAMS.heatGrow ** Math.max(0, (heat || 1) - 1)));
 }
 
-function heatCap(w) {
+function heatCap(w: World) {
   return w.endless || w.playMode === "arcade" ? PARAMS.heatMaxEndless : PARAMS.gunLevelMax;
 }
 
-function tickHeat(w, r) {
+function tickHeat(w: World, r: RosterItem) {
   if (!r || r.card.kind !== "tower") return;
   hydrateGun(r);
   const cap = heatCap(w);
@@ -733,7 +739,7 @@ function tickHeat(w, r) {
   w.uiDirty = true;
 }
 
-function queueGunSpecial(r) {
+function queueGunSpecial(r: RosterItem) {
   if (!r) return;
   const have = r.specials ?? [];
   if (have.length >= maxSpecials("gun")) return;
@@ -744,7 +750,7 @@ function queueGunSpecial(r) {
   r.specialOffer = dealSpecials("gun", role, round, r.uid, have);
 }
 
-function queueCraftSpecial(c) {
+function queueCraftSpecial(c: CompanionState) {
   if (!c) return;
   const have = c.specials ?? [];
   if (have.length >= maxSpecials("craft")) return;
@@ -755,42 +761,42 @@ function queueCraftSpecial(c) {
   c.specialOffer = dealSpecials("craft", id, round, c.uid, have);
 }
 
-function queueGunPart(r) {
+function queueGunPart(r: RosterItem) {
   if (!r || r.card.kind !== "tower") return;
   if ((r.specialOffer ?? []).length) return;
   const have = (r.parts ?? []).map((p) => p.id);
   r.partOffer = refreshPartOffer("gun", r.uid, have, r.level || 1, r.partOffer);
 }
 
-function queueCraftPart(c) {
+function queueCraftPart(c: CompanionState) {
   if (!c) return;
   if ((c.specialOffer ?? []).length) return;
   const have = (c.parts ?? []).map((p) => p.id);
   c.partOffer = refreshPartOffer("craft", c.uid, have, c.runLevel || 1, c.partOffer);
 }
 
-function queueGunTrick(r) {
+function queueGunTrick(r: RosterItem) {
   queueGunSpecial(r);
 }
 
-function queueCraftTrick(c) {
+function queueCraftTrick(c: CompanionState) {
   queueCraftSpecial(c);
 }
 
-function slamEvery(item) {
+function slamEvery(item: RosterItem) {
   const base = PARAMS.ultEvery;
   if ((item.level || 1) >= 3) return Math.max(2, base - 1);
   return base;
 }
 
-function craftRoundHeat(w) {
+function craftRoundHeat(w: World) {
   const rounds = Math.floor(Math.max(0, w.wave) / WAVES_PER_ROUND);
   const n = w.endless || w.playMode === "arcade" ? rounds : Math.min(rounds, 12);
   const soft = n <= 12 ? n : 12 + (n - 12) * 0.4;
   return 1 + PARAMS.craftHeatPerRound * soft;
 }
 
-function itemStats(w, item, sets, amp) {
+function itemStats(w: World, item: RosterItem, sets?: ReturnType<typeof countSets>, amp?: CombatAmp) {
   hydrateGun(item);
   const stats = combatStats(
     item.card,
@@ -835,8 +841,8 @@ function itemStats(w, item, sets, amp) {
   return stats;
 }
 
-function craftSynergyTags(w) {
-  const tags = new Set();
+function craftSynergyTags(w: World) {
+  const tags = new Set<string>();
   for (const c of w.companions ?? []) {
     if (c.placedPad !== SKY_PAD || c.home) continue;
     for (const id of c.specials ?? []) {
@@ -847,8 +853,8 @@ function craftSynergyTags(w) {
   return tags;
 }
 
-function applyGunSpecials(stats, item, w) {
-  const tags = w ? craftSynergyTags(w) : new Set();
+function applyGunSpecials(stats: TowerStats, item: RosterItem, w: World) {
+  const tags = w ? craftSynergyTags(w) : new Set<string>();
   for (const id of item.specials ?? []) {
     const spec = specialOf(id);
     const g = spec?.gun;
@@ -876,7 +882,7 @@ function applyGunSpecials(stats, item, w) {
   }
 }
 
-function applyGunParts(stats, item) {
+function applyGunParts(stats: TowerStats, item: RosterItem) {
   for (const p of item.parts ?? []) {
     const g = p.gun;
     if (!g) continue;
@@ -898,12 +904,12 @@ function applyGunParts(stats, item) {
   }
 }
 
-export function gunMaxed(r) {
+export function gunMaxed(r: RosterItem) {
   hydrateGun(r);
   return (r.specials ?? []).length >= maxSpecials("gun");
 }
 
-export function coverPct(w) {
+export function coverPct(w: World) {
   const guns = [];
   const sets = worldSets(w);
   for (const item of w.roster) {
@@ -934,7 +940,7 @@ export function coverPct(w) {
   return n ? Math.round((hit / n) * 100) : 0;
 }
 
-function inGunCover(w, x, y) {
+function inGunCover(w: World, x: number, y: number) {
   const sets = liveSets(w);
   for (const item of w.roster) {
     if (!item.placedPad) continue;
@@ -948,7 +954,7 @@ function inGunCover(w, x, y) {
   return false;
 }
 
-function slamGun(w, item, mul) {
+function slamGun(w: World, item: RosterItem, mul: number) {
   const pos = towerPoint(item);
   if (!pos) return;
   const sets = liveSets(w);
@@ -975,7 +981,7 @@ function slamGun(w, item, mul) {
   w.shotsFired = (w.shotsFired ?? 0) + 1;
 }
 
-function dronePeck(w, pos, stats, dmg, aim) {
+function dronePeck(w: World, pos: Vec, stats: TowerStats, dmg: number, aim: number) {
   if (!pos || !stats) return;
   let n = 0;
   for (const e of w.enemies) {
@@ -989,38 +995,38 @@ function dronePeck(w, pos, stats, dmg, aim) {
   }
 }
 
-export function socketOnPad(w, padId) {
+export function socketOnPad(w: World, padId: string | null) {
   if (!padId) return null;
   return w.roster.find((r) => r.placedPad === padId && r.card.kind === "socket") ?? null;
 }
 
-export function towerOnPad(w, padId) {
+export function towerOnPad(w: World, padId: string | null) {
   if (!padId) return null;
   return w.roster.find((r) => r.placedPad === padId && r.card.kind === "tower") ?? null;
 }
 
-function charmRateMul(w) {
+function charmRateMul(w: World) {
   let t = 1;
   for (const n of w.charms) if (n.rateMul) t *= n.rateMul;
   return t;
 }
-function charmPointMul(w) {
+function charmPointMul(w: World) {
   let t = 1;
   for (const n of w.charms) if (n.pointMul) t *= n.pointMul;
   return t;
 }
-function charmGemMul(w) {
+function charmGemMul(w: World) {
   let t = 1;
   for (const n of w.charms) if (n.gemMul) t *= n.gemMul;
   return t;
 }
-function charmSlowMul(w) {
+function charmSlowMul(w: World) {
   let t = 1;
   for (const n of w.charms) if (n.slowMul) t *= n.slowMul;
   return t;
 }
 
-function nearbySocketBonus(w, x, y, key) {
+function nearbySocketBonus(w: World, x: number, y: number, key: keyof NonNullable<CardDef["socket"]>) {
   let i = 0;
   for (const a of w.roster) {
     if (a.card.kind !== "socket" || !a.placedPad) continue;
@@ -1035,7 +1041,7 @@ function nearbySocketBonus(w, x, y, key) {
   return i;
 }
 
-function grantGem(w, gem, x, y) {
+function grantGem(w: World, gem: GemId, x: number, y: number) {
   w.gems[gem] = (w.gems[gem] ?? 0) + 1;
   addFx(w, {
     kind: "float",
@@ -1048,7 +1054,7 @@ function grantGem(w, gem, x, y) {
   });
 }
 
-function ampOf(w) {
+function ampOf(w: World) {
   return {
     dmg: w.stampDmg,
     range: w.stampRange * (w.mapRangeMul ?? 1),
@@ -1056,13 +1062,13 @@ function ampOf(w) {
   };
 }
 
-export function towerPoint(item) {
+export function towerPoint(item: RosterItem) {
   if (item.placedPad === HOME_PAD) return BASE;
   if (!item.placedPad) return null;
-  return padById(item.placedPad) ?? null;
+  return padById(item.placedPad!) ?? null;
 }
 
-function allocEnemy(w) {
+function allocEnemy(w: World) {
   let e = w.enemies.find((x) => !x.alive);
   if (!e) {
     e = {
@@ -1106,7 +1112,7 @@ function allocEnemy(w) {
   return e;
 }
 
-function allocProj(w) {
+function allocProj(w: World) {
   let p = w.projectiles.find((x) => !x.alive);
   if (!p) {
     p = {
@@ -1135,13 +1141,13 @@ function allocProj(w) {
   return p;
 }
 
-function addFx(w, fx) {
+function addFx(w: World, fx: Omit<Fx, "t">) {
   w.fx.push({ ...fx, t: 0 });
   if (w.fx.length > 400) w.fx.splice(0, w.fx.length - 400);
 }
 
 /** Rising "+" particles (level-up, star-up, purchases). */
-function risePlus(w, x, y, color, n = 6) {
+function risePlus(w: World, x: number, y: number, color: string, n: number = 6) {
   for (let i = 0; i < n; i++) {
     addFx(w, {
       kind: "plus",
@@ -1157,13 +1163,13 @@ function risePlus(w, x, y, color, n = 6) {
 }
 
 /** Expanding double ring plus rising "+" for upgrades. */
-function juiceBurst(w, x, y, color, size = 44) {
+function juiceBurst(w: World, x: number, y: number, color: string, size = 44) {
   addFx(w, { kind: "ring", x, y, life: 0.6, color, size });
   addFx(w, { kind: "ring", x, y, life: 0.45, color: "#eef6ff", size: size * 0.62 });
   risePlus(w, x, y, color);
 }
 
-function motes(w, x, y, n, color, speed, life, aim) {
+function motes(w: World, x: number, y: number, n: number, color: string, speed: number, life: number, aim?: number) {
   const fan = aim == null ? Math.PI * 2 : 0.55;
   for (let i = 0; i < n; i++) {
     const a = (aim ?? 0) + (Math.random() - 0.5) * fan;
@@ -1181,11 +1187,11 @@ function motes(w, x, y, n, color, speed, life, aim) {
   }
 }
 
-function unitHasOffer(unit) {
+function unitHasOffer(unit: RosterItem | CompanionState | undefined) {
   return ((unit?.specialOffer ?? []).length || (unit?.partOffer ?? []).length) > 0;
 }
 
-function celebrateLevel(w, x, y, color, level, uid) {
+function celebrateLevel(w: World, x: number, y: number, color: string, level: number, uid: string) {
   w.hitstop = Math.max(w.hitstop ?? 0, PARAMS.levelHitStop);
   w.trauma = Math.min(1, (w.trauma ?? 0) + PARAMS.levelTrauma);
   w.flashT = 0.42;
@@ -1224,7 +1230,7 @@ function celebrateLevel(w, x, y, color, level, uid) {
   if (craft) craft.levelPop = 1.15;
 }
 
-function openLevelPick(w, uid) {
+function openLevelPick(w: World, uid: string) {
   if (!uid) return;
   if (w.phase === "combat") return;
   const cur = w.selectedCard;
@@ -1237,7 +1243,7 @@ function openLevelPick(w, uid) {
   w.uiDirty = true;
 }
 
-function nextLevelPick(w) {
+function nextLevelPick(w: World) {
   const gun = (w.roster ?? []).find((r) => r.card.kind === "tower" && unitHasOffer(r));
   const craft = (w.companions ?? []).find((c) => unitHasOffer(c));
   const next = gun ?? craft;
@@ -1253,7 +1259,7 @@ function nextLevelPick(w) {
   w.uiDirty = true;
 }
 
-export function inspectGun(w, item) {
+export function inspectGun(w: World, item: RosterItem) {
   const s = item?.card?.stats;
   const now = item ? itemStats(w, item) : null;
   if (!s) return { base: "A gun on a moon.", now: "Level 1." };
@@ -1266,7 +1272,7 @@ export function inspectGun(w, item) {
   };
 }
 
-function spawnEnemy(w, type, route = 0, noMutant = false) {
+function spawnEnemy(w: World, type: EnemyType, route: number = 0, noMutant: boolean = false) {
   const def = ENEMIES[type];
   // Endless: past wave 12 (index >= 12), HP also grows ×endlessHpGrow per wave beyond index 11.
   const endlessMul = w.wave >= WIN_WAVES ? Math.pow(PARAMS.endlessHpGrow, w.wave - (WIN_WAVES - 1)) : 1;
@@ -1349,7 +1355,7 @@ function spawnEnemy(w, type, route = 0, noMutant = false) {
 }
 
 /** Shard death: split into Swarm at its spot on the lane. */
-function splitShard(w, e) {
+function splitShard(w: World, e: Enemy) {
   const route = e.route;
   const along = e.along ?? 0;
   // Hold the dead Shard's slot so allocEnemy cannot hand it back as one of the Swarm.
@@ -1361,7 +1367,7 @@ function splitShard(w, e) {
   }
 }
 
-function spawnSplit(w, route, along) {
+function spawnSplit(w: World, route: number, along: number) {
   for (let i = 0; i < PARAMS.shardSplit; i++) {
     const s = spawnEnemy(w, "swarm", route, true);
     s.along = Math.max(0, along - i * 10);
@@ -1373,13 +1379,13 @@ function spawnSplit(w, route, along) {
   }
 }
 
-function progress(e) {
+function progress(e: Enemy) {
   return e.along ?? 0;
 }
 
 /** Blink: count down, show the landing marker for the last blinkTell seconds, then jump forward along the lane. */
-function stepBlink(w, e, dt) {
-  if ((e.blinkFx ?? 0) > 0) e.blinkFx = Math.max(0, e.blinkFx - dt);
+function stepBlink(w: World, e: Enemy, dt: number) {
+  if ((e.blinkFx ?? 0) > 0) e.blinkFx = Math.max(0, e.blinkFx! - dt);
   // Frozen Blinks hold their timer: a freeze buys real time.
   if ((e.freezeT ?? 0) > 0) return;
   e.blinkT = (e.blinkT ?? PARAMS.blinkEvery) - dt;
@@ -1417,8 +1423,8 @@ function stepBlink(w, e, dt) {
  *  - Home and crafts are never jammed;
  *  - jam timers only count down (stepTowers) and are cleared between waves (clearJams).
  */
-function stepJammer(w, e, dt) {
-  if ((e.jamFx ?? 0) > 0) e.jamFx = Math.max(0, e.jamFx - dt);
+function stepJammer(w: World, e: Enemy, dt: number) {
+  if ((e.jamFx ?? 0) > 0) e.jamFx = Math.max(0, e.jamFx! - dt);
   if ((e.freezeT ?? 0) > 0) return;
   e.jamCd = (e.jamCd ?? PARAMS.jamEvery) - dt;
   if (e.jamCd > 0) return;
@@ -1436,20 +1442,20 @@ function stepJammer(w, e, dt) {
   }
 }
 
-function clearJams(w) {
+function clearJams(w: World) {
   for (const r of w.roster ?? []) {
     if (r.jamT) r.jamT = 0;
     if (r.jamImmuneT) r.jamImmuneT = 0;
   }
 }
 
-function dist2(ax, ay, bx, by) {
+function dist2(ax: number, ay: number, bx: number, by: number) {
   const dx = ax - bx;
   const dy = ay - by;
   return dx * dx + dy * dy;
 }
 
-function applyDamage(w, e, raw, quiet = false, from = null, pierce = false) {
+function applyDamage(w: World, e: Enemy, raw: number, quiet = false, from: string | null = null, pierce = false) {
   const shred = e.shredT > 0 || w.envShred > 0 ? Math.max(0.35, w.envShred) : 0;
   let amount = raw;
   if (from && from !== "slam" && (w.companions ?? []).some((x) => x.uid === from)) {
@@ -1460,10 +1466,10 @@ function applyDamage(w, e, raw, quiet = false, from = null, pierce = false) {
   let dmg = amount * (pierce ? 1 : 1 - Math.max(0, e.armor - shred)) * w.nextWaveDmg * w.envDmgAmp;
   if ((e.wardT ?? 0) > 0) dmg *= 1 - PARAMS.wardenCut;
   if ((e.shield ?? 0) > 0) {
-    const soak = Math.min(e.shield, dmg);
-    e.shield -= soak;
+    const soak = Math.min(e.shield!, dmg);
+    e.shield! -= soak;
     dmg -= soak;
-    if (e.shield <= 0) {
+    if (e.shield! <= 0) {
       e.shield = 0;
       e.shieldBreak = 0.25;
     }
@@ -1490,7 +1496,7 @@ function applyDamage(w, e, raw, quiet = false, from = null, pierce = false) {
   if (e.hp <= 0) killEnemy(w, e, from);
 }
 
-function killEnemy(w, e, from = null) {
+function killEnemy(w: World, e: Enemy, from: string | null = null) {
   if (!e.alive) return;
   hopBurn(w, e);
   e.alive = false;
@@ -1573,7 +1579,7 @@ function killEnemy(w, e, from = null) {
   }
 }
 
-function leakEnemy(w, e) {
+function leakEnemy(w: World, e: Enemy) {
   e.alive = false;
   w.leaks += 1;
   w.runLeaks = (w.runLeaks ?? 0) + 1;
@@ -1610,11 +1616,11 @@ function leakEnemy(w, e) {
 }
 
 /** Run earnings (round grades, banked Credit): Threat raises the payout. */
-function bankRunFlux(w, amount) {
+function bankRunFlux(w: World, amount: number) {
   return bankFlux(w, Math.max(0, amount) * threatPayMul(threatPoints(w.threat)));
 }
 
-function bankFlux(w, amount) {
+function bankFlux(w: World, amount: number) {
   const n = Math.max(0, Math.floor(amount));
   if (n <= 0) return 0;
   const next = addFlux(n);
@@ -1623,7 +1629,7 @@ function bankFlux(w, amount) {
   return n;
 }
 
-function failRun(w) {
+function failRun(w: World) {
   w.lives = 0;
   w.phase = "defeat";
   w.waveActive = false;
@@ -1658,14 +1664,14 @@ function failRun(w) {
   clearRun();
 }
 
-function lerpAng(a, b, t) {
+function lerpAng(a: number, b: number, t: number) {
   let d = b - a;
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
   return a + d * t;
 }
 
-function hopBurn(w, e) {
+function hopBurn(w: World, e: Enemy) {
   if ((e.burnT ?? 0) <= 0 && (e.burnDps ?? 0) <= 0) return;
   const sets = liveSets(w);
   const lords = lordFlags(w.companions, sets);
@@ -1680,7 +1686,7 @@ function hopBurn(w, e) {
   addFx(w, { kind: "ring", x: e.x, y: e.y, life: 0.28, color: "#ff5c2a", size: 52 });
 }
 
-function moveEnemy(w, e, dt, envSlow, fold = 0) {
+function moveEnemy(w: World, e: Enemy, dt: number, envSlow: number, fold = 0) {
   e.age = (e.age ?? 0) + dt;
   if (e.freezeT > 0) {
     e.freezeT -= dt;
@@ -1713,7 +1719,7 @@ function moveEnemy(w, e, dt, envSlow, fold = 0) {
   e.fold = fold;
 }
 
-function foldingGuns(w) {
+function foldingGuns(w: World) {
   const sets = liveSets(w);
   const guns = [];
   for (const item of w.roster) {
@@ -1736,7 +1742,7 @@ function foldingGuns(w) {
   return guns;
 }
 
-function foldAt(guns, e) {
+function foldAt(guns: ReturnType<typeof foldingGuns>, e: Enemy) {
   if (!guns.length) return 0;
   let max = 0;
   for (const g of guns) {
@@ -1747,13 +1753,13 @@ function foldAt(guns, e) {
   return max;
 }
 
-export function bonusPct(w) {
+export function bonusPct(w: World) {
   let p = w.killGoldMul || 1;
   for (const n of w.charms ?? []) if (n.pointMul) p *= n.pointMul;
   return Math.round((p - 1) * 100);
 }
 
-function liveSets(w) {
+function liveSets(w: World) {
   const cards = [];
   if (w.environment) cards.push(w.environment);
   for (const r of w.roster) {
@@ -1765,11 +1771,11 @@ function liveSets(w) {
   return countSets(cards);
 }
 
-export function worldSets(w) {
+export function worldSets(w: World) {
   return liveSets(w);
 }
 
-function applyHitFx(w, e, stats) {
+function applyHitFx(w: World, e: Enemy, stats: Partial<TowerStats>) {
   if (stats.slowT) {
     const fresh = !(e.slowT > 0);
     e.slowT = Math.max(e.slowT, stats.slowT);
@@ -1800,10 +1806,10 @@ function applyHitFx(w, e, stats) {
   elementOnHit(w, e, stats);
 }
 
-const isBossType = (t) => t === "titan" || t === "colossus";
+const isBossType = (t: EnemyType) => t === "titan" || t === "colossus";
 
 /** Marks the enemy with the hit's elements; two different live elements react. */
-function elementOnHit(w, e, stats, linger = PARAMS.elementLinger) {
+function elementOnHit(w: World, e: Enemy, stats: Parameters<typeof hitElements>[0], linger: number = PARAMS.elementLinger) {
   if (!e?.alive || !stats) return;
   const els = hitElements(stats);
   if (!els.length) return;
@@ -1811,7 +1817,7 @@ function elementOnHit(w, e, stats, linger = PARAMS.elementLinger) {
   if (!e.elUntil) e.elUntil = {};
   for (const el of els) {
     if ((e.reactAt ?? 0) <= now) {
-      for (const id of Object.keys(REACTIONS)) {
+      for (const id of (Object.keys(REACTIONS) as ReactionId[])) {
         const r = REACTIONS[id];
         if (!r.pair.includes(el)) continue;
         const other = r.pair[0] === el ? r.pair[1] : r.pair[0];
@@ -1827,7 +1833,7 @@ function elementOnHit(w, e, stats, linger = PARAMS.elementLinger) {
   }
 }
 
-function react(w, e, id) {
+function react(w: World, e: Enemy, id: keyof typeof REACTIONS) {
   const r = REACTIONS[id];
   w.reactions = (w.reactions ?? 0) + 1;
   addEnergy(w, ORDER_NUM.perReaction);
@@ -1854,7 +1860,7 @@ function react(w, e, id) {
   }
 }
 
-export function infuseGun(w, uid, el) {
+export function infuseGun(w: World, uid: string, el: NonNullable<TowerStats["infuse"]>) {
   const r = (w.roster ?? []).find((x) => x.uid === uid);
   if (!r || r.infuse || !ELEMENTS[el]) return false;
   if (!infuseChoices(r.card.set).includes(el)) return false;
@@ -1869,7 +1875,7 @@ export function infuseGun(w, uid, el) {
   return true;
 }
 
-function tribeOnHit(w, e, stats) {
+function tribeOnHit(w: World, e: Enemy, stats: Pick<TowerStats, "tribe">) {
   const tribe = stats?.tribe;
   if (!tribe || !e?.alive) return;
   const sets = liveSets(w);
@@ -1897,7 +1903,7 @@ function tribeOnHit(w, e, stats) {
 }
 
 /** Gun target pick. "first" = furthest along (default), "strong" = most HP, "last" = least far along. */
-function firstInRange(w, x, y, stats, aim, mode: TargetMode = "first") {
+function firstInRange(w: World, x: number, y: number, stats: TowerStats, aim: number, mode: TargetMode = "first") {
   let best = -1;
   let bestP = -Infinity;
   let bestHp = -1;
@@ -1927,7 +1933,7 @@ function firstInRange(w, x, y, stats, aim, mode: TargetMode = "first") {
 export const TARGET_MODES: TargetMode[] = ["first", "strong", "last"];
 
 /** Cycle a gun's target priority: First → Strong → Last → First. */
-export function cycleTarget(w, uid: string) {
+export function cycleTarget(w: World, uid: string) {
   const r = (w.roster ?? []).find((x) => x.uid === uid);
   if (!r || r.card.kind !== "tower") return false;
   const i = TARGET_MODES.indexOf(r.target ?? "first");
@@ -1936,7 +1942,7 @@ export function cycleTarget(w, uid: string) {
   return true;
 }
 
-function fireAt(w, fromX, fromY, targetIndex, dmg, stats) {
+function fireAt(w: World, fromX: number, fromY: number, targetIndex: number, dmg: number, stats: TowerStats) {
   const e = w.enemies[targetIndex];
   if (!e?.alive) return;
   w.shotsFired = (w.shotsFired ?? 0) + 1;
@@ -1997,8 +2003,8 @@ function fireAt(w, fromX, fromY, targetIndex, dmg, stats) {
   p.chainLeft = 0;
 }
 
-function chainHit(w, x, y, start, dmg, hops, stats) {
-  const hit = new Set();
+function chainHit(w: World, x: number, y: number, start: number, dmg: number, hops: number, stats: TowerStats) {
+  const hit = new Set<number>();
   let idx = start;
   let cx = x;
   let cy = y;
@@ -2049,7 +2055,7 @@ function chainHit(w, x, y, start, dmg, hops, stats) {
   }
 }
 
-function voltPoles(w) {
+function voltPoles(w: World) {
   const sets = liveSets(w);
   const lords = lordFlags(w.companions, sets);
   if (!lords.liveRail) return [];
@@ -2066,9 +2072,9 @@ function voltPoles(w) {
   return pts;
 }
 
-function impact(w, p) {
+function impact(w: World, p: Projectile) {
   p.alive = false;
-  const apply = (e, amount) => {
+  const apply = (e: Enemy, amount: number) => {
     if (p.slowT) {
       e.slowT = Math.max(e.slowT, p.slowT);
       e.slowMul = p.slowMul;
@@ -2100,7 +2106,7 @@ function impact(w, p) {
   } else addFx(w, { kind: "spark", x: p.x, y: p.y, life: 0.16, color: "#f0f1f4", size: 5 });
 }
 
-function stepProjectiles(w, dt) {
+function stepProjectiles(w: World, dt: number) {
   for (const p of w.projectiles) {
     if (!p.alive) continue;
     p.ttl -= dt;
@@ -2124,11 +2130,11 @@ function stepProjectiles(w, dt) {
   }
 }
 
-function placedGuns(w) {
+function placedGuns(w: World) {
   return w.roster.filter((r) => r.placedPad && (r.card.kind === "tower" || r.card.kind === "defender"));
 }
 
-function sharedCurrentRange(w, sets) {
+function sharedCurrentRange(w: World, sets: ReturnType<typeof countSets>) {
   if ((sets.iron ?? 0) < 2) return 0;
   let maxR = 0;
   for (const item of placedGuns(w)) {
@@ -2139,7 +2145,7 @@ function sharedCurrentRange(w, sets) {
   return maxR;
 }
 
-function withSocket(stats, sock) {
+function withSocket(stats: TowerStats, sock: CardDef | null | undefined) {
   if (!stats || !sock?.socket) return stats;
   const s = { ...stats };
   if (sock.socket.rangeMul) s.range *= sock.socket.rangeMul;
@@ -2148,7 +2154,7 @@ function withSocket(stats, sock) {
   return s;
 }
 
-function eachInCover(w, pos, stats, aim, fn) {
+function eachInCover(w: World, pos: Vec, stats: TowerStats, aim: number, fn: (e: Enemy) => void) {
   for (const e of w.enemies) {
     if (!e.alive) continue;
     if (!inCover(stats.cover, pos.x, pos.y, e.x, e.y, stats.range, aim, stats.coverInner, stats.coverArc)) continue;
@@ -2156,7 +2162,7 @@ function eachInCover(w, pos, stats, aim, fn) {
   }
 }
 
-function tickGunGlow(w, item, stats, pos, dt, hot) {
+function tickGunGlow(w: World, item: RosterItem, stats: TowerStats, pos: Vec, dt: number, hot: boolean) {
   if (item.placedPad === HOME_PAD) return;
   const glow = hullGlow(stats.role);
   const dish = isGlowHull(stats.role, stats.projectile);
@@ -2233,7 +2239,7 @@ function tickGunGlow(w, item, stats, pos, dt, hot) {
   }
 }
 
-function stepTowers(w, dt) {
+function stepTowers(w: World, dt: number) {
   const sets = liveSets(w);
   const shared = sharedCurrentRange(w, sets);
   const lords = lordFlags(w.companions, sets);
@@ -2257,8 +2263,8 @@ function stepTowers(w, dt) {
     }
     item.cd -= dt;
     item.overclockT = Math.max(0, (item.overclockT ?? 0) - dt);
-    if ((item.ultT ?? 0) > 0) item.ultT -= dt;
-    if ((item.jamImmuneT ?? 0) > 0) item.jamImmuneT = Math.max(0, item.jamImmuneT - dt);
+    if ((item.ultT ?? 0) > 0) item.ultT! -= dt;
+    if ((item.jamImmuneT ?? 0) > 0) item.jamImmuneT = Math.max(0, item.jamImmuneT! - dt);
     const surged = (item.surgeT ?? 0) > 0;
     if (surged) {
       // Surge (Order): jam-proof, faster, shots carry Volt.
@@ -2268,7 +2274,7 @@ function stepTowers(w, dt) {
     if ((item.heatT ?? 0) > 0) continue;
     if ((item.jamT ?? 0) > 0) {
       // Jammed (Jammer pulse): no shots, no glow, no slam. The timer only ever counts down.
-      item.jamT = Math.max(0, item.jamT - dt);
+      item.jamT = Math.max(0, item.jamT! - dt);
       continue;
     }
     const hot = (item.overclockT ?? 0) > 0;
@@ -2365,7 +2371,7 @@ function stepTowers(w, dt) {
     }
     if (role === "orbit") {
       w.shotsFired = (w.shotsFired ?? 0) + 1;
-      const shown = [];
+      const shown: Enemy[] = [];
       eachInCover(w, pos, stats, aim, (o) => {
         applyHitFx(w, o, stats);
         applyDamage(w, o, dmg * 0.42, true);
@@ -2440,10 +2446,10 @@ function stepTowers(w, dt) {
       addFx(w, { kind: "float", x: e.x, y: e.y - 14, life: 0.5, text: "MARK", color: "#e8c15a", size: 10 });
       continue;
     }
-    if ((stats.split ?? 0) > 1 && role !== "orbit") {
+    if ((stats.split ?? 0) > 1 && (role as TowerStats["role"]) !== "orbit") {
       fireAt(w, pos.x, pos.y, idx, dmg, stats);
       let extra = 0;
-      for (let i = 0; i < w.enemies.length && extra < stats.split - 1; i++) {
+      for (let i = 0; i < w.enemies.length && extra < stats.split! - 1; i++) {
         if (i === idx) continue;
         const o = w.enemies[i];
         if (!o.alive) continue;
@@ -2458,11 +2464,11 @@ function stepTowers(w, dt) {
   }
 }
 
-function stepSockets(w, dt) {
+function stepSockets(w: World, dt: number) {
   for (const r of w.roster) {
     if (r.card.kind !== "socket" || !r.placedPad) continue;
     const sock = r.card.socket;
-    const pad = padById(r.placedPad);
+    const pad = padById(r.placedPad!);
     if (!sock || !pad) continue;
     const rad = sock.slowR ?? 0;
     if (rad <= 0) continue;
@@ -2480,7 +2486,7 @@ function stepSockets(w, dt) {
   }
 }
 
-function stepCharms(w, dt) {
+function stepCharms(w: World, dt: number) {
   const rain = w.charms.find((c) => c.fireRain);
   const met = w.charms.find((c) => c.meteor);
   if (rain?.fireRain) {
@@ -2511,11 +2517,11 @@ function stepCharms(w, dt) {
   }
 }
 
-function tickCharms(w) {
+function tickCharms(w: World) {
   w.charms = w.charms.map((c) => ({ ...c, rounds: c.rounds - 1 })).filter((c) => c.rounds > 0);
 }
 
-export function buyCharm(w, id) {
+export function buyCharm(w: World, id: string) {
   if (w.phase !== "merchant") return false;
   const n = CHARMS.find((c) => c.id === id);
   if (!n || !canAfford(w.gems, n.cost)) return false;
@@ -2539,14 +2545,14 @@ export function buyCharm(w, id) {
   return true;
 }
 
-export function leaveMerchant(w) {
+export function leaveMerchant(w: World) {
   if (w.phase === "merchant") {
     w.pendingMerchant = false;
     afterShop(w);
   }
 }
 
-function noteWave(w, role, key) {
+function noteWave(w: World, role: string | undefined, key: keyof WaveNote) {
   if (!role) return;
   if (!w.waveNotes) w.waveNotes = {};
   const row = w.waveNotes[role] ?? { kills: 0, froze: 0, splash: 0, chain: 0 };
@@ -2554,7 +2560,7 @@ function noteWave(w, role, key) {
   w.waveNotes[role] = row;
 }
 
-const WAVE_NAME = {
+const WAVE_NAME: Partial<Record<string, string>> = {
   spear: "Lance",
   crater: "Crater",
   frost: "Halo",
@@ -2567,7 +2573,7 @@ const WAVE_NAME = {
   orbit: "Helix",
 };
 
-function waveBit(role, row) {
+function waveBit(role: string, row: WaveNote) {
   const name = WAVE_NAME[role] ?? role;
   if (role === "frost" && row.froze > 0) return { n: row.froze, text: `${name} froze ${row.froze}` };
   if (role === "crater" && row.splash > 0) {
@@ -2581,7 +2587,7 @@ function waveBit(role, row) {
   return null;
 }
 
-function waveLine(w) {
+function waveLine(w: World) {
   const bits = [];
   for (const [role, row] of Object.entries(w.waveNotes ?? {})) {
     const bit = waveBit(role, row);
@@ -2594,7 +2600,7 @@ function waveLine(w) {
     .join(". ");
 }
 
-function sayWave(w) {
+function sayWave(w: World) {
   const recap = waveLine(w);
   const credit = w.announce?.startsWith("+") ? w.announce : null;
   const line = [recap, credit].filter(Boolean).join(". ");
@@ -2604,7 +2610,7 @@ function sayWave(w) {
   w.holdT = Math.max(w.holdT ?? 0, 2.2);
 }
 
-function queueWave(w) {
+function queueWave(w: World) {
   clearJams(w);
   w.orderEnergy = ORDER_NUM.energyStart;
   w.spawnQ = [];
@@ -2636,13 +2642,13 @@ function queueWave(w) {
   w.spawnQ.sort((a, b) => a.at - b.at);
 }
 
-function rankNeed(w) {
+function rankNeed(w: World) {
   let n = xpToNext(w.runLevel);
   if (w.vaultWarm && w.runLevel === START_LEVEL) n = Math.round(n * 0.9);
   return n;
 }
 
-function grantXp(w, t, quiet = false) {
+function grantXp(w: World, t: number, quiet = false) {
   if (t <= 0) return 0;
   const add = Math.round(t * (w.stampXp || 1));
   w.xp += add;
@@ -2670,11 +2676,11 @@ function grantXp(w, t, quiet = false) {
   return r;
 }
 
-function luckOf(w) {
+function luckOf(w: World) {
   return w.draftBump + levelDraftBump(w.runLevel) + (w.stampLuck || 0) + (w.hangarLuck || 0);
 }
 
-export function startWave(w) {
+export function startWave(w: World) {
   if (w.phase !== "placement") return;
   if (!fieldedTowers(w).length) return;
   w.phase = "combat";
@@ -2703,7 +2709,7 @@ export function startWave(w) {
   w.uiDirty = true;
 }
 
-function finishWave(w) {
+function finishWave(w: World) {
   w.waveActive = false;
   clearJams(w);
   clearOrders(w);
@@ -2787,11 +2793,11 @@ function finishWave(w) {
 /* ---------- Orders (data/orders.ts) ---------- */
 
 /** Orders are on unless the run took the Radio Silence threat. */
-export function ordersOn(w): boolean {
+export function ordersOn(w: World): boolean {
   return !hasThreat(w.threat, "silence");
 }
 
-function addEnergy(w, n) {
+function addEnergy(w: World, n: number) {
   if (!ordersOn(w) || w.phase !== "combat") return;
   const before = w.orderEnergy ?? 0;
   w.orderEnergy = Math.min(ORDER_NUM.energyMax, before + n);
@@ -2799,7 +2805,7 @@ function addEnergy(w, n) {
 }
 
 /** At run Level 3 the player picks a second Order from the other three. */
-function offerSecondOrder(w) {
+function offerSecondOrder(w: World) {
   if (!ordersOn(w)) return;
   w.orders = cleanOrders(w.orders);
   if (w.orders.length >= ORDER_NUM.maxSlots) return;
@@ -2809,18 +2815,18 @@ function offerSecondOrder(w) {
   w.uiDirty = true;
 }
 
-export function pickOrder(w, id): boolean {
-  if (!(w.orderOffer ?? []).includes(id)) return false;
+export function pickOrder(w: World, id: string): boolean {
+  if (!(w.orderOffer ?? []).includes(id as OrderId)) return false;
   w.orders = cleanOrders([...(w.orders ?? []), id]);
   w.orderOffer = [];
-  w.message = `${ORDERS[id].name} ready. Slot 2.`;
+  w.message = `${ORDERS[id as OrderId].name} ready. Slot 2.`;
   w.uiDirty = true;
   checkpoint(w);
   return true;
 }
 
 /** Why slot can't be armed right now, or null if it can. */
-export function orderBlock(w, slot): string | null {
+export function orderBlock(w: World, slot: number): string | null {
   if (!ordersOn(w)) return "off";
   const id = (w.orders ?? [])[slot];
   const def = orderOf(id);
@@ -2833,7 +2839,7 @@ export function orderBlock(w, slot): string | null {
 }
 
 /** Arm (or disarm when already armed) an Order slot. */
-export function armOrder(w, slot): boolean {
+export function armOrder(w: World, slot: number): boolean {
   if (w.orderArmed === slot) {
     w.orderArmed = -1;
     w.orderHover = null;
@@ -2851,7 +2857,7 @@ export function armOrder(w, slot): boolean {
   return true;
 }
 
-export function disarmOrder(w) {
+export function disarmOrder(w: World) {
   if (w.orderArmed < 0 && !w.orderHover) return false;
   w.orderArmed = -1;
   w.orderHover = null;
@@ -2860,7 +2866,7 @@ export function disarmOrder(w) {
 }
 
 /** Where a tap at (x, y) would land for the armed Order: a lane point, or a planted gun. */
-export function orderTargetAt(w, x, y) {
+export function orderTargetAt(w: World, x: number, y: number) {
   const def = orderOf((w.orders ?? [])[w.orderArmed]);
   if (!def) return null;
   if (def.target === "gun") {
@@ -2876,7 +2882,7 @@ export function orderTargetAt(w, x, y) {
 }
 
 /** Cast the armed Order at a tap. An invalid tap disarms. Returns true on a cast. */
-export function castOrderAt(w, x, y): boolean {
+export function castOrderAt(w: World, x: number, y: number): boolean {
   const slot = w.orderArmed;
   const id = (w.orders ?? [])[slot];
   const def = orderOf(id);
@@ -2890,7 +2896,7 @@ export function castOrderAt(w, x, y): boolean {
   w.orderLock = ORDER_NUM.lockout;
   w.ordersUsed = (w.ordersUsed ?? 0) + 1;
   if (def.target === "gun") {
-    const g = tgt.gun;
+    const g = tgt.gun!;
     g.surgeT = ORDER_NUM.surgeT;
     g.heatT = 0;
     g.jamT = 0;
@@ -2905,7 +2911,7 @@ export function castOrderAt(w, x, y): boolean {
   return true;
 }
 
-function resolveOrder(w, o) {
+function resolveOrder(w: World, o: World["orderPending"][number]) {
   const def = ORDERS[o.id];
   w.orderCtx = true;
   try {
@@ -2949,7 +2955,7 @@ function resolveOrder(w, o) {
 }
 
 /** Orders on sim time: energy trickle, lockout, telegraphs, Surge and overheat. Runs after stepWorld's early returns. */
-function stepOrders(w, dt) {
+function stepOrders(w: World, dt: number) {
   if ((w.orderLock ?? 0) > 0) {
     const was = w.orderLock;
     w.orderLock = Math.max(0, w.orderLock - dt);
@@ -2965,18 +2971,18 @@ function stepOrders(w, dt) {
   }
   for (const r of w.roster ?? []) {
     if ((r.surgeT ?? 0) > 0) {
-      r.surgeT = Math.max(0, r.surgeT - dt);
-      if (r.surgeT <= 0) {
+      r.surgeT = Math.max(0, r.surgeT! - dt);
+      if (r.surgeT! <= 0) {
         r.heatT = ORDER_NUM.surgeHeat;
         const pos = towerPoint(r);
         if (pos) addFx(w, { kind: "float", x: pos.x, y: pos.y - 34, life: 0.9, text: "OVERHEAT", color: "#ff4d4d", size: 11 });
       }
-    } else if ((r.heatT ?? 0) > 0) r.heatT = Math.max(0, r.heatT - dt);
+    } else if ((r.heatT ?? 0) > 0) r.heatT = Math.max(0, r.heatT! - dt);
   }
 }
 
 /** Wave end / defeat: drop telegraphs still counting down, disarm, and cool every gun. Energy resets at the next wave start. */
-function clearOrders(w) {
+function clearOrders(w: World) {
   w.orderPending = [];
   w.orderArmed = -1;
   w.orderHover = null;
@@ -2989,7 +2995,7 @@ function clearOrders(w) {
 }
 
 /** Continue restarts the wave: no telegraphs, no Surge, fresh Energy. Slots stay. */
-function resetOrdersForRestart(w) {
+function resetOrdersForRestart(w: World) {
   w.orderPending = [];
   w.orderArmed = -1;
   w.orderHover = null;
@@ -3001,7 +3007,7 @@ function resetOrdersForRestart(w) {
   }
 }
 
-export function stepWorld(w, dt) {
+export function stepWorld(w: World, dt: number) {
   unstickWorld(w);
   w.visT += dt;
   if ((w.flashT ?? 0) > 0) w.flashT = Math.max(0, w.flashT - dt);
@@ -3049,7 +3055,7 @@ export function stepWorld(w, dt) {
   }
   w.waveT += dt;
   while (w.spawnQ.length && w.spawnQ[0].at <= w.waveT) {
-    const s = w.spawnQ.shift();
+    const s = w.spawnQ.shift()!;
     spawnEnemy(w, s.type, s.route);
   }
   const envSlow = w.envSlowMul * charmSlowMul(w) * (w.mapSlowMul ?? 1);
@@ -3082,7 +3088,7 @@ export function stepWorld(w, dt) {
         }
       }
     }
-    if ((e.wardT ?? 0) > 0) e.wardT -= dt;
+    if ((e.wardT ?? 0) > 0) e.wardT! -= dt;
     if (e.type === "warden") {
       // Same loop as the medic. A flag with a short timer, so two Wardens do not stack.
       for (const o of w.enemies) {
@@ -3094,8 +3100,8 @@ export function stepWorld(w, dt) {
     }
     if (e.type === "blink" && e.alive) stepBlink(w, e, dt);
     if (e.type === "jammer" && e.alive) stepJammer(w, e, dt);
-    if ((e.shieldBreak ?? 0) > 0) e.shieldBreak = Math.max(0, e.shieldBreak - dt);
-    if ((e.regen ?? 0) > 0 && e.alive) e.hp = Math.min(e.maxHp, e.hp + e.regen * dt);
+    if ((e.shieldBreak ?? 0) > 0) e.shieldBreak = Math.max(0, e.shieldBreak! - dt);
+    if ((e.regen ?? 0) > 0 && e.alive) e.hp = Math.min(e.maxHp, e.hp + e.regen! * dt);
     if ((e.along ?? 0) >= (PATH_ALONG[e.route] ?? 1) - 4) leakEnemy(w, e);
   }
   stepCompanion(w, dt);
@@ -3114,7 +3120,7 @@ export function stepWorld(w, dt) {
   }
 }
 
-function applyRelic(w, card) {
+function applyRelic(w: World, card: CardDef & Partial<Pick<RolledCard, "templateId">>) {
   const r = card.relic;
   if (!r) return;
   if (r.gold) bankFlux(w, Math.max(1, fluxFromBank(r.gold)));
@@ -3126,10 +3132,10 @@ function applyRelic(w, card) {
   if (r.draftBump) w.draftBump += r.draftBump;
   if (r.nextWaveDmg) w.nextWaveDmg += r.nextWaveDmg;
   if (r.killGold) w.killGoldMul += r.killGold;
-  w.relics.push("templateId" in card ? card.templateId : card.id);
+  w.relics.push("templateId" in card ? card.templateId! : card.id);
 }
 
-function applyEnv(w, card) {
+function applyEnv(w: World, card: RolledCard) {
   w.environment = card;
   w.environmentId = card.templateId;
   const e = card.env;
@@ -3140,7 +3146,7 @@ function applyEnv(w, card) {
   w.envDmgAmp = 1 + (e?.dmgAmp ?? 0);
 }
 
-export function addToRoster(w, card) {
+export function addToRoster(w: World, card: RolledCard) {
   if (card.kind === "environment") {
     applyEnv(w, card);
     w.message = `${card.name} covers the path.`;
@@ -3199,7 +3205,7 @@ export function addToRoster(w, card) {
   return true;
 }
 
-function applyMap(w, card) {
+function applyMap(w: World, card: RolledCard) {
   const m = card.map;
   if (!m) return;
   w.mapId = card.templateId ?? card.id;
@@ -3228,7 +3234,7 @@ function applyMap(w, card) {
   if (w.mapId && !w.relics.includes(w.mapId)) w.relics.push(w.mapId);
 }
 
-function applySticker(w, card) {
+function applySticker(w: World, card: RolledCard) {
   const s = card.sticker;
   w.stickers = [...(w.stickers ?? []), card];
   if (!s) return;
@@ -3245,7 +3251,7 @@ function applySticker(w, card) {
   if (s.chipDps) w.envChipDps += s.chipDps;
 }
 
-function skyCrafts(w) {
+function skyCrafts(w: World) {
   return (w.companions ?? []).filter((c) => c.placedPad === SKY_PAD && !c.home);
 }
 
@@ -3259,7 +3265,7 @@ const BAY_TAP = 100;
 /** Orbiting Bay around Home. Biased left/up so the moon stays on the map. */
 export const BAY_ORBIT = { ox: -40, oy: -28, rx: 94, ry: 52, r: 20 };
 
-export function bayMoon(t = 0) {
+export function bayMoon(t: number = 0) {
   const a = t * 0.38;
   return {
     x: BASE.x + BAY_ORBIT.ox + Math.cos(a) * BAY_ORBIT.rx,
@@ -3268,7 +3274,7 @@ export function bayMoon(t = 0) {
   };
 }
 
-export function bayPoint(slot = 0, t = 0) {
+export function bayPoint(slot: number = 0, t: number = 0) {
   const moon = bayMoon(t);
   const a = moon.a - 0.7 + slot * 0.85;
   return {
@@ -3277,13 +3283,13 @@ export function bayPoint(slot = 0, t = 0) {
   };
 }
 
-function homeSlot(w, c) {
+function homeSlot(w: World, c: CompanionState) {
   const home = skyCrafts(w).filter((x) => x.home);
   const i = home.findIndex((x) => x.uid === c.uid);
   return Math.max(0, i);
 }
 
-function dockHealRate(w, c) {
+function dockHealRate(w: World, c: CompanionState) {
   let rate = DOCK_HEAL * craftDockHealMul(c) * (w.vaultHealMul || 1);
   if (hasSig(w.signals, "sig-dock")) rate *= 1.55;
   for (const k of c.kits ?? []) {
@@ -3310,11 +3316,11 @@ function patchColor(role: string | undefined) {
   return "#3ecf7a";
 }
 
-function hurtSky(w) {
+function hurtSky(w: World) {
   return skyCrafts(w).filter((c) => !c.crit && c.hp / Math.max(1, c.hpMax) < PATCH_HURT);
 }
 
-function applyPatch(w, c, pct, pos, color: string, label = "patch") {
+function applyPatch(w: World, c: CompanionState, pct: number, pos: Vec, color: string, label = "patch") {
   const add = Math.max(1, Math.round(c.hpMax * pct));
   const before = c.hp;
   c.hp = Math.min(c.hpMax, c.hp + add);
@@ -3327,7 +3333,7 @@ function applyPatch(w, c, pct, pos, color: string, label = "patch") {
   return got;
 }
 
-function tickPadCare(w, dt) {
+function tickPadCare(w: World, dt: number) {
   if (w.phase !== "combat") return;
   for (const item of placedGuns(w)) {
     if (item.placedPad === HOME_PAD) continue;
@@ -3373,7 +3379,7 @@ function tickPadCare(w, dt) {
   }
 }
 
-function autoPlaceSocket(w, card) {
+function autoPlaceSocket(w: World, card: RolledCard) {
   const used = new Set(
     w.roster.filter((r) => r.card.kind === "socket" && r.placedPad).map((r) => r.placedPad),
   );
@@ -3402,13 +3408,13 @@ function autoPlaceSocket(w, card) {
   addFx(w, { kind: "ring", x: pad.x, y: pad.y, life: 0.35, color: "#3cd6cc", size: 28 });
 }
 
-function spawnCompanion(w, card) {
+function spawnCompanion(w: World, card: RolledCard) {
   const role = card.companion?.role ?? "hunter";
   const hpMax = companionMaxHp(role);
   const flying = skyCrafts(w).length < MAX_COMPANIONS;
   const id = uid(w);
   const offset = skyCrafts(w).length;
-  const c = {
+  const c: CompanionState = {
     uid: id,
     card,
     x: BASE.x - 80 - offset * 28,
@@ -3467,7 +3473,7 @@ function spawnCompanion(w, card) {
   return c;
 }
 
-function applyBoundCraft(w, c) {
+function applyBoundCraft(w: World, c: CompanionState) {
   const slot = activeProfile();
   const id = c.card.templateId ?? c.card.id;
   if (!slot.boundId || slot.boundId !== id) return;
@@ -3501,7 +3507,7 @@ function applyBoundCraft(w, c) {
   }
 }
 
-function payoutBond(w, grade) {
+function payoutBond(w: World, grade: Grade) {
   const c = (w.companions ?? []).find((n) => n.bound);
   if (!c) return 0;
   const beforeJobs = bondJobCount(w.bondLevel ?? 1);
@@ -3552,7 +3558,7 @@ function payoutBond(w, grade) {
   return n;
 }
 
-function tickCraftLevels(w) {
+function tickCraftLevels(w: World) {
   for (const c of w.companions ?? []) {
     if (c.placedPad !== SKY_PAD) continue;
     const did =
@@ -3567,7 +3573,7 @@ function tickCraftLevels(w) {
   }
 }
 
-function tickCraftLevel(w, c) {
+function tickCraftLevel(w: World, c: CompanionState) {
   if (!c) return;
   const cap = w.endless || w.playMode === "arcade" ? PARAMS.heatMaxEndless : PARAMS.craftLevelMax;
   c.runLevel = c.runLevel ?? 1;
@@ -3582,21 +3588,21 @@ function tickCraftLevel(w, c) {
   w.uiDirty = true;
 }
 
-function noteHome(c) {
+function noteHome(c: CompanionState) {
   if (!c.home) c.roundHome = (c.roundHome ?? 0) + 1;
 }
 
-function noteSave(w, c, n = 1) {
+function noteSave(w: World, c: CompanionState, n: number = 1) {
   c.roundSaves = (c.roundSaves ?? 0) + n;
   tickMastery(w, c, 2 * n);
 }
 
-function tickMastery(w, c, n) {
+function tickMastery(w: World, c: CompanionState, n: number) {
   if (!c || n <= 0) return;
   c.mastery = (c.mastery ?? 0) + n;
 }
 
-export function toggleCompanion(w, id) {
+export function toggleCompanion(w: World, id: string) {
   const c = (w.companions ?? []).find((x) => x.uid === id);
   const r = w.roster.find((x) => x.uid === id);
   if (!c || !r) return false;
@@ -3630,7 +3636,7 @@ export function toggleCompanion(w, id) {
   return true;
 }
 
-export function sendCraftHome(w, id) {
+export function sendCraftHome(w: World, id: string) {
   const c = (w.companions ?? []).find((x) => x.uid === id);
   if (!c || c.placedPad !== SKY_PAD) return false;
   if (c.home) {
@@ -3664,7 +3670,7 @@ export function sendCraftHome(w, id) {
   return true;
 }
 
-export function commandCompanion(w, x, y, id) {
+export function commandCompanion(w: World, x: number, y: number, id?: string) {
   const sky = skyCrafts(w);
   if (!sky.length) return false;
   const moon = bayMoon(w.visT);
@@ -3702,7 +3708,7 @@ export function commandCompanion(w, x, y, id) {
   return true;
 }
 
-function hurtCompanion(w, c, amt) {
+function hurtCompanion(w: World, c: CompanionState, amt: number) {
   if (!c || c.placedPad !== SKY_PAD || amt <= 0) return;
   if (c.home) return;
   c.hp -= amt;
@@ -3730,7 +3736,7 @@ function hurtCompanion(w, c, amt) {
   w.uiDirty = true;
 }
 
-function applyKit(w, card) {
+function applyKit(w: World, card: RolledCard) {
   const craftId = card.kit?.craftId;
   const all = w.companions ?? [];
   const target = craftId
@@ -3755,7 +3761,7 @@ function applyKit(w, card) {
   return true;
 }
 
-function knockEnemy(e, dist) {
+function knockEnemy(e: Enemy, dist: number) {
   e.knockHits = (e.knockHits ?? 0) + 1;
   const hits = e.knockHits;
   const fade = 1 / (1 + (hits - 1) * PARAMS.knockFade);
@@ -3769,7 +3775,7 @@ function knockEnemy(e, dist) {
   e.flash = 0.12;
 }
 
-function stepOneCraft(w, c, dt) {
+function stepOneCraft(w: World, c: CompanionState, dt: number) {
   if (c.hpMax == null) {
     const role0 = c.card.companion?.role ?? "hunter";
     c.hpMax = companionMaxHp(role0);
@@ -3863,7 +3869,7 @@ function stepOneCraft(w, c, dt) {
     if (pads.length) {
       c.padI = (c.padI ?? 0) % pads.length;
       const item = pads[c.padI];
-      const pad = padById(item.placedPad);
+      const pad = padById(item.placedPad!);
       if (pad) {
         tx = pad.x;
         ty = pad.y - 18;
@@ -4200,7 +4206,7 @@ function stepOneCraft(w, c, dt) {
       }
       for (const r of w.roster) {
         if (!r.placedPad || r.card.kind !== "tower") continue;
-        const pad = padById(r.placedPad);
+        const pad = padById(r.placedPad!);
         if (!pad) continue;
         if (dist2(c.x, c.y, pad.x, pad.y) > fx.radius * fx.radius * 2.4) continue;
         w.padBuff[pad.id] = Math.max(w.padBuff[pad.id] ?? 0, 2.2);
@@ -4283,7 +4289,7 @@ function stepOneCraft(w, c, dt) {
   if (!c.home) {
     for (const r of placedGuns(w)) {
       if (r.placedPad === HOME_PAD) continue;
-      const pad = padById(r.placedPad);
+      const pad = padById(r.placedPad!);
       if (!pad) continue;
       if (dist2(c.x, c.y, pad.x, pad.y) < 46 * 46) r.overclockT = Math.max(r.overclockT ?? 0, 1.12);
     }
@@ -4303,16 +4309,16 @@ function stepOneCraft(w, c, dt) {
   }
 }
 
-function stepCompanion(w, dt) {
+function stepCompanion(w: World, dt: number) {
   if (!w.companions) w.companions = [];
   for (const c of w.companions) stepOneCraft(w, c, dt);
 }
 
-function dropCut(w, x, y, fx, pit, owner = null) {
+function dropCut(w: World, x: number, y: number, fx: Pick<CompanionFx, "radius" | "cutDps" | "cutSlow">, pit: boolean, owner: string | null = null) {
   dropPatch(w, x, y, "cut", fx, !!pit, owner);
 }
 
-function burstLateSpecial(w, c, fx) {
+function burstLateSpecial(w: World, c: CompanionState, fx: CompanionFx) {
   const t = c.trick;
   if (t !== "nova" && t !== "storm" && t !== "eclipse") return;
   if (t === "nova") {
@@ -4368,7 +4374,7 @@ function burstLateSpecial(w, c, fx) {
   addFx(w, { kind: "patch", x: c.x, y: c.y, life: 0.55, color: "#9b6cff", size: 30 });
 }
 
-function dropPatch(w, x, y, kind, fx, pit = false, owner = null) {
+function dropPatch(w: World, x: number, y: number, kind: BoreMark["kind"], fx: Pick<CompanionFx, "radius" | "cutDps" | "cutSlow">, pit = false, owner: string | null = null) {
   if (!w.bores) w.bores = [];
   const meta = nearestPathMeta(x, y);
   const px = meta.px;
@@ -4399,7 +4405,7 @@ function dropPatch(w, x, y, kind, fx, pit = false, owner = null) {
   if (w.bores.length > 22) w.bores.splice(0, w.bores.length - 22);
 }
 
-function stepBores(w, dt) {
+function stepBores(w: World, dt: number) {
   if (!w.bores) w.bores = [];
   for (const b of w.bores) {
     b.life -= dt;
@@ -4427,7 +4433,7 @@ function stepBores(w, dt) {
   w.bores = w.bores.filter((b) => b.life > 0);
 }
 
-function stepNades(w, dt) {
+function stepNades(w: World, dt: number) {
   if (!w.nades) w.nades = [];
   for (const e of w.enemies) {
     if (!e.alive) continue;
@@ -4559,14 +4565,14 @@ function aimForPad(item: RosterItem, pad: { x: number; y: number }) {
   return meta.aim;
 }
 
-function ownedCraftIds(w) {
-  const ids = new Set();
+function ownedCraftIds(w: World) {
+  const ids = new Set<string>();
   for (const c of w.companions ?? []) ids.add(c.card.templateId ?? c.card.id);
   return ids;
 }
 
-function ownedTemplates(w, midRun = false) {
-  const ids = new Set();
+function ownedTemplates(w: World, midRun = false) {
+  const ids = new Set<string>();
   if (!w.vaultHelix) ids.add("gun-helix");
   if (!w.vaultSink) ids.add("comp-sink");
   for (const r of w.roster ?? []) {
@@ -4585,13 +4591,13 @@ function ownedTemplates(w, midRun = false) {
   return ids;
 }
 
-export function fuseArrowPos(item) {
+export function fuseArrowPos(item: RosterItem) {
   const pad = towerPoint(item);
   if (!pad) return null;
   return { x: pad.x, y: pad.y - 44, uid: item.uid };
 }
 
-export function hitFuseArrow(w, x, y) {
+export function hitFuseArrow(w: World, x: number, y: number) {
   if (w.phase !== "placement" && w.phase !== "combat") return null;
   let best = null;
   let bestD = 24 * 24;
@@ -4610,15 +4616,15 @@ export function hitFuseArrow(w, x, y) {
   return best;
 }
 
-export function fusePartnerOf(w, uid) {
+export function fusePartnerOf(w: World, uid: string) {
   return null;
 }
 
-export function tryFuseGuns(w, keepUid, eatUid) {
+export function tryFuseGuns(w: World, keepUid: string, eatUid: string) {
   return false;
 }
 
-function kindHintsFrom(w) {
+function kindHintsFrom(w: World) {
   const towers = (w.roster ?? []).filter((r) => r.card.kind === "tower");
   const hasCone = towers.some((r) => (r.card.stats?.cover ?? "circle") === "cone");
   const hasSlow = towers.some((r) => (r.card.stats?.slowMul && r.card.stats.slowMul < 1) || r.card.stats?.slowT);
@@ -4639,7 +4645,7 @@ function kindHintsFrom(w) {
   };
 }
 
-function giftHintsFrom(w): PackLean {
+function giftHintsFrom(w: World): PackLean {
   const towers = (w.roster ?? []).filter((r) => r.card.kind === "tower");
   const hasRoad = towers.some((r) => (r.card.stats?.splash ?? 0) > 0 || r.card.set === "heat");
   const hasFreeze = towers.some((r) => (r.card.stats?.slowMul && r.card.stats.slowMul < 1) || r.card.stats?.slowT);
@@ -4651,7 +4657,7 @@ function giftHintsFrom(w): PackLean {
   };
 }
 
-function stampDealtPack(w) {
+function stampDealtPack(w: World) {
   w.packRarity = packRarityOf(w.draftCards);
   w.packMode = "show";
   w.cutId = null;
@@ -4664,7 +4670,7 @@ function stampDealtPack(w) {
   }
 }
 
-function refillEmptyPack(w) {
+function refillEmptyPack(w: World) {
   if ((w.draftCards ?? []).length > 0) return true;
   const skip = ownedTemplates(w, w.phase !== "opening");
   const failed = w.draftKind;
@@ -4689,20 +4695,20 @@ function refillEmptyPack(w) {
   return false;
 }
 
-function tiltOwnedGun(w, cards) {
+function tiltOwnedGun(w: World, cards: RolledCard[]) {
   return cards;
 }
 
-export function tutorialAdvance(w, step) {
+export function tutorialAdvance(w: World, step: number) {
   if (!w.tutorialActive) return;
-  if (w.tutorialStep + 1 !== step && w.tutorialStep < step - 1) {
+  if (w.tutorialStep! + 1 !== step && w.tutorialStep! < step - 1) {
     if (step === 6 && w.tutorialStep === 5) {
       /* Level-up chip is optional */
-    } else if (step > w.tutorialStep + 1 && step !== 6) {
+    } else if (step > w.tutorialStep! + 1 && step !== 6) {
       w.tutorialStep = step - 1;
-    } else if (w.tutorialStep + 1 !== step) return;
+    } else if (w.tutorialStep! + 1 !== step) return;
   }
-  if (step <= w.tutorialStep) return;
+  if (step <= w.tutorialStep!) return;
   w.tutorialStep = step;
   w.uiDirty = true;
   if (step >= 7) {
@@ -4711,7 +4717,7 @@ export function tutorialAdvance(w, step) {
   }
 }
 
-function applyVault(w) {
+function applyVault(w: World) {
   const meta = loadMeta();
   const v = vaultOf(meta.vault);
   w.vaultHealMul = vaultHas(v, "bay_patch") ? 1.15 : 1;
@@ -4742,7 +4748,7 @@ function applyVault(w) {
   w.swapTokens = Math.min(MAX_SWAP, swaps);
 }
 
-function finishDraftStep(w) {
+function finishDraftStep(w: World) {
   if (w.phase === "opening") {
     w.openingStep += 1;
     if (w.openingStep < OPENING_PICKS) {
@@ -4770,7 +4776,7 @@ function finishDraftStep(w) {
   checkpoint(w);
 }
 
-function dealOpeningRound(w) {
+function dealOpeningRound(w: World) {
   // Build mode starts small: the gun pair and the rules only. More guns come from wave drafts.
   while (w.playMode === "build" && OPENING_ROUNDS[w.openingStep]?.kind === "tower") w.openingStep += 1;
   if (w.openingStep >= OPENING_PICKS) {
@@ -4822,7 +4828,7 @@ function dealOpeningRound(w) {
   w.uiDirty = true;
 }
 
-function rollNewSector(w, announce: boolean, skipMapId?: string | null) {
+function rollNewSector(w: World, announce: boolean, skipMapId?: string | null) {
   // Campaign: the stage fixes the map card (and applyMap fixes the lane); weather still rolls.
   const sector = w.campaign?.mapId
     ? dealSector(w.forge, null, w.campaign.mapId)
@@ -4837,7 +4843,7 @@ function rollNewSector(w, announce: boolean, skipMapId?: string | null) {
   }
 }
 
-export function beginOpening(w) {
+export function beginOpening(w: World) {
   w.paused = false;
   w.pickPause = false;
   w.holdT = 0;
@@ -4918,7 +4924,7 @@ export function beginOpening(w) {
   checkpoint(w);
 }
 
-export function beginPerformanceDraft(w) {
+export function beginPerformanceDraft(w: World) {
   w.pendingRoundPack = false;
   w.extraPicks = 0;
   w.draftPicksLeft = 0;
@@ -4934,7 +4940,7 @@ export function beginPerformanceDraft(w) {
   }
 }
 
-function beginLevelDraft(w) {
+function beginLevelDraft(w: World) {
   const n = Math.max(1, w.pendingLevels || 1) * BONUS_CREDIT;
   w.pendingLevels = 0;
   w.pendingRoundPack = false;
@@ -4953,7 +4959,7 @@ function beginLevelDraft(w) {
   w.uiDirty = true;
 }
 
-function afterShop(w) {
+function afterShop(w: World) {
   w.pendingStamp = false;
   w.pendingRoundPack = false;
   w.pendingLevels = 0;
@@ -4963,7 +4969,7 @@ function afterShop(w) {
   beginPlacement(w, false);
 }
 
-function beginRoundDrafts(w) {
+function beginRoundDrafts(w: World) {
   w.mysteryQueue = 0;
   w.bansThisRound = 0;
   w.pendingLevels = 0;
@@ -4977,7 +4983,7 @@ function beginRoundDrafts(w) {
 }
 
 /** Build mode: one gun pick after every wave. Copies of guns you own show up often and merge. */
-function beginBuildDraft(w) {
+function beginBuildDraft(w: World) {
   w.grade = null;
   w.phase = "draft";
   w.draftLane = "round";
@@ -4999,8 +5005,8 @@ function beginBuildDraft(w) {
   checkpoint(w);
 }
 
-function ownedGunTemplates(w) {
-  const out = [];
+function ownedGunTemplates(w: World) {
+  const out: string[] = [];
   for (const r of w.roster ?? []) {
     if (r.card.kind !== "tower") continue;
     if (starsOf(r.copies) >= 3) continue;
@@ -5010,13 +5016,13 @@ function ownedGunTemplates(w) {
   return out;
 }
 
-function dealBuildPack(w) {
+function dealBuildPack(w: World) {
   const n = PARAMS.packSize;
   const owned = ownedGunTemplates(w);
   const skip = ownedTemplates(w, true);
   const fresh = dealTowerOpening(n, w.forge, skip, rollPackRarity(oddsForGrade(w.lastGrade ?? "C")));
   const out = [];
-  const used = new Set();
+  const used = new Set<string>();
   for (let i = 0; i < n; i++) {
     // First card is always a new gun (when one is left), so the team can still grow.
     const wantCopy = owned.length > 0 && i > 0 && Math.random() < PARAMS.buildCopyOdds;
@@ -5039,7 +5045,7 @@ function dealBuildPack(w) {
 }
 
 /** Build mode: fold a drafted copy into the gun you already own. */
-function mergeCopy(w, r, card) {
+function mergeCopy(w: World, r: RosterItem, card: RolledCard) {
   const before = starsOf(r.copies);
   r.copies = (r.copies ?? 1) + 1;
   const after = starsOf(r.copies);
@@ -5063,8 +5069,8 @@ function mergeCopy(w, r, card) {
 }
 
 /** Draft tags for Build mode: which cards are copies of guns you own. */
-export function buildCopyTags(w) {
-  const out = {};
+export function buildCopyTags(w: World) {
+  const out: Record<string, ReturnType<typeof copyTag>> = {};
   if (w.playMode !== "build") return out;
   for (const c of w.draftCards ?? []) {
     if (c.kind !== "tower") continue;
@@ -5075,7 +5081,7 @@ export function buildCopyTags(w) {
   return out;
 }
 
-function beginMysteryPack(w) {
+function beginMysteryPack(w: World) {
   w.points += BONUS_CREDIT;
   w.message = `+${BONUS_CREDIT} Credit`;
   w.paused = false;
@@ -5083,7 +5089,7 @@ function beginMysteryPack(w) {
   w.uiDirty = true;
 }
 
-export function beginStampDraft(w) {
+export function beginStampDraft(w: World) {
   w.pendingStamp = false;
   w.phase = "draft";
   w.draftLane = "stamp";
@@ -5101,13 +5107,13 @@ export function beginStampDraft(w) {
   w.uiDirty = true;
 }
 
-export function offerLive(w, _title) {
+export function offerLive(w: World, _title: string) {
   w.draftBump = Math.min(3, (w.draftBump ?? 0) + 1);
   w.message = "Next pack rolls a gem up.";
   w.uiDirty = true;
 }
 
-export function skipDraftPack(w) {
+export function skipDraftPack(w: World) {
   if (w.phase === "opening") return false;
   if (w.phase === "combat" || w.phase === "placement") return false;
   w.skipCharge = Math.min(3, (w.skipCharge ?? 0) + 1);
@@ -5128,19 +5134,19 @@ export function skipDraftPack(w) {
   return true;
 }
 
-export function skipLive(w) {
+export function skipLive(w: World) {
   skipDraftPack(w);
 }
 
-export function banDraftCard(_w, _id: string) {
+export function banDraftCard(_w: World, _id: string) {
   return false;
 }
 
-export function pickLive(_w, _id) {
+export function pickLive(_w: World, _id: string) {
   return false;
 }
 
-function beginLootDraft(w) {
+function beginLootDraft(w: World) {
   w.lootQueued = 0;
   w.points += BONUS_CREDIT;
   w.message = `+${BONUS_CREDIT} Credit`;
@@ -5150,7 +5156,7 @@ function beginLootDraft(w) {
   w.uiDirty = true;
 }
 
-export function pickDraft(w, id) {
+export function pickDraft(w: World, id: string) {
   if (w.phase !== "opening" && w.phase !== "draft" && w.phase !== "loot") return;
   const n = w.draftCards.find((c) => c.id === id);
   if (!n) return;
@@ -5253,11 +5259,11 @@ export function pickDraft(w, id) {
   finishDraftStep(w);
 }
 
-export function fitPart(_w, _t) {
+export function fitPart(_w: World, _t: string) {
   return false;
 }
 
-function resumeLoot(w) {
+function resumeLoot(w: World) {
   w.draftCards = [];
   if (w.lootQueued > 0) {
     beginLootDraft(w);
@@ -5268,9 +5274,9 @@ function resumeLoot(w) {
   if (!w.enemies.some((e) => e.alive) && w.spawnQ.length === 0 && w.waveActive) finishWave(w);
 }
 
-function beginPlacement(w, t) {
+function beginPlacement(w: World, t: boolean) {
   w.phase = "placement";
-  if (w.tutorialActive && w.tutorialStep < 3) tutorialAdvance(w, 3);
+  if (w.tutorialActive && w.tutorialStep! < 3) tutorialAdvance(w, 3);
   w.draftCards = [];
   w.draftKind = null;
   w.bores = [];
@@ -5320,7 +5326,7 @@ function beginPlacement(w, t) {
   w.uiDirty = true;
 }
 
-export function placeTower(w, t, n) {
+export function placeTower(w: World, t: string, n: string) {
   if ((w.phase !== "placement" && w.phase !== "combat") || n === HOME_PAD) return false;
   const r = w.roster.find((x) => x.uid === t);
   const i = padById(n);
@@ -5363,7 +5369,7 @@ export function placeTower(w, t, n) {
   return true;
 }
 
-export function sellTower(w, t) {
+export function sellTower(w: World, t: string) {
   const n = w.roster.find((r) => r.uid === t);
   if (!n?.placedPad || n.placedPad === HOME_PAD) return;
   if (n.card.kind === "companion") {
@@ -5375,7 +5381,7 @@ export function sellTower(w, t) {
   w.uiDirty = true;
 }
 
-export function swapTower(w, uid: string, padId: string) {
+export function swapTower(w: World, uid: string, padId: string) {
   if ((w.phase !== "placement" && w.phase !== "combat") || padId === HOME_PAD) return false;
   const item = w.roster.find((r) => r.uid === uid);
   const pad = padById(padId);
@@ -5401,13 +5407,13 @@ export function swapTower(w, uid: string, padId: string) {
   return true;
 }
 
-export function scrapValue(w, t) {
+export function scrapValue(w: World, t: RosterItem) {
   const n = 12 + t.invested * 0.5 + (t.level - 1) * 8;
   const pile = Math.max(6, Math.round(n * scrapMul(w.runLevel) * (w.mapScrapMul ?? 1)));
   return Math.max(1, fluxFromBank(pile));
 }
 
-export function scrapTower(w, t) {
+export function scrapTower(w: World, t: string) {
   const n = w.roster.find((r) => r.uid === t);
   if (!n || n.placedPad === HOME_PAD || n.card.kind === "defender") return false;
   const r = scrapValue(w, n);
@@ -5424,7 +5430,7 @@ export function scrapTower(w, t) {
   return true;
 }
 
-export function upgradeTower(w, t, n, tuneId) {
+export function upgradeTower(w: World, t: string, n?: string, tuneId?: string) {
   const r = w.roster.find((x) => x.uid === t);
   if (!r?.placedPad) return false;
   hydrateGun(r);
@@ -5444,7 +5450,7 @@ export function upgradeTower(w, t, n, tuneId) {
   return true;
 }
 
-export function upgradeCraft(w, craftUid, nodeId) {
+export function upgradeCraft(w: World, craftUid: string, nodeId: string) {
   const c = (w.companions ?? []).find((x) => x.uid === craftUid);
   if (!c || !nodeId) return false;
   if (craftPicksLeft(c) <= 0) return false;
@@ -5466,15 +5472,15 @@ export function upgradeCraft(w, craftUid, nodeId) {
   return true;
 }
 
-export function buyDraftPick(w) {
+export function buyDraftPick(w: World) {
   return false;
 }
 
-export function pickTrick(w, uid, id) {
+export function pickTrick(w: World, uid: string, id: string) {
   return pickSpecial(w, uid, id);
 }
 
-export function pickSpecial(w, uid, id) {
+export function pickSpecial(w: World, uid: string, id: string) {
   if (!uid || !id) return false;
   if (partOf(id.split(":")[0])) return pickPart(w, uid, id);
   const spec = specialOf(id);
@@ -5510,7 +5516,7 @@ export function pickSpecial(w, uid, id) {
   craft.specialOffer = [];
   const k = spec.craft;
   if (k) {
-    const rolled = {
+    const rolled: RolledCard = {
       id: `${spec.id}-${craft.uid}`,
       templateId: spec.id,
       name: spec.name,
@@ -5530,8 +5536,8 @@ export function pickSpecial(w, uid, id) {
     if (k.hunt) craft.trick = "hunt";
     if (k.trick) craft.trick = k.trick;
     if ((k.hpMul ?? 1) > 1) {
-      craft.hpMax = Math.round((craft.hpMax || 100) * k.hpMul);
-      craft.hp = Math.min(craft.hpMax, Math.round((craft.hp || 0) * k.hpMul));
+      craft.hpMax = Math.round((craft.hpMax || 100) * k.hpMul!);
+      craft.hp = Math.min(craft.hpMax, Math.round((craft.hp || 0) * k.hpMul!));
     }
   }
   w.message = `${craft.card.name} learned ${spec.name}.`;
@@ -5546,7 +5552,7 @@ export function pickSpecial(w, uid, id) {
   return true;
 }
 
-function pickPart(w, uid, id) {
+function pickPart(w: World, uid: string, id: string) {
   const gun = (w.roster ?? []).find((r) => r.uid === uid && r.card.kind === "tower");
   if (gun) {
     const offer = gun.partOffer ?? [];
@@ -5577,7 +5583,7 @@ function pickPart(w, uid, id) {
   craft.partOffer = [];
   const k = pick.craft;
   if (k && !k.clone) {
-    const rolled = {
+    const rolled: RolledCard = {
       id: `${pick.id}-${craft.uid}`,
       templateId: pick.id,
       name: pick.name,
@@ -5603,8 +5609,8 @@ function pickPart(w, uid, id) {
     };
     craft.kits = [...(craft.kits ?? []), rolled];
     if ((k.hpMul ?? 1) > 1) {
-      craft.hpMax = Math.round((craft.hpMax || 100) * k.hpMul);
-      craft.hp = Math.min(craft.hpMax, Math.round((craft.hp || 0) * k.hpMul));
+      craft.hpMax = Math.round((craft.hpMax || 100) * k.hpMul!);
+      craft.hp = Math.min(craft.hpMax, Math.round((craft.hp || 0) * k.hpMul!));
     }
   }
   if (k?.clone) spawnClone(w, craft);
@@ -5620,7 +5626,7 @@ function pickPart(w, uid, id) {
   return true;
 }
 
-function spawnClone(w, src) {
+function spawnClone(w: World, src: CompanionState) {
   if ((w.companions ?? []).some((c) => c.clone)) {
     w.message = `${src.card.name} already has an echo.`;
     return;
@@ -5657,7 +5663,7 @@ function spawnClone(w, src) {
   addFx(w, { kind: "ring", x: c.x, y: c.y, life: 0.7, color: "#9b6cff", size: 36 });
 }
 
-function pickTrickLegacy(w, uid, id) {
+function pickTrickLegacy(w: World, uid: string, id: string) {
   const gun = (w.roster ?? []).find((r) => r.uid === uid && r.card.kind === "tower");
   if (gun) {
     const offer = gun.trickOffer?.length ? gun.trickOffer : [];
@@ -5670,11 +5676,11 @@ function pickTrickLegacy(w, uid, id) {
   return false;
 }
 
-function settleTricks(w) {
+function settleTricks(w: World) {
   /* Level-up chips wait. Never auto-pick. */
 }
 
-export function continueFromShop(w) {
+export function continueFromShop(w: World) {
   if (w.phase !== "shop") return;
   settleTricks(w);
   if (w.pendingStamp) {
@@ -5696,7 +5702,7 @@ export function continueFromShop(w) {
   afterShop(w);
 }
 
-export function engraveTower(w, t) {
+export function engraveTower(w: World, t: string) {
   if (w.phase !== "engrave") return false;
   const n = w.roster.find((r) => r.uid === t);
   if (!n) return false;
@@ -5714,7 +5720,7 @@ export function engraveTower(w, t) {
 }
 
 /** A campaign stage was held: score ★, pay rewards, show the star reveal. No endless. */
-function finishCampaign(w) {
+function finishCampaign(w: World) {
   const stage = stageById(w.campaign?.stageId);
   w.phase = "victory";
   w.won = true;
@@ -5765,7 +5771,7 @@ function finishCampaign(w) {
   clearRun();
 }
 
-export function beginLoopGate(w) {
+export function beginLoopGate(w: World) {
   if (w.campaign) {
     finishCampaign(w);
     return;
@@ -5785,7 +5791,7 @@ export function beginLoopGate(w) {
   checkpoint(w);
 }
 
-export function keepFlying(w) {
+export function keepFlying(w: World) {
   w.endless = true;
   w.playMode = "arcade";
   w.phase = "combat";
@@ -5801,7 +5807,7 @@ export function keepFlying(w) {
   checkpoint(w);
 }
 
-function liftGuns(w) {
+function liftGuns(w: World) {
   for (const r of w.roster) {
     if (r.placedPad === HOME_PAD) continue;
     if (r.card.kind === "companion") continue;
@@ -5810,14 +5816,14 @@ function liftGuns(w) {
   }
 }
 
-function resetWatchRank(w) {
+function resetWatchRank(w: World) {
   w.runLevel = START_LEVEL;
   w.xp = 0;
   w.pendingLevels = 0;
   w.roundXp = 0;
 }
 
-export function beginNextWatch(w) {
+export function beginNextWatch(w: World) {
   const prevMap = w.mapId;
   liftGuns(w);
   resetWatchRank(w);
@@ -5845,7 +5851,7 @@ export function beginNextWatch(w) {
   }
 }
 
-export function goTitle(w, keep: boolean): boolean {
+export function goTitle(w: World, keep: boolean): boolean {
   markLive(false);
   w.paused = false;
   w.pickPause = false;
@@ -5900,14 +5906,14 @@ export function goTitle(w, keep: boolean): boolean {
   return true;
 }
 
-export function checkpoint(w) {
+export function checkpoint(w: World) {
   if (w.phase === "title" || w.phase === "defeat" || w.phase === "victory") return;
   w.parked = false;
   saveRun({ ...snapshotRun(w), parked: false });
   markLive(true);
 }
 
-function snapshotRun(w) {
+function snapshotRun(w: World): RunSave & { roundXp: number } {
   return {
     v: 4,
     wave: w.wave,
@@ -6042,7 +6048,7 @@ function snapshotRun(w) {
   };
 }
 
-function fallbackGrade(w) {
+function fallbackGrade(w: World) {
   const g = w.lastGrade ?? "B";
   const stars = g === "S" ? 5 : g === "A" ? 4 : g === "B" ? 3 : g === "C" ? 2 : 1;
   return {
@@ -6057,7 +6063,7 @@ function fallbackGrade(w) {
   };
 }
 
-export function unstickWorld(w) {
+export function unstickWorld(w: World) {
   if (!w) return false;
   if (w.phase === "title" || w.phase === "defeat" || w.phase === "victory" || w.phase === "help") return false;
   if (w.phase === "shop" && !w.grade) {
@@ -6096,7 +6102,7 @@ export function unstickWorld(w) {
   return false;
 }
 
-export function applyRun(w, run) {
+export function applyRun(w: World, run: RunSave & { roundXp?: number }) {
   w.wave = run.wave;
   w.points = run.points;
   w.lives = run.lives;
@@ -6111,7 +6117,7 @@ export function applyRun(w, run) {
       aim: r.aim ?? 0,
       tuneJob: r.tuneJob ?? null,
       tuneCap: r.tuneCap ?? null,
-      jobs: r.jobs ?? [r.tuneJob, r.tuneCap].filter(Boolean),
+      jobs: r.jobs ?? ([r.tuneJob, r.tuneCap].filter(Boolean) as string[]),
       jobSlots: r.jobSlots ?? PARAMS.jobSlotsStart,
       heatXp: r.heatXp ?? 0,
       trick: r.trick ?? null,
@@ -6184,7 +6190,7 @@ export function applyRun(w, run) {
   setMapLayout(w.mapLayout);
   w.threat = Array.isArray(run.threat) ? run.threat : [];
   w.orders = cleanOrders(run.orders);
-  w.orderOffer = Array.isArray(run.orderOffer) && w.orders.length < ORDER_NUM.maxSlots ? orderChoices(w.orders).filter((id) => run.orderOffer.includes(id)) : [];
+  w.orderOffer = Array.isArray(run.orderOffer) && w.orders.length < ORDER_NUM.maxSlots ? orderChoices(w.orders).filter((id) => run.orderOffer!.includes(id)) : [];
   w.ordersUsed = run.ordersUsed ?? 0;
   w.orderReacts = run.orderReacts ?? 0;
   w.blinkStops = run.blinkStops ?? 0;
@@ -6323,7 +6329,7 @@ export function applyRun(w, run) {
   w.uiDirty = true;
 }
 
-export function debugWipeEnemies(w) {
+export function debugWipeEnemies(w: World) {
   for (const e of w.enemies) {
     if (!e.alive) continue;
     e.alive = false;
