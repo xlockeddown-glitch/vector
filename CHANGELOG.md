@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.3] - 2026-11-18
+
+### Changed
+
+- Removed `@ts-nocheck` from `sim.ts`; typed the simulation with no behavior change.
+
 ## [0.9.2] - 2026-11-17
 
 ### Fixed
