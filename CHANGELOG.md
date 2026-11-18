@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.5] - 2026-11-18
+
+### Changed
+
+- CI runs the full `scripts/**/*.test.mjs` suite (`npm test`) after `check:local`.
+
 ## [0.9.4] - 2026-11-18
 
 ### Fixed

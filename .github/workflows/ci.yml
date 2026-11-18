@@ -25,3 +25,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check:local
+      - run: npm test
