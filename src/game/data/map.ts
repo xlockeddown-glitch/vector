@@ -218,7 +218,7 @@ function buildRounded(path: Vec[], radius = PATH_CORNER, step = 5): PathSample[]
         push(s.ax + dx * t, s.ay + dy * t, h);
       }
     } else {
-      let a0 = s.a0;
+      const a0 = s.a0;
       let a1 = s.a1;
       if (s.ccw) {
         while (a1 <= a0) a1 += Math.PI * 2;
