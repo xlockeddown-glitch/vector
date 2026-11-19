@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -150,12 +150,24 @@ test("auth stays disabled when both the app-env file and env set false", (t) => 
   assert.equal(buildAuthEnabled(root, { VITE_AUTH_ENABLED: "false" }), false);
 });
 
-test("the CLI reports rather than silently passing when run via a symlink", async () => {
+test("the CLI reports rather than silently passing when run via a symlink", async (t) => {
   // A check whose exit code is the whole signal must never no-op to 0 because
   // process.argv[1] came in through a symlinked path.
-  const link = join(mkdtempSync(join(tmpdir(), "auth-invariant-link-")), "scripts");
+  const root = mkdtempSync(join(tmpdir(), "auth-invariant-cli-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const scripts = join(root, "scripts");
+  mkdirSync(scripts);
+  for (const script of ["check-auth-invariant.mjs", "with-app-env.mjs", "app-env-plugin.mjs"]) {
+    copyFileSync(join(projectRoot(), "scripts", script), join(scripts, script));
+  }
+  const linkRoot = mkdtempSync(join(tmpdir(), "auth-invariant-link-"));
+  t.after(() => rmSync(linkRoot, { recursive: true, force: true }));
+  const link = join(linkRoot, "scripts");
+  const cleanEnv = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => key.toUpperCase() !== "VITE_AUTH_ENABLED"),
+  );
   symlinkSync(
-    join(projectRoot(), "scripts"),
+    scripts,
     link,
     process.platform === "win32" ? "junction" : "dir",
   );
@@ -163,7 +175,7 @@ test("the CLI reports rather than silently passing when run via a symlink", asyn
     join(link, "check-auth-invariant.mjs"),
     "--dev-url",
     "http://127.0.0.1:1",
-  ]).catch((err) => err);
+  ], { cwd: root, env: { ...cleanEnv } }).catch((err) => err);
   assert.equal(error.code, 2);
   assert.match(error.stderr, /could not read the dev server's resolved VITE_AUTH_ENABLED/);
 });
