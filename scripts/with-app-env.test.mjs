@@ -20,8 +20,9 @@ const workspaces = [];
 after(() => {
   for (const root of workspaces) rmSync(root, { recursive: true, force: true });
 });
-const cleanEnv = { ...process.env };
-delete cleanEnv.VITE_AUTH_ENABLED;
+const cleanEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => key.toUpperCase() !== "VITE_AUTH_ENABLED"),
+);
 const PRINT_FLAG = "process.stdout.write(String(process.env.VITE_AUTH_ENABLED));";
 
 function makeWorkspace(appEnvJson) {
@@ -78,7 +79,7 @@ test("vite loadEnv resolves the wrapped value", () => {
   const root = makeWorkspace('{"VITE_AUTH_ENABLED":"false"}');
   const previous = process.env.VITE_AUTH_ENABLED;
   try {
-    process.env = mergeAppEnv(readAppEnv(root), cleanEnv);
+    process.env = mergeAppEnv(readAppEnv(root), { ...cleanEnv });
     assert.equal(loadEnv("production", root, "VITE_").VITE_AUTH_ENABLED, "false");
   } finally {
     if (previous === undefined) delete process.env.VITE_AUTH_ENABLED;
@@ -95,7 +96,7 @@ test("the wrapped command runs with the app env applied", async () => {
       "-e",
       PRINT_FLAG,
     ],
-    { env: cleanEnv },
+    { env: { ...cleanEnv } },
   );
   assert.equal(stdout, "false");
 });
@@ -109,7 +110,7 @@ test("the wrapped command sees an explicit override, not the file value", async 
       "-e",
       PRINT_FLAG,
     ],
-    { env: { ...process.env, VITE_AUTH_ENABLED: "true" } },
+    { env: { ...cleanEnv, VITE_AUTH_ENABLED: "true" } },
   );
   assert.equal(stdout, "true");
 });
@@ -123,7 +124,7 @@ test("the wrapped command receives true from the app-env file", async () => {
       "-e",
       PRINT_FLAG,
     ],
-    { env: cleanEnv },
+    { env: { ...cleanEnv } },
   );
   assert.equal(stdout, "true");
 });
@@ -137,7 +138,7 @@ test("the wrapped command leaves auth undefined when the app-env file is absent"
       "-e",
       PRINT_FLAG,
     ],
-    { env: cleanEnv },
+    { env: { ...cleanEnv } },
   );
   assert.equal(stdout, "undefined");
 });
@@ -193,7 +194,7 @@ test("the CLI still runs when invoked through a symlinked path", async () => {
   const { stdout } = await execFileAsync(
     process.execPath,
     [join(link, "with-app-env.mjs"), process.execPath, "-e", PRINT_FLAG],
-    { env: cleanEnv },
+    { env: { ...cleanEnv } },
   );
   assert.equal(stdout, "false");
 });

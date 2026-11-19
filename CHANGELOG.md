@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.7] - 2026-11-18
+
+### Changed
+
+- Test hygiene: env copies per test, case-insensitive flag stripping, isolated auth-invariant symlink test with temp cleanup.
+
 ## [0.9.6] - 2026-11-18
 
 ### Added
