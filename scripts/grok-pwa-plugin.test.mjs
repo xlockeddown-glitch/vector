@@ -125,8 +125,9 @@ test("does not duplicate twitter:card or og:title", () => {
   assert.equal(twice.split('property="og:title"').length - 1, 1);
 });
 
-test("baked identity does not need a workspace filesystem", () => {
+test("baked identity does not need a workspace filesystem", (t) => {
   const empty = mkdtempSync(join(tmpdir(), "grok-og-empty-"));
+  t.after(() => rmSync(empty, { recursive: true, force: true }));
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     cwd: empty,
@@ -138,8 +139,9 @@ test("baked identity does not need a workspace filesystem", () => {
   assert.doesNotMatch(out, /og\.grok\.me/);
 });
 
-test("a cwd card file overrides an explicit site without card=custom", () => {
+test("a cwd card file overrides an explicit site without card=custom", (t) => {
   const root = mkdtempSync(join(tmpdir(), "grok-og-card-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/og.jpg"), "x");
   const out = injectGrokPwaHead("<html><head></head></html>", {
@@ -151,8 +153,9 @@ test("a cwd card file overrides an explicit site without card=custom", () => {
   assert.match(out, /wild-race\.grok\.me\/og\.jpg/);
 });
 
-test("snapshotOgIdentity stamps card=custom from a public card file", () => {
+test("snapshotOgIdentity stamps card=custom from a public card file", (t) => {
   const root = mkdtempSync(join(tmpdir(), "grok-og-snap-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/og.jpg"), "x");
   const { site } = snapshotOgIdentity(root);
@@ -161,8 +164,9 @@ test("snapshotOgIdentity stamps card=custom from a public card file", () => {
   assert.equal(site.banner, undefined);
 });
 
-test("snapshotOgIdentity stamps banner from public/x-banner.jpg", () => {
+test("snapshotOgIdentity stamps banner from public/x-banner.jpg", (t) => {
   const root = mkdtempSync(join(tmpdir(), "grok-og-banner-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/x-banner.jpg"), "x");
   const { site } = snapshotOgIdentity(root);

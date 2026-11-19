@@ -2433,10 +2433,11 @@ function stepTowers(w: World, dt: number) {
       addFx(w, { kind: "float", x: e.x, y: e.y - 14, life: 0.5, text: "MARK", color: "#e8c15a", size: 10 });
       continue;
     }
-    if ((stats.split ?? 0) > 1) {
+    const split = stats.split ?? 0;
+    if (split > 1) {
       fireAt(w, pos.x, pos.y, idx, dmg, stats);
       let extra = 0;
-      for (let i = 0; i < w.enemies.length && extra < stats.split! - 1; i++) {
+      for (let i = 0; i < w.enemies.length && extra < split - 1; i++) {
         if (i === idx) continue;
         const o = w.enemies[i];
         if (!o.alive) continue;

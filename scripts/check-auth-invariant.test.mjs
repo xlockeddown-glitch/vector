@@ -22,8 +22,9 @@ import { projectRoot } from "./with-app-env.mjs";
  * prefix-matches `process.env`, so the value has to be there before the server
  * is created.
  */
-async function withDevServer(env, body) {
+async function withDevServer(t, env, body) {
   const root = mkdtempSync(join(tmpdir(), "auth-invariant-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(join(root, "index.html"), "<!doctype html><title>t</title>\n");
   const previous = process.env.VITE_AUTH_ENABLED;
   if (env === undefined) delete process.env.VITE_AUTH_ENABLED;
@@ -55,14 +56,14 @@ test("the flag predicate matches src/lib/auth", () => {
   assert.equal(authEnabledFromEnvValue(undefined), true);
 });
 
-test("reads the value a live dev server resolved", async () => {
-  await withDevServer("false", async (devUrl) => {
+test("reads the value a live dev server resolved", async (t) => {
+  await withDevServer(t, "false", async (devUrl) => {
     assert.equal(await probeDevAuthEnabled(devUrl), false);
   });
 });
 
-test("a server started without the flag reads as sign-in on", async () => {
-  await withDevServer(undefined, async (devUrl) => {
+test("a server started without the flag reads as sign-in on", async (t) => {
+  await withDevServer(t, undefined, async (devUrl) => {
     assert.equal(await probeDevAuthEnabled(devUrl), true);
   });
 });
