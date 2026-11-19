@@ -72,12 +72,6 @@ test("an explicit process-env override wins over the file", () => {
   assert.equal(merged.PATH, "/usr/bin");
 });
 
-test("a workspace fixture records auth off", () => {
-  assert.deepEqual(readAppEnv(makeWorkspace('{"VITE_AUTH_ENABLED":"false"}')), {
-    VITE_AUTH_ENABLED: "false",
-  });
-});
-
 test("vite loadEnv resolves the wrapped value", () => {
   // What `import.meta.env.VITE_AUTH_ENABLED` becomes: loadEnv prefix-matches
   // process.env, so the wrapper's merge has to land before Vite starts.
@@ -118,6 +112,48 @@ test("the wrapped command sees an explicit override, not the file value", async 
     { env: { ...process.env, VITE_AUTH_ENABLED: "true" } },
   );
   assert.equal(stdout, "true");
+});
+
+test("the wrapped command receives true from the app-env file", async () => {
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [
+      join(makeWorkspace('{"VITE_AUTH_ENABLED":"true"}'), "scripts/with-app-env.mjs"),
+      process.execPath,
+      "-e",
+      PRINT_FLAG,
+    ],
+    { env: cleanEnv },
+  );
+  assert.equal(stdout, "true");
+});
+
+test("the wrapped command leaves auth undefined when the app-env file is absent", async () => {
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [
+      join(makeWorkspace(), "scripts/with-app-env.mjs"),
+      process.execPath,
+      "-e",
+      PRINT_FLAG,
+    ],
+    { env: cleanEnv },
+  );
+  assert.equal(stdout, "undefined");
+});
+
+test("the wrapped command honors a false env override over a true app-env file", async () => {
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [
+      join(makeWorkspace('{"VITE_AUTH_ENABLED":"true"}'), "scripts/with-app-env.mjs"),
+      process.execPath,
+      "-e",
+      PRINT_FLAG,
+    ],
+    { env: { ...cleanEnv, VITE_AUTH_ENABLED: "false" } },
+  );
+  assert.equal(stdout, "false");
 });
 
 test("the wrapper propagates the command's exit code", async () => {

@@ -114,13 +114,40 @@ test("only a divergence warns the smoke verdict", () => {
   }
 });
 
-test("the build side resolves a workspace app-env fixture", (t) => {
+function makeBuildWorkspace(t, appEnvJson) {
   const root = mkdtempSync(join(tmpdir(), "auth-build-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  mkdirSync(join(root, ".grok"));
-  writeFileSync(join(root, ".grok/app-env.json"), '{"VITE_AUTH_ENABLED":"false"}');
+  if (appEnvJson !== undefined) {
+    mkdirSync(join(root, ".grok"));
+    writeFileSync(join(root, ".grok/app-env.json"), appEnvJson);
+  }
+  return root;
+}
+
+test("the build side resolves a workspace app-env fixture", (t) => {
+  const root = makeBuildWorkspace(t, '{"VITE_AUTH_ENABLED":"false"}');
   assert.equal(buildAuthEnabled(root, {}), false);
   assert.equal(buildAuthEnabled(root, { VITE_AUTH_ENABLED: "true" }), true);
+});
+
+test("the build enables auth when the app-env file sets true", (t) => {
+  const root = makeBuildWorkspace(t, '{"VITE_AUTH_ENABLED":"true"}');
+  assert.equal(buildAuthEnabled(root, {}), true);
+});
+
+test("the build defaults auth on when the app-env file is absent", (t) => {
+  const root = makeBuildWorkspace(t);
+  assert.equal(buildAuthEnabled(root, {}), true);
+});
+
+test("an explicit false env override disables auth over a true app-env file", (t) => {
+  const root = makeBuildWorkspace(t, '{"VITE_AUTH_ENABLED":"true"}');
+  assert.equal(buildAuthEnabled(root, { VITE_AUTH_ENABLED: "false" }), false);
+});
+
+test("auth stays disabled when both the app-env file and env set false", (t) => {
+  const root = makeBuildWorkspace(t, '{"VITE_AUTH_ENABLED":"false"}');
+  assert.equal(buildAuthEnabled(root, { VITE_AUTH_ENABLED: "false" }), false);
 });
 
 test("the CLI reports rather than silently passing when run via a symlink", async () => {
