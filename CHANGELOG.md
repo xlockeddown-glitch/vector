@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.8] - 2026-11-18
+
+### Changed
+
+- sim.ts type follow-ups: required World fields, precise relic/save/order types, fewer non-null assertions, removed dead code (uncalled grantGem, always-true orbit check).
+
 ## [0.9.7] - 2026-11-18
 
 ### Changed

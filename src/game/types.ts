@@ -457,6 +457,7 @@ export type ProfilesSave = {
 };
 
 export type RunSave = {
+  roundXp?: number;
   v: 2 | 3 | 4;
   wave: number;
   points: number;

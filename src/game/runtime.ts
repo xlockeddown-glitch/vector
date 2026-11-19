@@ -1,3 +1,4 @@
+import type { OrderId } from "./data/orders";
 import { audio, resumeAudioOnVisible, type Sfx } from "./audio";
 import { loadAssets, type Assets } from "./assets";
 import { hitPad, PATHS, BASE, nearestPathMeta } from "./data/map";
@@ -127,7 +128,7 @@ export type Action =
   | { type: "target"; uid: string }
   | { type: "armOrder"; slot: number }
   | { type: "disarmOrder" }
-  | { type: "pickOrder"; id: string };
+  | { type: "pickOrder"; id: OrderId };
 
 type QaSnap = {
   phase: World["phase"];

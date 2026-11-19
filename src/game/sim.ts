@@ -53,7 +53,7 @@ import { expectedWaveTime, gradeWave } from "./grade";
 import { audio } from "./audio";
 import { addStamp, bumpForge, clearRun, loadMeta, saveRun, noteGunKills, noteLeakless, addFlux, activeProfile, addBondXp, recordRun, recordCampaign, markLive } from "./persist";
 import { campaignRunOf, scoreStages, stageById, type CampaignResult, type CampaignRun, type CampaignStats } from "./data/campaign";
-import { GEM_META, CHARMS, emptyGems, canAfford, payGems } from "./data/charms";
+import { CHARMS, emptyGems, canAfford, payGems } from "./data/charms";
 import { rollCard } from "./data/roll";
 import { copyTag, starLabel, starMul, starsOf } from "./data/merge";
 import { bondFill, bondJobCount, bondKits, bondLookCount, bondMul, xpFromCraft } from "./data/bond";
@@ -386,7 +386,7 @@ export type World = {
   vaultHelix?: boolean;
   vaultSink?: boolean;
   tutorialActive?: boolean;
-  tutorialStep?: number;
+  tutorialStep: number;
   tutorialDoneReady?: boolean;
   tutorialPendingGate?: boolean;
   wantTutorial?: boolean;
@@ -1041,19 +1041,6 @@ function nearbySocketBonus(w: World, x: number, y: number, key: keyof NonNullabl
   return i;
 }
 
-function grantGem(w: World, gem: GemId, x: number, y: number) {
-  w.gems[gem] = (w.gems[gem] ?? 0) + 1;
-  addFx(w, {
-    kind: "float",
-    x,
-    y: y - 20,
-    life: 0.95,
-    text: GEM_META[gem].name.toUpperCase(),
-    color: gem === "ruby" ? "#ff5c2a" : gem === "emerald" ? "#6f8f78" : gem === "sapphire" ? "#3d8fd4" : "#3cd6cc",
-    size: 13,
-  });
-}
-
 function ampOf(w: World) {
   return {
     dmg: w.stampDmg,
@@ -1065,7 +1052,7 @@ function ampOf(w: World) {
 export function towerPoint(item: RosterItem) {
   if (item.placedPad === HOME_PAD) return BASE;
   if (!item.placedPad) return null;
-  return padById(item.placedPad!) ?? null;
+  return padById(item.placedPad) ?? null;
 }
 
 function allocEnemy(w: World) {
@@ -1833,7 +1820,7 @@ function elementOnHit(w: World, e: Enemy, stats: Parameters<typeof hitElements>[
   }
 }
 
-function react(w: World, e: Enemy, id: keyof typeof REACTIONS) {
+function react(w: World, e: Enemy, id: ReactionId) {
   const r = REACTIONS[id];
   w.reactions = (w.reactions ?? 0) + 1;
   addEnergy(w, ORDER_NUM.perReaction);
@@ -2446,7 +2433,7 @@ function stepTowers(w: World, dt: number) {
       addFx(w, { kind: "float", x: e.x, y: e.y - 14, life: 0.5, text: "MARK", color: "#e8c15a", size: 10 });
       continue;
     }
-    if ((stats.split ?? 0) > 1 && (role as TowerStats["role"]) !== "orbit") {
+    if ((stats.split ?? 0) > 1) {
       fireAt(w, pos.x, pos.y, idx, dmg, stats);
       let extra = 0;
       for (let i = 0; i < w.enemies.length && extra < stats.split! - 1; i++) {
@@ -2468,7 +2455,7 @@ function stepSockets(w: World, dt: number) {
   for (const r of w.roster) {
     if (r.card.kind !== "socket" || !r.placedPad) continue;
     const sock = r.card.socket;
-    const pad = padById(r.placedPad!);
+    const pad = padById(r.placedPad);
     if (!sock || !pad) continue;
     const rad = sock.slowR ?? 0;
     if (rad <= 0) continue;
@@ -2815,11 +2802,11 @@ function offerSecondOrder(w: World) {
   w.uiDirty = true;
 }
 
-export function pickOrder(w: World, id: string): boolean {
-  if (!(w.orderOffer ?? []).includes(id as OrderId)) return false;
+export function pickOrder(w: World, id: OrderId): boolean {
+  if (!(w.orderOffer ?? []).includes(id)) return false;
   w.orders = cleanOrders([...(w.orders ?? []), id]);
   w.orderOffer = [];
-  w.message = `${ORDERS[id as OrderId].name} ready. Slot 2.`;
+  w.message = `${ORDERS[id].name} ready. Slot 2.`;
   w.uiDirty = true;
   checkpoint(w);
   return true;
@@ -2972,7 +2959,7 @@ function stepOrders(w: World, dt: number) {
   for (const r of w.roster ?? []) {
     if ((r.surgeT ?? 0) > 0) {
       r.surgeT = Math.max(0, r.surgeT! - dt);
-      if (r.surgeT! <= 0) {
+      if (r.surgeT <= 0) {
         r.heatT = ORDER_NUM.surgeHeat;
         const pos = towerPoint(r);
         if (pos) addFx(w, { kind: "float", x: pos.x, y: pos.y - 34, life: 0.9, text: "OVERHEAT", color: "#ff4d4d", size: 11 });
@@ -3120,7 +3107,7 @@ export function stepWorld(w: World, dt: number) {
   }
 }
 
-function applyRelic(w: World, card: CardDef & Partial<Pick<RolledCard, "templateId">>) {
+function applyRelic(w: World, card: CardDef | RolledCard) {
   const r = card.relic;
   if (!r) return;
   if (r.gold) bankFlux(w, Math.max(1, fluxFromBank(r.gold)));
@@ -3132,7 +3119,7 @@ function applyRelic(w: World, card: CardDef & Partial<Pick<RolledCard, "template
   if (r.draftBump) w.draftBump += r.draftBump;
   if (r.nextWaveDmg) w.nextWaveDmg += r.nextWaveDmg;
   if (r.killGold) w.killGoldMul += r.killGold;
-  w.relics.push("templateId" in card ? card.templateId! : card.id);
+  w.relics.push("templateId" in card ? card.templateId : card.id);
 }
 
 function applyEnv(w: World, card: RolledCard) {
@@ -4206,7 +4193,7 @@ function stepOneCraft(w: World, c: CompanionState, dt: number) {
       }
       for (const r of w.roster) {
         if (!r.placedPad || r.card.kind !== "tower") continue;
-        const pad = padById(r.placedPad!);
+        const pad = padById(r.placedPad);
         if (!pad) continue;
         if (dist2(c.x, c.y, pad.x, pad.y) > fx.radius * fx.radius * 2.4) continue;
         w.padBuff[pad.id] = Math.max(w.padBuff[pad.id] ?? 0, 2.2);
@@ -4701,14 +4688,14 @@ function tiltOwnedGun(w: World, cards: RolledCard[]) {
 
 export function tutorialAdvance(w: World, step: number) {
   if (!w.tutorialActive) return;
-  if (w.tutorialStep! + 1 !== step && w.tutorialStep! < step - 1) {
+  if (w.tutorialStep + 1 !== step && w.tutorialStep < step - 1) {
     if (step === 6 && w.tutorialStep === 5) {
       /* Level-up chip is optional */
-    } else if (step > w.tutorialStep! + 1 && step !== 6) {
+    } else if (step > w.tutorialStep + 1 && step !== 6) {
       w.tutorialStep = step - 1;
-    } else if (w.tutorialStep! + 1 !== step) return;
+    } else if (w.tutorialStep + 1 !== step) return;
   }
-  if (step <= w.tutorialStep!) return;
+  if (step <= w.tutorialStep) return;
   w.tutorialStep = step;
   w.uiDirty = true;
   if (step >= 7) {
@@ -5276,7 +5263,7 @@ function resumeLoot(w: World) {
 
 function beginPlacement(w: World, t: boolean) {
   w.phase = "placement";
-  if (w.tutorialActive && w.tutorialStep! < 3) tutorialAdvance(w, 3);
+  if (w.tutorialActive && w.tutorialStep < 3) tutorialAdvance(w, 3);
   w.draftCards = [];
   w.draftKind = null;
   w.bores = [];
@@ -5913,7 +5900,7 @@ export function checkpoint(w: World) {
   markLive(true);
 }
 
-function snapshotRun(w: World): RunSave & { roundXp: number } {
+function snapshotRun(w: World): RunSave {
   return {
     v: 4,
     wave: w.wave,
@@ -6102,7 +6089,7 @@ export function unstickWorld(w: World) {
   return false;
 }
 
-export function applyRun(w: World, run: RunSave & { roundXp?: number }) {
+export function applyRun(w: World, run: RunSave) {
   w.wave = run.wave;
   w.points = run.points;
   w.lives = run.lives;
