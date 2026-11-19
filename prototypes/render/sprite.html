@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" href="data:,">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VECTOR — B / software voxel sprites</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #211c30; color: #eee4fa; font: 14px system-ui; }
+    header { padding: 12px 20px; }
+    a { color: #91e4ff; margin-right: 18px; }
+    canvas { display: block; width: min(1280px, 100vw); height: auto; margin: auto; }
+    #status { padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <header><a href="./">Index</a><a href="./three.html">Compare A</a>B — software projection / cached sprites</header>
+  <canvas id="scene" width="1280" height="800" aria-label="Voxel island and Tesla Coil"></canvas>
+  <div id="status">Rasterizing…</div>
+  <script>window.__ready = false;</script>
+  <script type="module" src="./sprite.js"></script>
+</body>
+</html>

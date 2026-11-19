@@ -1,0 +1,11 @@
+{
+  "name": "vector-render-prototype",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "scripts": {
+    "serve": "node serve.mjs"
+  }
+}

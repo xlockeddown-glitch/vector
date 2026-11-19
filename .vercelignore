@@ -2,6 +2,8 @@
 # Vercel rebuilds from source; these never need to upload.
 
 node_modules
+# Keep isolated render experiments out of deploys.
+prototypes
 .vercel
 .tanstack
 screenshots

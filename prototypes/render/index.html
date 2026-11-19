@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" href="data:,">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VECTOR — isolated render prototype</title>
+  <style>
+    body { margin: 0; min-height: 100vh; color: #2b2338; font: 18px/1.6 system-ui;
+      background: linear-gradient(#B7A6E6, #E7C3E3 53%, #FFD8C0); }
+    main { max-width: 820px; margin: auto; padding: 70px 28px; }
+    a { color: #423075; font-weight: 700; }
+    article { background: #fff7; padding: 20px 26px; margin: 20px 0; border-radius: 12px; }
+    small { display: block; margin-top: 28px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>VECTOR / voxel art study</h1>
+    <p>One deterministic island and Tesla Coil, two isolated rendering approaches.</p>
+    <article>
+      <a href="./three.html">A — real 3D voxels</a>
+      <p>Instanced surface cubes with orthographic projection, warm lighting, soft shadows and a glowing arc.</p>
+    </article>
+    <article>
+      <a href="./sprite.html">B — angled voxel sprites</a>
+      <p>Dependency-free Canvas 2D rasterization into separate terrain and tower sprites, with face shading and AO.</p>
+    </article>
+    <small>1280×800 · 35° downward pitch · 45° yaw · 16 voxels per tile · no game integration</small>
+  </main>
+</body>
+</html>

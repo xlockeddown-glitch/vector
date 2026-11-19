@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.11] - 2026-11-19
+
+### Added
+
+- Art direction guide (`docs/art-direction.md`) from the approved v3 poster.
+- Isolated render prototype (`prototypes/render/`): three.js real-3D vs voxel-sprite comparison, excluded from the game build and deploy.
+
 ## [0.9.10] - 2026-11-19
 
 ### Removed
