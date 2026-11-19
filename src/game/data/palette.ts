@@ -31,8 +31,6 @@ export const PALETTE = {
   hot: "#c45c3e",
 } as const;
 
-export type PaletteKey = keyof typeof PALETTE;
-
 /** Exclusive bloom lanes (GSh). Sage never on cards at rest. */
 export const GLOW = {
   frost: PALETTE.frost,
@@ -43,23 +41,7 @@ export const GLOW = {
 } as const;
 
 /** Gem face colors. Common reads as paper, not a sixth glow. Ruby is paint, not ember. */
-export const GEM = {
-  moonstone: PALETTE.moonstone,
-  sapphire: PALETTE.sapphire,
-  ruby: PALETTE.ruby,
-  amethyst: PALETTE.epic,
-  citrine: PALETTE.legend,
-} as const;
 
 /** Quiet frost pip on puck / lightbar. Not a glow color. */
-export const FROST_PIP = "#7ef0ea";
 
 /** Banned candy. Do not reintroduce. */
-export const BANNED = {
-  nvidia: "#76b900",
-  candyLilac: "#e4d8ff",
-  candyViolet: "#c9b6ff",
-  candySapphire: "#8ec7ff",
-  candyMagenta: "#ff4fd8",
-  googleBlue: "#4285f4",
-} as const;

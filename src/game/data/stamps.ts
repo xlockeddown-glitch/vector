@@ -1,4 +1,4 @@
-import type { CardDef, Rarity, RolledCard } from "../types";
+import type { Rarity, RolledCard } from "../types";
 import { freshSeed } from "../rng";
 /** Short tag for what a perk touches. */
 export type PerkRole = "Credit" | "Guns" | "Crafts" | "Path" | "Bonus" | "Lives";
@@ -133,10 +133,6 @@ export const STAMPS: StampDef[] = [
 const BY_ID = new Map(STAMPS.map((s) => [s.id, s]));
 const GEM_ORDER: Rarity[] = ["uncommon", "rare", "epic", "legendary"];
 
-export function getStamp(id: string): StampDef | undefined {
-  return BY_ID.get(id);
-}
-
 export type StampState = {
   dmg: number;
   range: number;
@@ -226,8 +222,4 @@ export function dealStampPack(owned: string[], count = 3): RolledCard[] {
   }
   const group = [...(buckets.get(pick) ?? use)].sort(() => Math.random() - 0.5);
   return group.slice(0, count).map(stampAsCard);
-}
-
-export function stampHint(_card: CardDef): string {
-  return "Keeps across runs.";
 }

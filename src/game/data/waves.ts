@@ -174,7 +174,3 @@ export function waveAt(index: number, opts?: { megaCountMul?: number; foes?: Ene
     mega,
   };
 }
-
-export function waveThemeName(wave: number) {
-  return themeAt(wave).name;
-}

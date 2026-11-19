@@ -1,4 +1,4 @@
-import type { CardDef, OpId, SetBonusLine, SetId } from "../types";
+import type { OpId, SetBonusLine, SetId } from "../types";
 import { PALETTE } from "../constants";
 
 export const SETS: Record<
@@ -92,7 +92,6 @@ export const OPERATORS: Record<
 };
 
 /** @deprecated old name */
-export const COLOR_MODS = OPERATORS;
 
 export function emptySets(): Record<SetId, number> {
   return { heat: 0, cold: 0, spark: 0, iron: 0 };
@@ -122,86 +121,8 @@ export function setLines(
   return out;
 }
 
-export type PickHint = {
-  set: SetId;
-  after: number;
-  label: string;
-  sub: string;
-  hot: boolean;
-};
-
 /** Extra copies past 2 and 3 still pay. Caps so a huge pile is strong, not broken. */
 export function comboRank(count: number, need: number): number {
   if (count < need) return 0;
   return Math.min(6, count - need + 1);
-}
-
-export function pickHint(set: SetId | null, counts: Record<SetId, number>): PickHint | null {
-  if (!set) return null;
-  const after = (counts[set] ?? 0) + 1;
-  const def = SETS[set];
-  if (after === 1) {
-    return { set, after, label: `${def.name} combo`, sub: `Need 1 more for ${def.two}`, hot: false };
-  }
-  if (after === 2) {
-    return { set, after, label: `${def.name} combo · ${def.two}`, sub: "", hot: true };
-  }
-  if (after === 3) {
-    return { set, after, label: `${def.name} combo · ${def.three}`, sub: "", hot: true };
-  }
-  return { set, after, label: `${def.name} combo · stronger`, sub: "", hot: true };
-}
-
-export function cardRole(card: CardDef): string {
-  if (card.kind === "environment") {
-    if (card.env?.slowMul) return "Slows all";
-    if (card.env?.poisonDps) return "Poisons all";
-    if (card.env?.chipDps) return "Chips all";
-    if (card.env?.shred) return "Strips armor";
-    if (card.env?.dmgAmp) return "All guns hit harder";
-    return "Weather";
-  }
-  if (card.kind === "relic") return "Bonus";
-  if (card.kind === "part") return "Part";
-  if (card.kind === "socket") {
-    const s = card.socket;
-    if (s?.rangeMul) return "Reach pad";
-    if (s?.rateMul) return "Rate pad";
-    if (s?.burnDps) return "Burn pad";
-    if (s?.slowMul) return "Slow pad";
-    if (s?.splash) return "Splash pad";
-    if (s?.shred) return "Shred pad";
-    if (s?.killGold) return "Ledger pad";
-    if (s?.gemMul) return "Facet pad";
-    return "Pad boost";
-  }
-  if (card.kind === "stamp") {
-    const rolled = card as { affixes?: string[] };
-    return rolled.affixes?.includes("look") ? "Look" : "Perk";
-  }
-  const s = card.stats;
-  if (!s) return "Card";
-  if ((s.auraDps ?? 0) > 0) return "Aura · circle";
-  if (s.cover === "cone") return "Cone";
-  if (s.cover === "ring") return "Ring";
-  if (s.cover === "lane") return "Lane";
-  if (s.cover === "diamond") return "Diamond";
-  if (s.splash) return "Splash";
-  if (s.chain) return "Chain";
-  if (s.slowT) return "Slow";
-  if (s.shred) return "Shred";
-  if (s.markGold) return "Beacon";
-  if (s.range >= 280) return "Long range";
-  if (s.rate >= 2) return "Fast shot";
-  return "Shot";
-}
-
-export function cardsForSets(
-  environment: CardDef | null,
-  roster: { card: CardDef }[],
-): CardDef[] {
-  const list: CardDef[] = [];
-  if (environment) list.push(environment);
-  for (const r of roster) list.push(r.card);
-  return list;
 }

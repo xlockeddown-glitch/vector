@@ -13,7 +13,3 @@ export function rarityGem(r: Rarity | null | undefined): string {
   if (!r) return "";
   return RARITY_GEM[r].name;
 }
-
-export function rarityFoil(r: Rarity): string {
-  return RARITY_GEM[r].foil;
-}

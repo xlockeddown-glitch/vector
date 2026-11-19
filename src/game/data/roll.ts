@@ -102,31 +102,3 @@ export function rollCard(template: CardDef, rarity: Rarity, seed = freshSeed(), 
     seed,
   };
 }
-
-export function addGlitch(card: RolledCard) {
-  if (!card.stats) {
-    card.affixes = [...card.affixes, "Glitch"];
-    return card;
-  }
-  card.stats.damage *= 1.1;
-  card.stats.rate *= 1.08;
-  card.affixes = [...card.affixes, "Glitch"];
-  return card;
-}
-
-export function addSpice(card: RolledCard) {
-  const pool = AFFIXES.filter((a) => a.name !== "Glitch" && !card.affixes.includes(a.name));
-  if (!pool.length) return addGlitch(card);
-  const a = pool[Math.floor(Math.random() * pool.length)]!;
-  if (card.stats) a.apply(card.stats);
-  card.affixes = [...card.affixes, a.name];
-  return card;
-}
-
-export function rollMany(
-  templates: CardDef[],
-  rarityFor: (t: CardDef) => Rarity,
-  forge: Record<string, number>,
-): RolledCard[] {
-  return templates.map((t) => rollCard(t, rarityFor(t), freshSeed(), forge[t.id] ?? 0));
-}

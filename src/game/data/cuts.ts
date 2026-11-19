@@ -45,13 +45,3 @@ export const CRAFT_CUT: Record<string, Cut> = {
   chis: { d: "M40 10 L58 34 L50 34 L50 62 L30 62 L30 34 L22 34 Z", neon: "#3ecf7a" },
   torch: { d: "M40 8 L60 40 L40 72 L20 40 Z M32 40 L40 28 L48 40 L40 52 Z", neon: "#ff5c2a" },
 };
-
-export function cutForHull(art: string | undefined): Cut {
-  if (art && HULL_CUT[art]) return HULL_CUT[art]!;
-  return HULL_CUT.cone!;
-}
-
-export function cutForCraft(id: string): Cut | null {
-  const key = Object.keys(CRAFT_CUT).find((k) => id.includes(k));
-  return key ? CRAFT_CUT[key]! : null;
-}

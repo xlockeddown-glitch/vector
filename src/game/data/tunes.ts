@@ -31,14 +31,6 @@ export function registerTunes(list: TuneDef[]) {
   }
 }
 
-export function jobTunes(_role: TowerRole | undefined): TuneDef[] {
-  return FALLBACK;
-}
-
-export function capTunes(_role: TowerRole | undefined): TuneDef[] {
-  return FALLBACK;
-}
-
 export function tuneById(id: string | null | undefined, _role?: TowerRole | undefined): TuneDef | undefined {
   if (!id) return undefined;
   return ALL.find((n) => n.id === id) ?? FALLBACK.find((n) => n.id === id);
@@ -60,8 +52,4 @@ export function applyJobList(stats: TowerStats, jobs: string[] | null | undefine
   const out = { ...stats };
   for (const id of jobs ?? []) tuneById(id, role)?.apply(out);
   return out;
-}
-
-export function tunesDone(mod: unknown, job: string | null | undefined, cap: string | null | undefined): number {
-  return (mod ? 1 : 0) + (job ? 1 : 0) + (cap ? 1 : 0);
 }

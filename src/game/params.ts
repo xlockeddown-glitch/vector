@@ -194,5 +194,3 @@ export const PARAMS = {
   /** Campaign: Vault Credit for a full-★ sector that pays credit instead of a skin. */
   campaignSectorCredit: 300,
 } as const;
-
-export type ParamKey = keyof typeof PARAMS;

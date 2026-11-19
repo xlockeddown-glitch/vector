@@ -1,53 +1,22 @@
-import {
-  BASE_PADS,
-  CACHE_XP,
-  ENEMIES,
-  GRADE_XP,
-  HOME_PAD,
-  MAX_LEVEL,
-  MAX_PADS,
-  MAX_TOWERS,
-  MEGA_XP,
-  OPENING_PICKS,
-  MAX_COMPANIONS,
-  PARAMS,
-  SKY_PAD,
-  START_LEVEL,
-  START_LIVES,
-  START_SWAP,
-  MAX_SWAP,
-  SWAP_RATE,
-  SWAP_PITY,
-  WAVE_XP,
-  WAVES_PER_ROUND,
-  WORLD,
-  OPENING_ODDS,
-  PALETTE,
-  WIN_WAVES,
-  levelDraftBump,
-  levelPadBonus,
-  packSizeFor,
-  scrapMul,
-  xpToNext,
-} from "./constants";
+import { BASE_PADS, CACHE_XP, ENEMIES, GRADE_XP, HOME_PAD, MAX_TOWERS, MEGA_XP, OPENING_PICKS, MAX_COMPANIONS, PARAMS, SKY_PAD, START_LEVEL, START_LIVES, START_SWAP, MAX_SWAP, WAVE_XP, WAVES_PER_ROUND, WORLD, OPENING_ODDS, PALETTE, WIN_WAVES, levelDraftBump, levelPadBonus, scrapMul, xpToNext } from "./constants";
 import { combatStats, OPENING_ROUNDS, upgradeCost, getCard, gunLevelMul, type CombatAmp } from "./data/cards";
 import { dealStampPack, foldStamps, type StampLook } from "./data/stamps";
-import { BASE, PATHS, PADS, padById, hitPad, pathOf, GATES, nearestPathMeta, sampleAlong, PATH_ALONG, PATH_SAMPLES, setMapLayout, layoutForMap, layoutCount, padReachMul, padRateMul, padBurnBonus, moonPlantLine } from "./data/map";
+import { BASE, PATHS, PADS, padById, hitPad, GATES, nearestPathMeta, sampleAlong, PATH_ALONG, PATH_SAMPLES, setMapLayout, layoutForMap, layoutCount, padReachMul, padRateMul, padBurnBonus, moonPlantLine } from "./data/map";
 import { LOOP_WAVES, loopOf, themeAt } from "./data/themes";
 import { isPlayMode } from "./data/modes";
 import { waveAt, WAVES } from "./data/waves";
 import { countSets } from "./data/sets";
 import { ELEMENTS, REACTIONS, applyInfusion, hitElements, infuseChoices, type ElementId, type ReactionId } from "./data/elements";
-import { OPERATORS } from "./data/sets";
+
 import { lordFlags } from "./data/lords";
 import { canTakeCraftJob, craftUpgradeCost, craftDockHealMul, craftHullMul, craftPicksLeft } from "./data/craft-tree";
-import { dealSpecials, maxSpecials, pickRoundForLevel, specialOf, type SpecialDef } from "./data/specials";
-import { dealParts, partOf, partOfferWeak, refreshPartOffer, type PartRoll } from "./data/parts";
+import { maxSpecials, specialOf } from "./data/specials";
+import { partOf, partOfferWeak, refreshPartOffer } from "./data/parts";
 import { glowHasFx, glowRadius, hullGlow, isGlowHull } from "./data/glow";
 import { orbitRank } from "./data/orbit";
 import { type PackLean } from "./data/gifts";
-import { canTakeJob, gunJobs, offerJobs, slotsMax, slotsOpen, slotsUsed } from "./data/gun-tree";
-import { dealByKind, dealCompanionOpening, dealKitSkills, dealLoot, dealOpeningMix, dealPack, dealSector, dealTowerOpening, heatBump, oddsForGrade, packGiftOf, packKindOf, packModeOf, packModeSub, packRarityOf, packTitleFor, rollPackHeat, rollPackKind, rollPackRarity, applySkipBump, spicePack, rarityLabel } from "./draft";
+import { canTakeJob, gunJobs, slotsOpen, slotsUsed } from "./data/gun-tree";
+import { dealCompanionOpening, dealKitSkills, dealOpeningMix, dealSector, dealTowerOpening, oddsForGrade, packGiftOf, packKindOf, packRarityOf, packTitleFor, rollPackRarity } from "./draft";
 import { dealSetOpening, dealSignalOpening, hasSig } from "./data/signals";
 import { expectedWaveTime, gradeWave } from "./grade";
 import { audio } from "./audio";
@@ -59,38 +28,12 @@ import { copyTag, starLabel, starMul, starsOf } from "./data/merge";
 import { bondFill, bondJobCount, bondKits, bondLookCount, bondMul, xpFromCraft } from "./data/bond";
 import { inCover, COVER } from "./cover";
 import { companionFx, companionMaxHp, companionSpecialOf, pickTaunt, type CompanionState, type CompanionFx } from "./data/companion";
-import { skillsForCraft } from "./data/skills";
+
 import { BONUS_CREDIT, fluxFromBank, fluxFromRound, hangarOf, hangarStartCredit } from "./data/hangar";
 import { vaultHas, vaultOf } from "./data/vault";
 import { MUTANT_AFFIXES, THREAT_NUM, hasThreat, loadThreat, threatCostMul, threatPayMul, threatPoints } from "./data/threat";
 import { ORDERS, ORDER_NUM, cleanOrders, isBigFoe, isBossFoe, orderChoices, orderOf, type OrderId } from "./data/orders";
-import type {
-  TowerStats,
-  Vec,
-  ActiveCharm,
-  CardDef,
-  CardKind,
-  DraftLane,
-  EnemyType,
-  GemId,
-  Grade,
-  GradeResult,
-  LiveOffer,
-  OpId,
-  PackHeat,
-  PackGift,
-  PackMode,
-  Phase,
-  PlayMode,
-  ProjectileKind,
-  Rarity,
-  RolledCard,
-  RosterItem,
-  RunSave,
-  TargetMode,
-  SimSpeed,
-  ThemeId,
-} from "./types";
+import type { TowerStats, Vec, ActiveCharm, CardDef, CardKind, DraftLane, EnemyType, GemId, Grade, GradeResult, LiveOffer, PackHeat, PackGift, PackMode, Phase, PlayMode, ProjectileKind, Rarity, RolledCard, RosterItem, RunSave, TargetMode, SimSpeed, ThemeId } from "./types";
 
 export type Enemy = {
   alive: boolean;
@@ -739,50 +682,6 @@ function tickHeat(w: World, r: RosterItem) {
   w.uiDirty = true;
 }
 
-function queueGunSpecial(r: RosterItem) {
-  if (!r) return;
-  const have = r.specials ?? [];
-  if (have.length >= maxSpecials("gun")) return;
-  if ((r.specialOffer ?? []).length) return;
-  const round = pickRoundForLevel("gun", r.level || 1);
-  if (!round || have.length >= round) return;
-  const role = r.card.stats?.role ?? r.card.templateId ?? r.card.id;
-  r.specialOffer = dealSpecials("gun", role, round, r.uid, have);
-}
-
-function queueCraftSpecial(c: CompanionState) {
-  if (!c) return;
-  const have = c.specials ?? [];
-  if (have.length >= maxSpecials("craft")) return;
-  if ((c.specialOffer ?? []).length) return;
-  const round = pickRoundForLevel("craft", c.runLevel || 1);
-  if (!round || have.length >= round) return;
-  const id = c.card.templateId ?? c.card.id;
-  c.specialOffer = dealSpecials("craft", id, round, c.uid, have);
-}
-
-function queueGunPart(r: RosterItem) {
-  if (!r || r.card.kind !== "tower") return;
-  if ((r.specialOffer ?? []).length) return;
-  const have = (r.parts ?? []).map((p) => p.id);
-  r.partOffer = refreshPartOffer("gun", r.uid, have, r.level || 1, r.partOffer);
-}
-
-function queueCraftPart(c: CompanionState) {
-  if (!c) return;
-  if ((c.specialOffer ?? []).length) return;
-  const have = (c.parts ?? []).map((p) => p.id);
-  c.partOffer = refreshPartOffer("craft", c.uid, have, c.runLevel || 1, c.partOffer);
-}
-
-function queueGunTrick(r: RosterItem) {
-  queueGunSpecial(r);
-}
-
-function queueCraftTrick(c: CompanionState) {
-  queueCraftSpecial(c);
-}
-
 function slamEvery(item: RosterItem) {
   const base = PARAMS.ultEvery;
   if ((item.level || 1) >= 3) return Math.max(2, base - 1);
@@ -1015,11 +914,7 @@ function charmPointMul(w: World) {
   for (const n of w.charms) if (n.pointMul) t *= n.pointMul;
   return t;
 }
-function charmGemMul(w: World) {
-  let t = 1;
-  for (const n of w.charms) if (n.gemMul) t *= n.gemMul;
-  return t;
-}
+
 function charmSlowMul(w: World) {
   let t = 1;
   for (const n of w.charms) if (n.slowMul) t *= n.slowMul;
@@ -1215,19 +1110,6 @@ function celebrateLevel(w: World, x: number, y: number, color: string, level: nu
   if (gun) gun.levelPop = 1.15;
   const craft = (w.companions ?? []).find((c) => c.uid === uid);
   if (craft) craft.levelPop = 1.15;
-}
-
-function openLevelPick(w: World, uid: string) {
-  if (!uid) return;
-  if (w.phase === "combat") return;
-  const cur = w.selectedCard;
-  if (cur && cur !== uid) {
-    const busyGun = (w.roster ?? []).find((r) => r.uid === cur);
-    const busyCraft = (w.companions ?? []).find((c) => c.uid === cur);
-    if (unitHasOffer(busyGun) || unitHasOffer(busyCraft)) return;
-  }
-  w.selectedCard = uid;
-  w.uiDirty = true;
 }
 
 function nextLevelPick(w: World) {
@@ -4526,20 +4408,6 @@ function stepNades(w: World, dt: number) {
   }
 }
 
-function maybeGrantSwap(w: World) {
-  if ((w.swapTokens ?? 0) >= MAX_SWAP) return;
-  w.swapPity = (w.swapPity ?? 0) + 1;
-  const force = w.swapPity >= SWAP_PITY;
-  if (!force && Math.random() > SWAP_RATE) return;
-  w.swapTokens = Math.min(MAX_SWAP, (w.swapTokens ?? 0) + 1);
-  w.swapPity = 0;
-  if (w.phase === "opening" || w.phase === "draft" || w.phase === "loot") {
-    w.pendingSwapToast = true;
-  } else {
-    w.swapToast = true;
-  }
-}
-
 export function dismissSwapToast(w: World) {
   w.swapToast = false;
   w.uiDirty = true;
@@ -4559,7 +4427,7 @@ function ownedCraftIds(w: World) {
   return ids;
 }
 
-function ownedTemplates(w: World, midRun = false) {
+function ownedTemplates(w: World, _midRun = false) {
   const ids = new Set<string>();
   if (!w.vaultHelix) ids.add("gun-helix");
   if (!w.vaultSink) ids.add("comp-sink");
@@ -4579,58 +4447,12 @@ function ownedTemplates(w: World, midRun = false) {
   return ids;
 }
 
-export function fuseArrowPos(item: RosterItem) {
-  const pad = towerPoint(item);
-  if (!pad) return null;
-  return { x: pad.x, y: pad.y - 44, uid: item.uid };
-}
-
-export function hitFuseArrow(w: World, x: number, y: number) {
-  if (w.phase !== "placement" && w.phase !== "combat") return null;
-  let best = null;
-  let bestD = 24 * 24;
-  for (const r of w.roster ?? []) {
-    if (r.card.kind !== "tower" || !r.placedPad || r.placedPad === HOME_PAD) continue;
-    if (gunMaxed(r)) continue;
-    if (!fusePartnerOf(w, r.uid)) continue;
-    const p = fuseArrowPos(r);
-    if (!p) continue;
-    const d = (p.x - x) ** 2 + (p.y - y) ** 2;
-    if (d <= bestD) {
-      bestD = d;
-      best = r;
-    }
-  }
-  return best;
-}
-
-export function fusePartnerOf(w: World, uid: string) {
+export function fusePartnerOf(_w: World, _uid: string) {
   return null;
 }
 
-export function tryFuseGuns(w: World, keepUid: string, eatUid: string) {
+export function tryFuseGuns(_w: World, _keepUid: string, _eatUid: string) {
   return false;
-}
-
-function kindHintsFrom(w: World) {
-  const towers = (w.roster ?? []).filter((r) => r.card.kind === "tower");
-  const hasCone = towers.some((r) => (r.card.stats?.cover ?? "circle") === "cone");
-  const hasSlow = towers.some((r) => (r.card.stats?.slowMul && r.card.stats.slowMul < 1) || r.card.stats?.slowT);
-  const craftCount = (w.companions ?? []).length;
-  const placed = towers.filter((r) => r.placedPad && r.placedPad !== HOME_PAD).length;
-  const freePads = Math.max(0, padCap(w) - placed);
-  const ownedGuns = new Set(towers.map((r) => r.card.templateId ?? r.card.id));
-  const gunPool = 9;
-  return {
-    lastKind: w.lastPackKind ?? null,
-    hasCone,
-    hasSlow,
-    craftCount,
-    maxCrafts: MAX_COMPANIONS,
-    skillSlotsOpen: false,
-    padsFree: freePads,
-    gunsLeft: Math.max(0, gunPool - ownedGuns.size),
-  };
 }
 
 function giftHintsFrom(w: World): PackLean {
@@ -4681,10 +4503,6 @@ function refillEmptyPack(w: World) {
     return true;
   }
   return false;
-}
-
-function tiltOwnedGun(w: World, cards: RolledCard[]) {
-  return cards;
 }
 
 export function tutorialAdvance(w: World, step: number) {
@@ -4928,25 +4746,6 @@ export function beginPerformanceDraft(w: World) {
   }
 }
 
-function beginLevelDraft(w: World) {
-  const n = Math.max(1, w.pendingLevels || 1) * BONUS_CREDIT;
-  w.pendingLevels = 0;
-  w.pendingRoundPack = false;
-  w.draftPicksLeft = 0;
-  w.draftCards = [];
-  w.paused = false;
-  w.pickPause = false;
-  w.points += n;
-  w.message = `+${n} Credit`;
-  w.announce = `+${n} Credit`;
-  w.announceT = 1.4;
-  if (w.phase === "draft" || w.phase === "loot") {
-    w.phase = w.waveActive || w.enemies.some((e) => e.alive) ? "combat" : "placement";
-    if (w.phase === "placement") beginPlacement(w, false);
-  }
-  w.uiDirty = true;
-}
-
 function afterShop(w: World) {
   w.pendingStamp = false;
   w.pendingRoundPack = false;
@@ -4954,19 +4753,6 @@ function afterShop(w: World) {
   w.draftPicksLeft = 0;
   w.wave += 1;
   w.grade = null;
-  beginPlacement(w, false);
-}
-
-function beginRoundDrafts(w: World) {
-  w.mysteryQueue = 0;
-  w.bansThisRound = 0;
-  w.pendingLevels = 0;
-  w.pendingRoundPack = false;
-  w.draftPicksLeft = 0;
-  w.wave += 1;
-  w.grade = null;
-  w.packMode = "show";
-  w.cutId = null;
   beginPlacement(w, false);
 }
 
@@ -5069,14 +4855,6 @@ export function buildCopyTags(w: World) {
   return out;
 }
 
-function beginMysteryPack(w: World) {
-  w.points += BONUS_CREDIT;
-  w.message = `+${BONUS_CREDIT} Credit`;
-  w.paused = false;
-  w.pickPause = false;
-  w.uiDirty = true;
-}
-
 export function beginStampDraft(w: World) {
   w.pendingStamp = false;
   w.phase = "draft";
@@ -5092,12 +4870,6 @@ export function beginStampDraft(w: World) {
   w.draftCards = dealStampPack(loadMeta().stamps ?? [], 3);
   w.packRarity = packRarityOf(w.draftCards);
   w.lastPackKind = "stamp";
-  w.uiDirty = true;
-}
-
-export function offerLive(w: World, _title: string) {
-  w.draftBump = Math.min(3, (w.draftBump ?? 0) + 1);
-  w.message = "Next pack rolls a gem up.";
   w.uiDirty = true;
 }
 
@@ -5120,10 +4892,6 @@ export function skipDraftPack(w: World) {
   w.uiDirty = true;
   checkpoint(w);
   return true;
-}
-
-export function skipLive(w: World) {
-  skipDraftPack(w);
 }
 
 export function banDraftCard(_w: World, _id: string) {
@@ -5460,7 +5228,7 @@ export function upgradeCraft(w: World, craftUid: string, nodeId: string) {
   return true;
 }
 
-export function buyDraftPick(w: World) {
+export function buyDraftPick(_w: World) {
   return false;
 }
 
@@ -5523,10 +5291,7 @@ export function pickSpecial(w: World, uid: string, id: string) {
     if (k.trail) craft.trick = "trail";
     if (k.hunt) craft.trick = "hunt";
     if (k.trick) craft.trick = k.trick;
-    if ((k.hpMul ?? 1) > 1) {
-      craft.hpMax = Math.round((craft.hpMax || 100) * k.hpMul!);
-      craft.hp = Math.min(craft.hpMax, Math.round((craft.hp || 0) * k.hpMul!));
-    }
+    applyCraftHullMultiplier(craft, k.hpMul);
   }
   w.message = `${craft.card.name} learned ${spec.name}.`;
   w.announce = spec.name;
@@ -5538,6 +5303,13 @@ export function pickSpecial(w: World, uid: string, id: string) {
   nextLevelPick(w);
   w.uiDirty = true;
   return true;
+}
+
+function applyCraftHullMultiplier(craft: CompanionState, hpMul: number | undefined) {
+  if (hpMul != null && hpMul > 1) {
+    craft.hpMax = Math.round((craft.hpMax || 100) * hpMul);
+    craft.hp = Math.min(craft.hpMax, Math.round((craft.hp || 0) * hpMul));
+  }
 }
 
 function pickPart(w: World, uid: string, id: string) {
@@ -5596,10 +5368,7 @@ function pickPart(w: World, uid: string, id: string) {
       seed: (craft.card.seed ?? 1) + (craft.parts?.length ?? 0),
     };
     craft.kits = [...(craft.kits ?? []), rolled];
-    if ((k.hpMul ?? 1) > 1) {
-      craft.hpMax = Math.round((craft.hpMax || 100) * k.hpMul!);
-      craft.hp = Math.min(craft.hpMax, Math.round((craft.hp || 0) * k.hpMul!));
-    }
+    applyCraftHullMultiplier(craft, k.hpMul);
   }
   if (k?.clone) spawnClone(w, craft);
   w.message = `${craft.card.name} fitted ${pick.name}.`;
@@ -5664,7 +5433,7 @@ function pickTrickLegacy(w: World, uid: string, id: string) {
   return false;
 }
 
-function settleTricks(w: World) {
+function settleTricks(_w: World) {
   /* Level-up chips wait. Never auto-pick. */
 }
 
@@ -5793,50 +5562,6 @@ export function keepFlying(w: World) {
   w.message = "Keep flying. Hold as long as you can.";
   w.uiDirty = true;
   checkpoint(w);
-}
-
-function liftGuns(w: World) {
-  for (const r of w.roster) {
-    if (r.placedPad === HOME_PAD) continue;
-    if (r.card.kind === "companion") continue;
-    r.placedPad = null;
-    r.freePlace = true;
-  }
-}
-
-function resetWatchRank(w: World) {
-  w.runLevel = START_LEVEL;
-  w.xp = 0;
-  w.pendingLevels = 0;
-  w.roundXp = 0;
-}
-
-export function beginNextWatch(w: World) {
-  const prevMap = w.mapId;
-  liftGuns(w);
-  resetWatchRank(w);
-  rollNewSector(w, true, prevMap);
-  w.wave += 1;
-  w.grade = null;
-  w.pendingEngrave = false;
-  w.pendingStamp = false;
-  w.pendingRoundPack = false;
-  w.swapTokens = Math.max(w.swapTokens ?? 0, START_SWAP);
-  w.selectedPad = null;
-  w.selectedCard = null;
-  w.paused = false;
-  w.pickPause = false;
-  w.enemies = [];
-  w.projectiles = [];
-  w.spawnQ = [];
-  w.waveActive = false;
-  beginPlacement(w, true);
-  const loop = loopOf(w.wave);
-  w.message = "The lane shifted. Moons are already there. Plant again. They'll be back.";
-  if (loop >= 1) {
-    w.announce = loop === 1 ? "Needles run faster" : "More Hulks this loop";
-    w.announceT = 2.2;
-  }
 }
 
 export function goTitle(w: World, keep: boolean): boolean {

@@ -71,7 +71,3 @@ export function actOf(wave: number) {
 export function loopOf(wave: number) {
   return Math.floor(Math.max(0, wave) / LOOP_WAVES);
 }
-
-export function driveOf(wave: number) {
-  return (wave % THEME_LEN) + 1;
-}

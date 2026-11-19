@@ -235,13 +235,6 @@ export function specialOf(id: string | null | undefined): SpecialDef | undefined
   return SPECIALS.find((s) => s.id === id);
 }
 
-export function pickRoundForLevel(kind: SpecialKind, level: number): 1 | 2 | 3 | 4 | 5 | null {
-  const at: readonly number[] = kind === "craft" ? CRAFT_PICK_AT : GUN_PICK_AT;
-  const i = at.indexOf(level);
-  if (i < 0) return null;
-  return (i + 1) as 1 | 2 | 3 | 4 | 5;
-}
-
 export function maxSpecials(kind: SpecialKind): number {
   return kind === "craft" ? CRAFT_PICK_AT.length : GUN_PICK_AT.length;
 }
@@ -286,13 +279,4 @@ export function dealSpecials(
 
 export function specialCards(ids: string[]): SpecialDef[] {
   return ids.map((id) => specialOf(id)).filter((s): s is SpecialDef => !!s);
-}
-
-export function flyingTags(specials: string[] | null | undefined): SynergyTag[] {
-  const tags: SynergyTag[] = [];
-  for (const id of specials ?? []) {
-    const t = specialOf(id)?.tag;
-    if (t && !tags.includes(t)) tags.push(t);
-  }
-  return tags;
 }

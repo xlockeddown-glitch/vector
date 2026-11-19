@@ -13,10 +13,6 @@ export function mulberry32(seed: number): Rng {
   };
 }
 
-export function randInt(rng: Rng, a: number, b: number) {
-  return a + Math.floor(rng() * (b - a + 1));
-}
-
 export function pick<T>(rng: Rng, arr: T[]): T {
   return arr[Math.floor(rng() * arr.length)]!;
 }

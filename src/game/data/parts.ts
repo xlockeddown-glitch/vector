@@ -264,7 +264,3 @@ export function refreshPartOffer(
   if (current?.length && !partOfferWeak(current)) return current;
   return dealParts(kind, uid, have, level);
 }
-
-export function partName(id: string | null | undefined): string {
-  return partOf(id)?.name ?? "Part";
-}

@@ -1,7 +1,7 @@
-import type { Grade, HangarId, HangarRanks, MetaSave, Phase, ProfileSlot, ProfilesSave, RunSave, SkinId } from "./types";
+import type { Grade, MetaSave, Phase, ProfileSlot, ProfilesSave, RunSave, SkinId } from "./types";
 import { threatPayMul } from "./data/threat";
 import { unlockedIds, type SkinProgress } from "./data/skins";
-import { emptyHangar, hangarCost, hangarItem, hangarOf, SKIN_FLUX } from "./data/hangar";
+import { emptyHangar, hangarOf, SKIN_FLUX } from "./data/hangar";
 import { emptyVault, vaultCanBuy, vaultNode, vaultOf, type VaultSave } from "./data/vault";
 import { orbitXpFromRun } from "./data/orbit";
 import { PASS_TIERS, applyRunToQuests, passOf, passTier, passXpFromRun, rewardLabel } from "./data/pass";
@@ -365,21 +365,6 @@ export function addFlux(n: number) {
   return saveMeta({ flux: cur.flux + Math.floor(n) });
 }
 
-export function buyHangar(id: HangarId) {
-  const item = hangarItem(id);
-  const cur = loadMeta();
-  if (!item) return cur;
-  const ranks: HangarRanks = hangarOf(cur.hangar);
-  const rank = ranks[id] ?? 0;
-  if (rank >= item.max) return cur;
-  const cost = hangarCost(item, rank);
-  if (cur.flux < cost) return cur;
-  return saveMeta({
-    flux: cur.flux - cost,
-    hangar: { ...ranks, [id]: rank + 1 },
-  });
-}
-
 export function buyVault(id: string) {
   const node = vaultNode(id);
   const cur = loadMeta();
@@ -473,13 +458,7 @@ export function clearRun() {
   }
 }
 
-export function forgeRank(forge: Record<string, number>, templateId: string) {
-  return forge[templateId] ?? 0;
-}
-
 /** @deprecated alias for title screen */
-export const loadBest = loadMeta;
-export const saveBest = saveMeta;
 
 const PROFILE_KEY = "vector-profiles-v1";
 const SLOT_N = 3;

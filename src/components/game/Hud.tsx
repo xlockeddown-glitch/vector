@@ -1,9 +1,8 @@
 import type { Action } from "@/game/runtime";
-import type { HudState, SpecialPickHud, InspectHud } from "@/game/store";
+import type { HudState, InspectHud } from "@/game/store";
 import { fmtCount } from "@/game/format";
 import { cn } from "@/lib/utils";
-import { rarityGem } from "@/game/data/rarity";
-import type { Rarity } from "@/game/types";
+
 import { HOME_PAD } from "@/game/constants";
 import { Pause, Play, Volume2, VolumeX, ChartNoAxesColumn } from "lucide-react";
 import { CraftPortrait } from "./CardView";
@@ -276,94 +275,6 @@ function StatGlow({
       >
         {value}
       </p>
-    </div>
-  );
-}
-
-function gemOf(r: string | undefined): Rarity {
-  if (r === "legendary" || r === "epic" || r === "rare" || r === "uncommon" || r === "common") return r;
-  return "common";
-}
-
-function SpecialPickPanel({
-  pick,
-  onAction,
-}: {
-  pick: SpecialPickHud;
-  onAction: (a: Action) => void;
-}) {
-  return (
-    <div className="level-pick-veil pointer-events-auto absolute inset-0 z-40 flex items-end justify-center bg-ink/70 p-3 sm:items-center">
-      <div className="level-pick glass-panel relative w-full max-w-xl overflow-hidden rounded-xl p-3">
-        <span className="cyber-frame">
-          <span className="cyber-corner cyber-tl" />
-          <span className="cyber-corner cyber-tr" />
-          <span className="cyber-corner cyber-bl" />
-          <span className="cyber-corner cyber-br" />
-        </span>
-        <div className="flex items-center justify-between gap-2 px-1">
-          <div className="min-w-0">
-            <p className="text-[10px] font-medium tracking-[0.22em] text-frost">
-              {pick.lane === "part" ? "Part" : "Level-up"}
-            </p>
-            <p className="truncate font-display text-2xl font-bold text-paper">{pick.name}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onAction({ type: "selectCard", uid: null })}
-            className="hud-btn shrink-0 px-3"
-          >
-            Later
-          </button>
-        </div>
-        <div
-          className="title-pips level-pick-pips mt-2"
-          data-gem={gemOf(pick.options[0]?.rarity)}
-          aria-hidden
-        >
-          {Array.from({ length: 12 }).map((_, i) => (
-            <i key={i} style={{ animationDelay: `${(i % 6) * 120}ms` }} />
-          ))}
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {pick.options.map((o, i) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => onAction({ type: "special", uid: pick.uid, id: o.id })}
-              className={cn(
-                "card-bevel gem-pick gem-pick-lg flex min-h-28 flex-col items-start rounded-md border bg-raised px-2.5 py-2 text-left",
-                gemOf(o.rarity) === "legendary"
-                  ? "border-citrine/60 gem-pick-legend"
-                  : gemOf(o.rarity) === "rare"
-                    ? "border-ruby/50"
-                    : gemOf(o.rarity) === "epic"
-                      ? "border-accent/50"
-                      : "border-frost/40",
-              )}
-              style={{ animationDelay: `${i * 70}ms` }}
-            >
-              <span
-                className={cn(
-                  "text-[10px] font-medium tracking-[0.18em]",
-                  gemOf(o.rarity) === "legendary"
-                    ? "text-citrine"
-                    : gemOf(o.rarity) === "rare"
-                      ? "text-ruby"
-                      : gemOf(o.rarity) === "epic"
-                        ? "text-accent"
-                        : "text-frost",
-                )}
-              >
-                {pick.lane === "part" ? rarityGem(gemOf(o.rarity)) || "Moonstone" : "Special"}
-              </span>
-              <span className="mt-1 font-display text-xl font-bold leading-none text-paper">{o.name}</span>
-              <span className="mt-1.5 text-[12px] leading-snug text-muted">{o.blurb}</span>
-              {o.pair ? <span className="mt-auto pt-2 text-[10px] tracking-wide text-frost">{o.pair}</span> : null}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

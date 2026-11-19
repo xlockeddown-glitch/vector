@@ -73,17 +73,3 @@ export function payGems(have: Record<GemId, number>, cost: Partial<Record<GemId,
   for (const g of GEM_ORDER) next[g] = Math.max(0, (next[g] ?? 0) - (cost[g] ?? 0));
   return next;
 }
-
-export function rollGem(bias: "boss" | "titan"): GemId {
-  const n = Math.random();
-  if (bias === "titan") {
-    if (n < 0.12) return "diamond";
-    if (n < 0.38) return "sapphire";
-    if (n < 0.68) return "emerald";
-    return "ruby";
-  }
-  if (n < 0.04) return "diamond";
-  if (n < 0.2) return "sapphire";
-  if (n < 0.48) return "emerald";
-  return "ruby";
-}

@@ -4,7 +4,6 @@ import { skillsForCraft } from "./skills";
 import type { CompanionState } from "./companion";
 
 export const BOND_MAX = PARAMS.bondMax;
-export const BOND_SPLIT = PARAMS.bondSplit;
 
 export function xpToBond(level: number): number {
   if (level >= BOND_MAX) return 0;

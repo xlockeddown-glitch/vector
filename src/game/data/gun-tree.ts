@@ -637,17 +637,3 @@ export function offerJobs(r: GunJobState): TuneDef[] {
 export function canTakeJob(r: GunJobState, id: string): boolean {
   return offerJobs(r).some((n) => n.id === id);
 }
-
-export function jobNameList(r: GunJobState): string[] {
-  const role = r.card?.stats?.role;
-  return gunJobs(r)
-    .map((id) => {
-      const tree = treeOf(role);
-      for (const b of tree?.branches ?? []) {
-        const node = b.nodes.find((n) => n.id === id);
-        if (node) return node.name;
-      }
-      return null;
-    })
-    .filter((x): x is string => !!x);
-}

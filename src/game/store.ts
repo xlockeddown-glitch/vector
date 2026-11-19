@@ -6,7 +6,7 @@ import { emptyGems } from "./data/charms";
 import { themeAt } from "./data/themes";
 import { storyWatchLine } from "./data/modes";
 import { waveAt } from "./data/waves";
-import { loadMeta, loadRun, loadProfiles } from "./persist";
+import { loadMeta, loadProfiles } from "./persist";
 import { stageById, stageLabel, type CampaignResult } from "./data/campaign";
 import { winWaves, buildCopyTags, fieldedTowers, padCap, scrapValue as scrapOf, socketOnPad, coverPct, bonusPct, inspectGun, type World } from "./sim";
 import { displayName } from "./data/glossary";

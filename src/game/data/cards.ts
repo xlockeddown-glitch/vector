@@ -1,9 +1,9 @@
-import type { CardDef, OpId, OpeningRound, RolledCard, SetId, TowerStats } from "../types";
+import type { CardDef, OpId, OpeningRound, SetId, TowerStats } from "../types";
 import { PARAMS } from "../params";
 import { OPERATORS, comboRank } from "./sets";
 import { applyJobList, applyTunes } from "./tunes";
 import { companionBars, craftHook } from "./companion";
-import { coverHits, coverRangeMul } from "../cover";
+import { coverRangeMul } from "../cover";
 import { TOWERS } from "./towers";
 import { SKILLS } from "./skills";
 import { SET_CARDS, SIGNAL_CARDS } from "./signals";
@@ -184,30 +184,6 @@ export function abilityOf(card: CardDef): string {
   return card.blurb;
 }
 
-const AFFIX_JOB: Record<string, string> = {
-  Long: "Farther",
-  Heavy: "Harder hits",
-  Light: "Faster shots",
-  Split: "Splash",
-  Jump: "Shots jump",
-  Hold: "Slows",
-  Saw: "Peels armor",
-  Mark: "Kills pay extra",
-  Hot: "Burns",
-  Deep: "Stronger glow",
-  Glitch: "Extra bite",
-};
-
-export function gunCardFields(card: CardDef): { does: string; hits: string; extra: string | null } {
-  const rolled = card as CardDef & { affixes?: string[] };
-  const extra = (rolled.affixes ?? []).map((a) => AFFIX_JOB[a] ?? a).filter(Boolean);
-  return {
-    does: abilityOf(card),
-    hits: coverHits(card.stats?.cover),
-    extra: extra.length ? extra.join(" · ") : null,
-  };
-}
-
 /** Credit for the next gun tree pick. Table lives in PARAMS.jobCost. */
 export function upgradeCost(_card: CardDef, slotsUsed: number): number {
   const t = PARAMS.jobCost;
@@ -290,60 +266,4 @@ export function combatStats(
 
   const withJobs = applyJobList(stats, jobs, s.role);
   return applyTunes(withJobs, tuneJob, tuneCap, s.role);
-}
-
-export function partFitScore(gun: CardDef, part: CardDef): { score: number; match: boolean; lines: string[] } {
-  const p = part.part;
-  const match = !!(gun.set && part.set && gun.set === part.set);
-  let score = match ? 4 : 1;
-  const lines: string[] = [];
-  if (match) lines.push("Same family");
-  if (p?.damageMul && p.damageMul > 1) {
-    score += 2;
-    lines.push("More hurt");
-  }
-  if (p?.rateMul && p.rateMul > 1) {
-    score += 2;
-    lines.push("Faster shots");
-  }
-  if (p?.rangeMul && p.rangeMul > 1) {
-    score += 1;
-    lines.push("Farther");
-  }
-  if (p?.splash && gun.stats?.splash) {
-    score += 3;
-    lines.push("Splash on splash");
-  }
-  if (p?.chain && (gun.stats?.chain || gun.set === "spark")) {
-    score += 3;
-    lines.push("Jumps more");
-  }
-  if (p?.slowMul && gun.set === "cold") {
-    score += 3;
-    lines.push("Colder");
-  }
-  if (p?.burnDps && gun.set === "heat") {
-    score += 3;
-    lines.push("Hotter");
-  }
-  return { score, match, lines: lines.slice(0, 2) };
-}
-
-export function previewPartOnGun(gun: CardDef, part: CardDef): { before: string; after: string } | null {
-  const s = gun.stats;
-  const p = part.part;
-  if (!s || !p) return null;
-  const hurt = Math.round(s.damage);
-  const hurt2 = Math.round(s.damage * (p.damageMul ?? 1));
-  const bitsB = [`Hurt ${hurt}`];
-  const bitsA = [`Hurt ${hurt2}`];
-  if (p.rateMul) {
-    bitsB.push(`Shots ${s.rate.toFixed(1)}`);
-    bitsA.push(`Shots ${(s.rate * p.rateMul).toFixed(1)}`);
-  }
-  if (p.rangeMul) {
-    bitsB.push(`Reach ${Math.round(s.range)}`);
-    bitsA.push(`Reach ${Math.round(s.range * p.rangeMul)}`);
-  }
-  return { before: bitsB.join(" · "), after: bitsA.join(" · ") };
 }

@@ -47,16 +47,6 @@ export function fmtQty(n: number, unit?: string, frac = 0): string {
 }
 
 /** @deprecated use fmtFixed. Kept for old calls. */
-export function fmtRes(n: number, maxFrac = 6): string {
-  return fmtFixed(n, maxFrac);
-}
-
-export const GOLD_NAME = "Credit";
-export const FLUX_NAME = "Credit";
-
-export function fmtGold(n: number): string {
-  return fmtFlux(n);
-}
 
 export function fmtFlux(n: number): string {
   const v = Math.round(n);

@@ -4,16 +4,6 @@ export type { PackGift };
 
 export const GIFT_IDS: PackGift[] = ["road", "freeze", "jump", "peel"];
 
-export const GIFTS: Record<
-  PackGift,
-  { id: PackGift; name: string; line: string; token: "ember" | "frost" | "accent" | "steel"; set: SetId }
-> = {
-  road: { id: "road", name: "Road", line: "All three light the path.", token: "ember", set: "heat" },
-  freeze: { id: "freeze", name: "Freeze", line: "All three slow.", token: "frost", set: "cold" },
-  jump: { id: "jump", name: "Jump", line: "Hits hop.", token: "accent", set: "spark" },
-  peel: { id: "peel", name: "Peel", line: "All three strip plates.", token: "steel", set: "iron" },
-};
-
 export type GiftHints = {
   lastGift?: PackGift | null;
   hasRoad?: boolean;
@@ -120,15 +110,4 @@ export function packGiftOf(cards: CardDef[]): PackGift | null {
     }
   }
   return bestN === cards.length ? best : null;
-}
-
-export function giftLead(gift: PackGift | null | undefined): string {
-  if (!gift) return "";
-  const g = GIFTS[gift];
-  return `${g.name} pack. ${g.line}`;
-}
-
-export function giftChip(gift: PackGift | null | undefined): string {
-  if (!gift) return "";
-  return `${GIFTS[gift].name} pack`;
 }

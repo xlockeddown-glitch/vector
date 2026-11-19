@@ -78,7 +78,7 @@ export function TitleScreen({
   onSlot,
   onBind,
   best,
-  ready,
+  ready: _ready,
   hasRun,
   profiles,
 }: {

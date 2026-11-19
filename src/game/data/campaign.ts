@@ -389,9 +389,6 @@ export function scoreStages(stage: CampaignStage, st: CampaignStats): { checks: 
 }
 
 /** Alias: stars only. */
-export function scoreStars(stage: CampaignStage, st: CampaignStats): 0 | 1 | 2 | 3 {
-  return scoreStages(stage, st).stars;
-}
 
 /** What a finished stage paid, for the star reveal. */
 export type CampaignResult = {

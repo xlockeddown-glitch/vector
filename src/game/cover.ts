@@ -1,4 +1,4 @@
-import type { CoverShape, TowerStats } from "./types";
+import type { CoverShape } from "./types";
 
 /** Geometric knobs. Areas at equal range stay within ~40% of the largest (circle). */
 export const COVER = {
@@ -11,14 +11,6 @@ export const COVER = {
   laneHalf: 0.5,
 };
 
-export function coverHits(shape: CoverShape | undefined): string {
-  if (shape === "cone") return "A wide wedge";
-  if (shape === "ring") return "A far doughnut";
-  if (shape === "lane") return "A strip on the path";
-  if (shape === "diamond") return "On the bend";
-  return "Around the moon";
-}
-
 export function coverLabel(shape: CoverShape | undefined): string {
   if (shape === "cone") return "Cone";
   if (shape === "ring") return "Ring";
@@ -26,7 +18,6 @@ export function coverLabel(shape: CoverShape | undefined): string {
   if (shape === "diamond") return "Diamond";
   return "Circle";
 }
-
 
 export function coverHint(shape: CoverShape | undefined): string {
   if (shape === "cone") return "A wide wedge that faces the path. Great on a long run. Weak beside you.";
@@ -40,33 +31,6 @@ export function coverRangeMul(shape: CoverShape | undefined): number {
   if (shape === "cone") return 1.19;
   if (shape === "lane") return 1.22;
   return 1;
-}
-
-export function coverArea(
-  shape: CoverShape | undefined,
-  range: number,
-  innerFrac = COVER.ringInner,
-  halfArc = COVER.coneArc,
-): number {
-  const r = Math.max(0, range);
-  const r2 = r * r;
-  const kind = shape ?? "circle";
-  if (kind === "circle") return Math.PI * r2;
-  if (kind === "ring") {
-    const inner = r * (innerFrac || COVER.ringInner);
-    return Math.PI * Math.max(0, r2 - inner * inner);
-  }
-  if (kind === "diamond") {
-    const a = r * COVER.diamond;
-    return 2 * a * a;
-  }
-  if (kind === "cone") return (halfArc || COVER.coneArc) * r2;
-  if (kind === "lane") {
-    const len = r * (COVER.laneFwd + COVER.laneBack);
-    const w = 2 * r * COVER.laneHalf;
-    return len * w;
-  }
-  return Math.PI * r2;
 }
 
 export function inCover(
@@ -107,8 +71,4 @@ export function inCover(
     return along >= -range * COVER.laneBack && along <= range * COVER.laneFwd && Math.abs(perp) <= range * COVER.laneHalf;
   }
   return dist <= range;
-}
-
-export function coverOf(stats: TowerStats | null | undefined): CoverShape {
-  return stats?.cover ?? "circle";
 }

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.9] - 2026-11-19
+
+### Removed
+
+- Unused game imports, dead draft helpers, obsolete map layouts, and unreferenced source exports.
+
+### Changed
+
+- Shared the identical craft hull upgrade calculation without changing game behavior.
+- Test hygiene (no separate bump): tests now remove their temp directories; sim.ts split read without a non-null assertion.
+
 ## [0.9.8] - 2026-11-18
 
 ### Changed

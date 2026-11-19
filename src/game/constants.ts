@@ -6,11 +6,10 @@ import { PALETTE } from "./data/palette";
 export { TOTAL_WAVES, LOOP_WAVES, THEME_LEN, PARAMS, PALETTE };
 
 export const WORLD = { w: 1280, h: 720 };
-export const START_GOLD = PARAMS.goldStart;
+
 export const START_LIVES = PARAMS.lives;
 export const MAX_TOWERS = PARAMS.padsMax;
-export const MAX_LEVEL = PARAMS.gunLevelMax;
-export const PATH_WIDTH = 24;
+
 export const HOME_PAD = "home";
 export const OPENING_PICKS = PARAMS.openingPicks;
 /** Hold this many waves to win. Then Keep flying or Return. */
@@ -18,25 +17,19 @@ export const WIN_WAVES = THEME_LEN;
 export const MAX_COMPANIONS = PARAMS.craftsFly;
 export const SKY_PAD = "sky";
 export const WAVES_PER_ROUND = PARAMS.wavesPerRound;
-export const DRAFT_PICK_COST = PARAMS.draftPickCost;
-export const MAX_EXTRA_PICKS = PARAMS.extraPicksMax;
+
 export const MEGA_EVERY = PARAMS.megaEvery;
-export const GAME_NAME = "VECTOR";
 
 export const TOTAL_ROUNDS = TOTAL_WAVES / WAVES_PER_ROUND;
 export const START_LEVEL = 1;
 export const WAVE_XP = 14;
 export const MEGA_XP = 16;
 export const CACHE_XP = 8;
-export const LIVE_DRAFT = 3;
-export const LIVE_TTL = 8;
-export const MAX_PACK = PARAMS.packSize;
+
 export const BASE_PADS = PARAMS.padsStart;
 export const MAX_PADS = PARAMS.padsMax;
 export const START_SWAP = PARAMS.swapsStart;
 export const MAX_SWAP = PARAMS.swapsMax;
-export const SWAP_RATE = PARAMS.swapRate;
-export const SWAP_PITY = PARAMS.swapPity;
 
 export const GRADE_XP: Record<Grade, number> = {
   S: 56,
@@ -79,34 +72,9 @@ export function levelPadBonus(level: number): number {
   return (level >= 8 ? 1 : 0) + (level >= 12 ? 1 : 0);
 }
 
-export function packSizeFor(_level: number): number {
-  return MAX_PACK;
-}
-
 export function scrapMul(level: number): number {
   return level >= 6 ? 1.25 : 1;
 }
-
-export function levelAbility(_level: number): string {
-  return "Fill Bonus for a run perk";
-}
-
-export const RARITY_COLOR: Record<Rarity, string> = {
-  common: PALETTE.moonstone,
-  uncommon: PALETTE.sapphire,
-  rare: PALETTE.ruby,
-  epic: PALETTE.epic,
-  legendary: PALETTE.legend,
-};
-
-export const GRADE_COLOR: Record<Grade, string> = {
-  S: "#f0f1f4",
-  A: "#9aa0ab",
-  B: PALETTE.accent,
-  C: "#8b8e98",
-  D: PALETTE.hot,
-  F: PALETTE.hot,
-};
 
 export const ENEMIES: Record<EnemyType, EnemyDef> = {
   grunt: { hp: 190, speed: 56, gold: 10, armor: 0, radius: 17, scale: 0.9 },

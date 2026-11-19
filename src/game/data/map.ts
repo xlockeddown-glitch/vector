@@ -32,7 +32,7 @@ export let PATHS: Vec[][] = [
 ];
 
 export const PATH = PATHS[0]!;
-export const SPAWN = PATHS[0]![0]!;
+
 export const BASE = PATHS[0]![PATHS[0]!.length - 1]!;
 
 export function pathOf(route: number): Vec[] {
@@ -87,8 +87,6 @@ export let PADS: Pad[] = [
   { id: "p20", x: 1048, y: 500, zone: "merge" },
 ];
 
-export const PATH_WIDTH_DRAW = 26;
-
 export function padById(id: string): Pad | undefined {
   return PADS.find((p) => p.id === id);
 }
@@ -104,23 +102,6 @@ export function hitPad(x: number, y: number, r = 72, pads: Pad[] = PADS): Pad | 
     }
   }
   return best;
-}
-
-export function inWorld(x: number, y: number) {
-  return x >= 0 && y >= 0 && x <= WORLD.w && y <= WORLD.h;
-}
-
-export function remainingDist(route: number, wp: number, dist: number): number {
-  const path = pathOf(route);
-  let n = 0;
-  for (let i = wp + 1; i < path.length; i++) {
-    const a = path[i - 1]!;
-    const b = path[i]!;
-    const seg = Math.hypot(b.x - a.x, b.y - a.y);
-    if (i === wp + 1) n += Math.max(0, seg - dist);
-    else n += seg;
-  }
-  return n;
 }
 
 /** Closest path point and heading toward the core. */
@@ -269,126 +250,7 @@ export function sampleAlong(route: number, along: number): PathSample {
   };
 }
 
-export function coverPoints(step = 14): PathSample[] {
-  const out: PathSample[] = [];
-  for (let r = 0; r < PATH_SAMPLES.length; r++) {
-    const total = PATH_ALONG[r] ?? 1;
-    for (let d = 0; d <= total; d += step) out.push(sampleAlong(r, d));
-  }
-  return out;
-}
-
 /** Fraction of the map (minus the core box) that sits near a path. */
-export function pathFillRatio(radius = 46, cell = 16): number {
-  const coreL = WORLD.w - 220;
-  const coreT = WORLD.h - 180;
-  let free = 0;
-  let near = 0;
-  for (let y = cell / 2; y < WORLD.h; y += cell) {
-    for (let x = cell / 2; x < WORLD.w; x += cell) {
-      if (x >= coreL && y >= coreT) continue;
-      free += 1;
-      if (nearestPathMeta(x, y).dist <= radius) near += 1;
-    }
-  }
-  return free ? near / free : 0;
-}
-
-const TWIN_S_PATHS = PATHS;
-const TWIN_S_PADS = PADS;
-const TWIN_S_SAMPLES = PATH_SAMPLES;
-const TWIN_S_ALONG = PATH_ALONG;
-
-const SHELF_PATHS: Vec[][] = [
-  [
-    { x: 72, y: 304 },
-    { x: 1140, y: 304 },
-    { x: 1140, y: 176 },
-    { x: 200, y: 176 },
-    { x: 200, y: 456 },
-    { x: 1080, y: 456 },
-    { x: 1080, y: 648 },
-    { x: 1204, y: 648 },
-  ],
-  [
-    { x: 56, y: 680 },
-    { x: 56, y: 500 },
-    { x: 940, y: 500 },
-    { x: 940, y: 580 },
-    { x: 220, y: 580 },
-    { x: 220, y: 648 },
-    { x: 1204, y: 648 },
-  ],
-];
-
-const SHELF_PADS: Pad[] = [
-  { id: "p1", x: 180, y: 146, zone: "orbit" },
-  { id: "p2", x: 420, y: 146, zone: "orbit" },
-  { id: "p3", x: 660, y: 146, zone: "orbit" },
-  { id: "p4", x: 900, y: 146, zone: "orbit" },
-  { id: "p5", x: 1210, y: 146, zone: "orbit" },
-  { id: "p6", x: 420, y: 300, zone: "orbit" },
-  { id: "p7", x: 660, y: 300, zone: "orbit" },
-  { id: "p8", x: 900, y: 300, zone: "orbit" },
-  { id: "p9", x: 122, y: 620, zone: "nadir" },
-  { id: "p10", x: 122, y: 540, zone: "nadir" },
-  { id: "p11", x: 360, y: 440, zone: "nadir" },
-  { id: "p12", x: 580, y: 540, zone: "nadir" },
-  { id: "p13", x: 1020, y: 300, zone: "orbit" },
-  { id: "p14", x: 440, y: 620, zone: "nadir" },
-  { id: "p15", x: 1160, y: 540, zone: "merge" },
-  { id: "p16", x: 1160, y: 600, zone: "merge" },
-  { id: "p17", x: 760, y: 620, zone: "merge" },
-  { id: "p18", x: 640, y: 440, zone: "merge" },
-  { id: "p19", x: 880, y: 440, zone: "merge" },
-  { id: "p20", x: 1020, y: 540, zone: "merge" },
-];
-
-const HOOK_PATHS: Vec[][] = [
-  [
-    { x: 72, y: 436 },
-    { x: 72, y: 188 },
-    { x: 1000, y: 188 },
-    { x: 1000, y: 356 },
-    { x: 220, y: 356 },
-    { x: 220, y: 528 },
-    { x: 1100, y: 528 },
-    { x: 1100, y: 648 },
-    { x: 1204, y: 648 },
-  ],
-  [
-    { x: 48, y: 700 },
-    { x: 48, y: 360 },
-    { x: 420, y: 360 },
-    { x: 420, y: 560 },
-    { x: 180, y: 560 },
-    { x: 180, y: 648 },
-    { x: 1204, y: 648 },
-  ],
-];
-
-const HOOK_PADS: Pad[] = [
-  { id: "p1", x: 240, y: 128, zone: "orbit" },
-  { id: "p2", x: 460, y: 128, zone: "orbit" },
-  { id: "p3", x: 680, y: 128, zone: "orbit" },
-  { id: "p4", x: 200, y: 330, zone: "orbit" },
-  { id: "p5", x: 1210, y: 128, zone: "orbit" },
-  { id: "p6", x: 440, y: 330, zone: "orbit" },
-  { id: "p7", x: 680, y: 330, zone: "orbit" },
-  { id: "p8", x: 860, y: 330, zone: "orbit" },
-  { id: "p9", x: 118, y: 620, zone: "nadir" },
-  { id: "p10", x: 118, y: 460, zone: "nadir" },
-  { id: "p11", x: 300, y: 460, zone: "nadir" },
-  { id: "p12", x: 560, y: 460, zone: "nadir" },
-  { id: "p13", x: 1100, y: 330, zone: "orbit" },
-  { id: "p14", x: 420, y: 620, zone: "nadir" },
-  { id: "p15", x: 1160, y: 540, zone: "merge" },
-  { id: "p16", x: 1160, y: 600, zone: "merge" },
-  { id: "p17", x: 760, y: 560, zone: "merge" },
-  { id: "p18", x: 640, y: 400, zone: "merge" },
-  { id: "p19", x: 860, y: 400, zone: "merge" },
-  { id: "p20", x: 1048, y: 540, zone: "merge" },
-];
 
 type PackedLayout = {
   paths: Vec[][];
@@ -411,14 +273,6 @@ function findDock(path: Vec[], pads: Pad[]): Vec {
     }
   }
   return { x: best.x, y: best.y };
-}
-
-function pathLengthOf(path: Vec[]): number {
-  let n = 0;
-  for (let i = 1; i < path.length; i++) {
-    n += Math.hypot(path[i]!.x - path[i - 1]!.x, path[i]!.y - path[i - 1]!.y);
-  }
-  return n;
 }
 
 function seatFor(turn: number, i: number): CoverShape {
@@ -523,7 +377,6 @@ export function lanePoints(id: string): Vec[] {
 }
 
 /** Every hand-made lane id. */
-export const LANE_IDS = Object.keys(RAW);
 
 /** Old per-run "jog" variation is gone: lanes stay the shape they were drawn. */
 export function setMapLayout(id: string, _jog = 0) {
