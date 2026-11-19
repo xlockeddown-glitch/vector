@@ -1,5 +1,4 @@
 import { ODDS, OPENING_ODDS } from "./constants";
-
 import { CARDS, cardBars } from "./data/cards";
 import { rollCard } from "./data/roll";
 import { cardLeans, giftOrder, packGiftOf, type PackLean } from "./data/gifts";
@@ -45,10 +44,6 @@ export function packKindOf(cards: { kind: CardKind }[]): CardKind | null {
   const k = cards[0]!.kind;
   return cards.every((c) => c.kind === k) ? k : null;
 }
-
-/** Round packs pick one kind, then fill. Skills are Level-up chips, not packs. */
-
-
 
 /** Peak job bar. Packs bucket around this so the pick is the job, not extra numbers. */
 export function jobPower(c: CardDef): number {
@@ -200,8 +195,6 @@ export function dealTowerOpening(
   const pool = shuffle(CARDS.filter((c) => c.kind === "tower" && !skip.has(c.id)));
   return leanPool(pool, count, "tower", lean).map((t) => stampAt(t, rarity, forge));
 }
-
-
 
 export function dealSector(
   forge: Record<string, number> = {},

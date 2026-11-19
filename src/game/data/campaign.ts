@@ -388,8 +388,6 @@ export function scoreStages(stage: CampaignStage, st: CampaignStats): { checks: 
   return { checks, stars };
 }
 
-/** Alias: stars only. */
-
 /** What a finished stage paid, for the star reveal. */
 export type CampaignResult = {
   stageId: string;

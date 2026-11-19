@@ -1,5 +1,3 @@
-/** This-game Level rungs. Arena caps at 4. Endless 5+ is extra hurt only. */
-
 /** Bond forever floors the look, not the this-game Level stats. */
 export function bondLookFloor(bondLevel: number): number {
   if (bondLevel >= 50) return 4;

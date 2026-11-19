@@ -38,5 +38,3 @@ export function fluxFromBank(points: number): number {
 export function hangarStartCredit(ranks: HangarRanks): number {
   return (ranks.gold ?? 0) * GOLD_PER_RANK;
 }
-
-/** @deprecated use hangarStartCredit */
