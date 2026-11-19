@@ -50,19 +50,16 @@ export async function loadAssets(): Promise<Assets> {
   const towers: Record<string, HTMLImageElement> = {};
   await Promise.all(
     towerIds.map(async (id) => {
-      const img = (await loadOptional(`/game/towers/${id}.png`)) ?? (await loadOptional(`/game/towers/${id}-card.png`));
+      const img = await loadOptional(`/game/towers/${id}.png`);
       if (img) towers[id] = img;
     }),
   );
 
-  const [grunt, striker, plate, colossus, titan, swarm, cache] = await Promise.all([
+  const [grunt, striker, plate, colossus] = await Promise.all([
     loadFrames("grunt"),
     loadFrames("striker"),
     loadFrames("plate"),
     loadFrames("colossus"),
-    loadFrames("titan"),
-    loadFrames("swarm"),
-    loadFrames("cache"),
   ]);
 
   return {
@@ -78,10 +75,10 @@ export async function loadAssets(): Promise<Assets> {
       grunt,
       striker,
       plate,
-      swarm: swarm.length ? swarm : grunt,
+      swarm: grunt,
       colossus,
-      titan: titan.length ? titan : colossus,
-      cache: cache.length ? cache : striker,
+      titan: colossus,
+      cache: striker.length ? striker : grunt,
       dart: striker.length ? striker : grunt,
       medic: grunt,
       shard: grunt,

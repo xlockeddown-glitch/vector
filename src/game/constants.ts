@@ -1,4 +1,4 @@
-import type { EnemyDef, EnemyType, Grade, Rarity, ThemeId } from "./types";
+import type { EnemyDef, EnemyType, Grade, Rarity } from "./types";
 import { LOOP_WAVES, THEME_LEN, TOTAL_WAVES } from "./data/themes";
 import { PARAMS } from "./params";
 import { PALETTE } from "./data/palette";
@@ -109,38 +109,4 @@ export const OPENING_ODDS: Record<Rarity, number> = {
   rare: 14,
   uncommon: 40,
   common: 44,
-};
-
-export const ART = {
-  title: "/game/map/title.jpg",
-  crystal: "/game/fx/crystal.png",
-  maps: {
-    water: "/game/map/space.jpg",
-    earth: "/game/map/space.jpg",
-    space: "/game/map/space.jpg",
-  } as Record<ThemeId, string>,
-  towers: {
-    longbow: "/game/towers/longbow.png",
-    ember: "/game/towers/ember.png",
-    rime: "/game/towers/rime.png",
-    arc: "/game/towers/arc.png",
-    hex: "/game/towers/hex.png",
-    grove: "/game/towers/grove.png",
-    captain: "/game/towers/captain.png",
-  } as Record<string, string>,
-  enemies: {
-    grunt: [1, 2, 3, 4].map((n) => `/game/enemies/grunt-${n}.png`),
-    striker: [1, 2, 3, 4].map((n) => `/game/enemies/striker-${n}.png`),
-    plate: [1, 2, 3, 4].map((n) => `/game/enemies/plate-${n}.png`),
-    swarm: [1, 2, 3, 4].map((n) => `/game/enemies/grunt-${n}.png`),
-    colossus: [1, 2, 3, 4].map((n) => `/game/enemies/colossus-${n}.png`),
-    titan: [1, 2, 3, 4].map((n) => `/game/enemies/colossus-${n}.png`),
-    cache: [1, 2, 3, 4].map((n) => `/game/enemies/striker-${n}.png`),
-    dart: [1, 2, 3, 4].map((n) => `/game/enemies/striker-${n}.png`),
-    medic: [1, 2, 3, 4].map((n) => `/game/enemies/grunt-${n}.png`),
-    shard: [1, 2, 3, 4].map((n) => `/game/enemies/grunt-${n}.png`),
-    warden: [1, 2, 3, 4].map((n) => `/game/enemies/plate-${n}.png`),
-    blink: [1, 2, 3, 4].map((n) => `/game/enemies/striker-${n}.png`),
-    jammer: [1, 2, 3, 4].map((n) => `/game/enemies/plate-${n}.png`),
-  } as Record<EnemyType, string[]>,
 };

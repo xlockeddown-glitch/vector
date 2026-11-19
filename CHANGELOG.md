@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.10] - 2026-11-19
+
+### Removed
+
+- Unused/duplicate images: 7 tower card copies, 12 duplicate enemy frames, unused battlefield/title maps, rocket sprites and pack art; the never-read ART path table.
+
+### Changed
+
+- Tower and enemy loading no longer requests duplicate files; PNGs losslessly recompressed.
+
 ## [0.9.9] - 2026-11-19
 
 ### Removed
