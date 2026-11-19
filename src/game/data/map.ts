@@ -250,8 +250,6 @@ export function sampleAlong(route: number, along: number): PathSample {
   };
 }
 
-/** Fraction of the map (minus the core box) that sits near a path. */
-
 type PackedLayout = {
   paths: Vec[][];
   pads: Pad[];
@@ -375,8 +373,6 @@ const RAW: Record<string, Vec[]> = {
 export function lanePoints(id: string): Vec[] {
   return (RAW[id] ?? RAW["twin-s"]!).map((p) => ({ ...p }));
 }
-
-/** Every hand-made lane id. */
 
 /** Old per-run "jog" variation is gone: lanes stay the shape they were drawn. */
 export function setMapLayout(id: string, _jog = 0) {

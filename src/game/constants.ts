@@ -6,10 +6,8 @@ import { PALETTE } from "./data/palette";
 export { TOTAL_WAVES, LOOP_WAVES, THEME_LEN, PARAMS, PALETTE };
 
 export const WORLD = { w: 1280, h: 720 };
-
 export const START_LIVES = PARAMS.lives;
 export const MAX_TOWERS = PARAMS.padsMax;
-
 export const HOME_PAD = "home";
 export const OPENING_PICKS = PARAMS.openingPicks;
 /** Hold this many waves to win. Then Keep flying or Return. */
@@ -17,7 +15,6 @@ export const WIN_WAVES = THEME_LEN;
 export const MAX_COMPANIONS = PARAMS.craftsFly;
 export const SKY_PAD = "sky";
 export const WAVES_PER_ROUND = PARAMS.wavesPerRound;
-
 export const MEGA_EVERY = PARAMS.megaEvery;
 
 export const TOTAL_ROUNDS = TOTAL_WAVES / WAVES_PER_ROUND;
@@ -25,7 +22,6 @@ export const START_LEVEL = 1;
 export const WAVE_XP = 14;
 export const MEGA_XP = 16;
 export const CACHE_XP = 8;
-
 export const BASE_PADS = PARAMS.padsStart;
 export const MAX_PADS = PARAMS.padsMax;
 export const START_SWAP = PARAMS.swapsStart;

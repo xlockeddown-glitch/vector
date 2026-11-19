@@ -46,8 +46,6 @@ export function fmtQty(n: number, unit?: string, frac = 0): string {
   return `${body}${NIST_GAP}${unit}`;
 }
 
-/** @deprecated use fmtFixed. Kept for old calls. */
-
 export function fmtFlux(n: number): string {
   const v = Math.round(n);
   return v === 1 ? "1 credit" : `${fmtCount(v)} credits`;

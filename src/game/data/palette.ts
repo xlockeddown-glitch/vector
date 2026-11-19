@@ -40,8 +40,5 @@ export const GLOW = {
   sage: PALETTE.sage,
 } as const;
 
-/** Gem face colors. Common reads as paper, not a sixth glow. Ruby is paint, not ember. */
-
-/** Quiet frost pip on puck / lightbar. Not a glow color. */
-
-/** Banned candy. Do not reintroduce. */
+// Banned candy colors (do not reintroduce): nvidia #76b900, candyLilac #e4d8ff,
+// candyViolet #c9b6ff, candySapphire #8ec7ff, candyMagenta #ff4fd8, googleBlue #4285f4.

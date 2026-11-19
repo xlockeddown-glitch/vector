@@ -91,8 +91,6 @@ export const OPERATORS: Record<
   },
 };
 
-/** @deprecated old name */
-
 export function emptySets(): Record<SetId, number> {
   return { heat: 0, cold: 0, spark: 0, iron: 0 };
 }

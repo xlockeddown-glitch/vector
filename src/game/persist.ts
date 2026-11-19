@@ -458,8 +458,6 @@ export function clearRun() {
   }
 }
 
-/** @deprecated alias for title screen */
-
 const PROFILE_KEY = "vector-profiles-v1";
 const SLOT_N = 3;
 
