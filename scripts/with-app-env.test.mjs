@@ -23,7 +23,7 @@ const PRINT_FLAG = "process.stdout.write(String(process.env.VITE_AUTH_ENABLED));
 
 function makeWorkspace(t, appEnvJson) {
   const root = mkdtempSync(join(tmpdir(), "app-env-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   mkdirSync(join(root, "scripts"));
   copyFileSync(
     join(projectRoot(), "scripts/with-app-env.mjs"),
@@ -184,7 +184,7 @@ test("the CLI still runs when invoked through a symlinked path", async (t) => {
   // turns the wrapper into a no-op that exits 0 without starting anything.
   const root = makeWorkspace(t, '{"VITE_AUTH_ENABLED":"false"}');
   const linkRoot = mkdtempSync(join(tmpdir(), "app-env-link-"));
-  t.after(() => rmSync(linkRoot, { recursive: true, force: true }));
+  t.after(() => rmSync(linkRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   const link = join(linkRoot, "scripts");
   symlinkSync(join(root, "scripts"), link, process.platform === "win32" ? "junction" : "dir");
   const { stdout } = await execFileAsync(

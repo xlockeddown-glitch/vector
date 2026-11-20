@@ -21,7 +21,7 @@ const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 // Generic head tests must not inherit VECTOR's site identity or public assets.
 const EMPTY_ROOT = mkdtempSync(join(tmpdir(), "grok-head-tests-"));
-after(() => rmSync(EMPTY_ROOT, { recursive: true, force: true }));
+after(() => rmSync(EMPTY_ROOT, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 function injectGrokPwaHead(html, ctx = {}) {
   return injectWorkspaceHead(html, { cwd: EMPTY_ROOT, ...ctx });
 }
@@ -127,7 +127,7 @@ test("does not duplicate twitter:card or og:title", () => {
 
 test("baked identity does not need a workspace filesystem", (t) => {
   const empty = mkdtempSync(join(tmpdir(), "grok-og-empty-"));
-  t.after(() => rmSync(empty, { recursive: true, force: true }));
+  t.after(() => rmSync(empty, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     cwd: empty,
@@ -141,7 +141,7 @@ test("baked identity does not need a workspace filesystem", (t) => {
 
 test("a cwd card file overrides an explicit site without card=custom", (t) => {
   const root = mkdtempSync(join(tmpdir(), "grok-og-card-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/og.jpg"), "x");
   const out = injectGrokPwaHead("<html><head></head></html>", {
@@ -155,7 +155,7 @@ test("a cwd card file overrides an explicit site without card=custom", (t) => {
 
 test("snapshotOgIdentity stamps card=custom from a public card file", (t) => {
   const root = mkdtempSync(join(tmpdir(), "grok-og-snap-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/og.jpg"), "x");
   const { site } = snapshotOgIdentity(root);
@@ -166,7 +166,7 @@ test("snapshotOgIdentity stamps card=custom from a public card file", (t) => {
 
 test("snapshotOgIdentity stamps banner from public/x-banner.jpg", (t) => {
   const root = mkdtempSync(join(tmpdir(), "grok-og-banner-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/x-banner.jpg"), "x");
   const { site } = snapshotOgIdentity(root);
