@@ -24,7 +24,7 @@ import { projectRoot } from "./with-app-env.mjs";
  */
 async function withDevServer(t, env, body) {
   const root = mkdtempSync(join(tmpdir(), "auth-invariant-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   writeFileSync(join(root, "index.html"), "<!doctype html><title>t</title>\n");
   const previous = process.env.VITE_AUTH_ENABLED;
   if (env === undefined) delete process.env.VITE_AUTH_ENABLED;
@@ -117,7 +117,7 @@ test("only a divergence warns the smoke verdict", () => {
 
 function makeBuildWorkspace(t, appEnvJson) {
   const root = mkdtempSync(join(tmpdir(), "auth-build-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   if (appEnvJson !== undefined) {
     mkdirSync(join(root, ".grok"));
     writeFileSync(join(root, ".grok/app-env.json"), appEnvJson);
@@ -155,14 +155,14 @@ test("the CLI reports rather than silently passing when run via a symlink", asyn
   // A check whose exit code is the whole signal must never no-op to 0 because
   // process.argv[1] came in through a symlinked path.
   const root = mkdtempSync(join(tmpdir(), "auth-invariant-cli-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   const scripts = join(root, "scripts");
   mkdirSync(scripts);
   for (const script of ["check-auth-invariant.mjs", "with-app-env.mjs", "app-env-plugin.mjs"]) {
     copyFileSync(join(projectRoot(), "scripts", script), join(scripts, script));
   }
   const linkRoot = mkdtempSync(join(tmpdir(), "auth-invariant-link-"));
-  t.after(() => rmSync(linkRoot, { recursive: true, force: true }));
+  t.after(() => rmSync(linkRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   const link = join(linkRoot, "scripts");
   const cleanEnv = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => key.toUpperCase() !== "VITE_AUTH_ENABLED"),
