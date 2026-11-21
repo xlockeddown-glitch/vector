@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, useRef, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, type PointerEvent } from "react";
 import { DraftBoard } from "./DraftBoard";
 import { EndScreen } from "./EndScreen";
 import { EngraveScreen } from "./EngraveScreen";
@@ -19,6 +19,7 @@ import { createRuntime, RUNTIME_GEN, type HudSink, type Runtime } from "@/game/r
 import { useGame } from "@/game/store";
 import { orbitRank } from "@/game/data/orbit";
 import { audio } from "@/game/audio";
+import { wants3d } from "@/game/render3d/grid";
 import { cn } from "@/lib/utils";
 
 function hudSink(w: Parameters<HudSink>[0]) {
@@ -55,6 +56,46 @@ export function GameApp() {
       console.warn("vector boot", err);
     }
   }, [RUNTIME_GEN]);
+
+  // Opt-in 3D slice: only with ?render=3d. Read after mount so SSR markup matches.
+  // three.js is pulled in by the dynamic import below and nowhere else.
+  const canvas3dRef = useRef<HTMLCanvasElement>(null);
+  const [render3d, setRender3d] = useState(false);
+  const [ready3d, setReady3d] = useState(false);
+  useEffect(() => {
+    if (wants3d(window.location.search)) setRender3d(true);
+  }, []);
+  useEffect(() => {
+    if (import.meta.env.SSR) return;
+    if (!render3d) return;
+    const el = canvas3dRef.current;
+    if (!el) return;
+    let dead = false;
+    let dispose: (() => void) | null = null;
+    import("@/game/render3d/scene")
+      .then(({ mountRender3D }) => {
+        if (dead) return;
+        dispose = mountRender3D(
+          el,
+          () => rt.current?.world ?? (window as unknown as { __vectorRuntime?: Runtime }).__vectorRuntime?.world,
+          {
+            onContextLost: () => {
+              if (!dead) setRender3d(false);
+            },
+          },
+        ).dispose;
+        setReady3d(true);
+      })
+      .catch((err) => {
+        console.warn("vector 3d", err);
+        if (!dead) setRender3d(false);
+      });
+    return () => {
+      dead = true;
+      setReady3d(false);
+      dispose?.();
+    };
+  }, [render3d]);
 
   const act = (a: Parameters<Runtime["dispatch"]>[0]) => {
     if (!rt.current) {
@@ -104,6 +145,15 @@ export function GameApp() {
         onPointerDown={onCanvas}
         onPointerMove={onHover}
       />
+      {render3d && (
+        <canvas
+          ref={canvas3dRef}
+          aria-hidden
+          data-render="3d"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          style={ready3d ? { background: "linear-gradient(#B7A6E6, #E7C3E3 55%, #FFD8C0)" } : undefined}
+        />
+      )}
 
       {phase === "title" && (
         <TitleScreen

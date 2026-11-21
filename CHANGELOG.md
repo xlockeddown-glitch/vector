@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.12] - 2026-11-21
+
+### Added
+
+- Opt-in 3D renderer (`?render=3d`): three.js draws the map lanes as voxel tiles at the fixed orthographic 3/4 camera (35° pitch, 45° yaw) with placeholder tower and enemy meshes; three loads lazily only in 3D mode, and the 2D renderer stays the default.
+
 ## [0.9.11] - 2026-11-19
 
 ### Added
