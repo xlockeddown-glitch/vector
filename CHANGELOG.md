@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Shared the identical craft hull upgrade calculation without changing game behavior.
-- Test hygiene (no separate bump): tests now remove their temp directories; sim.ts split read without a non-null assertion.
+- Test hygiene card (no separate bump): cleaned up the temp folders tests left behind (including Windows retry on removal) and fixed the stats.split nit in sim.ts (no non-null assertion).
 
 ## [0.9.8] - 2026-11-18
 
