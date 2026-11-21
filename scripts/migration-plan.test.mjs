@@ -77,7 +77,7 @@ test("this workspace's auth schema copy is byte-identical to its source", () => 
 
 test("the copy check reads both files and catches an edit", (t) => {
   const root = mkdtempSync(join(tmpdir(), "auth-schema-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   mkdirSync(join(root, "migrations/auth"), { recursive: true });
   writeFileSync(join(root, "migrations/auth", AUTH_MIGRATION), "create table t ();\n");
   assert.equal(authSchemaCopy(root), null);

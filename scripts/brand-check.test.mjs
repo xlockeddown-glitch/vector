@@ -21,7 +21,7 @@ function makeWorkspace(t, {
   narrowBytes = 200 * 1024,
 } = {}) {
   const root = mkdtempSync(join(tmpdir(), "brand-check-"));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   mkdirSync(join(root, "public"), { recursive: true });
   mkdirSync(join(root, "src/lib/og"), { recursive: true });
   if (siteJson !== undefined) {
